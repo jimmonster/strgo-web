@@ -1,6 +1,7 @@
 import {cp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import path from 'node:path';
-const root=path.resolve(new URL('..',import.meta.url).pathname);
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
 let base=process.env.BASE_PATH||'/';base='/'+base.replace(/^\/+|\/+$/g,'')+(base.replaceAll('/','')?'/':'');
 if(!/^\/[a-zA-Z0-9/_-]*\/$/.test(base)&&base!=='/')throw Error('BASE_PATH must be a plain absolute directory path.');
 const out=path.join(root,'dist');await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});

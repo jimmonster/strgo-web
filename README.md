@@ -2,6 +2,12 @@
 
 该仓库包含 `https://strgo.com` 主站及其独立部署的站内应用。主站源码在仓库根目录；NEXUS 与 DREAMS 门户也集成在主站的 `src/` 下。
 
+## 开发资料与 Codex
+
+- [开发文档目录](doc/README.md)：架构、开发步骤、现有专题文档和整仓审查记录。
+- [Codex 技能目录](codex/README.md)：项目开发和 review 技能，以及下次会话的调用示例。
+- [项目指令入口](AGENTS.md)：让后续 Codex 会话找到上述文档和技能。
+
 ## 项目
 
 - 主站、AI 图片工作台、集成的 NEXUS 与 DREAMS 门户：仓库根目录

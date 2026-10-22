@@ -2,7 +2,7 @@
 
 实现入口：`/ai/`。音乐：`/ai/music/`；对话：`/ai/chat/`；作品：`/ai/assets/`；任务：`/ai/tasks/`；权限：`/ai/settings/`；管理：`/admin/ai/`。
 
-本次实现依据 [设计文档 v1.0](docs/ai/design-v1.0.md) 与本次会话中的音乐、对话、管理三张设计稿。开发接口与后续模块接入方式见 [实现与接口](docs/ai/implementation.md)，上线前检查见 [验收记录](docs/ai/acceptance.md)。
+本次实现依据 [设计文档 v1.0](doc/ai/design-v1.0.md) 与本次会话中的音乐、对话、管理三张设计稿。开发接口与后续模块接入方式见 [实现与接口](doc/ai/implementation.md)，上线前检查见 [验收记录](doc/ai/acceptance.md)。
 
 ## 1. 与现有项目的关系
 
@@ -121,4 +121,4 @@ npm test
 
 `tests/ai-preview.py --demo` 是单独的临时界面验收夹具，使用临时账号/数据库、假模型和静音音频，并在页面标明演示。它不由任何生产入口加载，不能作为真实模型联调结果。
 
-需要真实账号、密钥与 GPU 节点的验收项不能由离线测试替代。详见 [验收记录](docs/ai/acceptance.md)。
+需要真实账号、密钥与 GPU 节点的验收项不能由离线测试替代。详见 [验收记录](doc/ai/acceptance.md)。

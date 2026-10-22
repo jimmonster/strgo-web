@@ -5,13 +5,13 @@
 ## 可复现更新
 
 ```bash
-cd /root/dreams
+cd /root/strgo-web/apps/dreams
 npm ci
 npm run build
 npm test
 npm run test:shaders
 node scripts/sync-strgo.mjs
-cd /root/strgo-homepage
+cd /root/strgo-web
 npm run build:production
 npm test
 bash deploy.sh

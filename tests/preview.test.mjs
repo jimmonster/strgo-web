@@ -40,10 +40,10 @@ test('Existing static spaces and local assets are served without exposing filesy
   assert.equal((await request('/', 'POST')).status, 405);
 });
 
-test('Independent spaces reuse their existing sibling builds when available', async t => {
+test('Independent spaces use their monorepo application builds when available', async t => {
   for (const name of ['polyverse', 'meow', 'swarmera']) {
-    if (!existsSync(new URL(`../../${name}/dist/index.html`, import.meta.url))) {
-      t.diagnostic(`${name}: sibling build is absent; local preview requires that existing project`);
+    if (!existsSync(new URL(`../apps/${name}/dist/index.html`, import.meta.url))) {
+      t.diagnostic(`${name}: build apps/${name} before previewing its route`);
       continue;
     }
     assert.equal((await request(`/${name}/`)).status, 200);

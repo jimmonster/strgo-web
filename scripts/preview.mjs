@@ -5,9 +5,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const mounts = [
-  ['/polyverse', resolve(projectRoot, '../polyverse/dist')],
-  ['/meow', resolve(projectRoot, '../meow/dist')],
-  ['/swarmera', resolve(projectRoot, '../swarmera/dist')],
+  ['/polyverse', resolve(projectRoot, 'apps/polyverse/dist')],
+  ['/meow', resolve(projectRoot, 'apps/meow/dist')],
+  ['/swarmera', resolve(projectRoot, 'apps/swarmera/dist')],
   ['', resolve(projectRoot, 'dist')]
 ];
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.xml': 'application/xml', '.txt': 'text/plain' };
@@ -64,7 +64,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const host = option('--host') || '127.0.0.1';
     if (!['127.0.0.1', '0.0.0.0'].includes(host)) throw new Error('预览仅支持明确指定的本机监听地址。');
     const { origin } = await startPreview(Number(option('--port') || process.env.STRGO_PREVIEW_PORT || 8080), host);
-    console.log(`STRGO 本地预览：${origin}\n独立空间复用相邻项目的现有 dist；终端沿用原服务入口。`);
+    console.log(`STRGO 本地预览：${origin}\n独立空间读取 apps/<应用名>/dist；终端沿用原服务入口。`);
   } catch (error) {
     console.error(`无法启动本地预览：${error.message}\n需要允许本机监听端口的终端环境。未改动线上服务。`);
     process.exitCode = 1;

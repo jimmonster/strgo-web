@@ -27,7 +27,7 @@ async function environment({ mode = 'dance', reduced = false, broken = false } =
     setPixelRatio() {} setSize() {} render() { this.draws++; } dispose() { this.disposed = true; } forceContextLoss() { this.lost = true; }
   }
   const source = readFileSync(new URL('../src/assets/scenes/runtime.js', import.meta.url), 'utf8')
-    .replace(/^import .*;\n/gm, '').replace('export async function start', 'async function start')
+    .replace(/^import .*;\r?\n/gm, '').replace('export async function start', 'async function start')
     .replaceAll("import('./dance.js')", `import('${new URL('../src/assets/scenes/dance.js', import.meta.url).href}')`)
     .replaceAll("import('./home.js')", `import('${new URL('../src/assets/scenes/home.js', import.meta.url).href}')`);
   const start = new Function('T', 'SceneControls', 'disposeScene', `${source}\nreturn start;`)({ ...THREE, WebGLRenderer: Renderer }, SceneControls, disposeScene);

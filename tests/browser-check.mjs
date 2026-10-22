@@ -19,7 +19,10 @@ try {
     if (mobile) { await page.locator('.menu-toggle').click(); assert.equal(await page.locator('.mobile-menu').isVisible(), true); await page.keyboard.press('Escape'); }
     await page.screenshot({ path: `${directory}/${viewport.width}-hero.png` });
     const before = Number(await page.locator('.nebula-canvas').getAttribute('data-frames') || 0);
-    await page.locator('#stack').scrollIntoViewIfNeeded(); await page.waitForTimeout(1400);
+    await page.locator('#stack').scrollIntoViewIfNeeded();
+    await page.locator('.metric-card').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-count]')].every(element =>
+      element.textContent === Number(element.dataset.count).toFixed(Number(element.dataset.decimals))), undefined, { timeout: 5000 });
     assert.equal(await page.locator('[data-count="99.9"]').textContent(), '99.9');
     assert.equal(await page.locator('[data-count="60"]').textContent(), '60');
     const stopped = Number(await page.locator('.nebula-canvas').getAttribute('data-frames') || 0);
