@@ -12,6 +12,7 @@
     "image:icons": "node scripts/image-icons.mjs",
     "test:image": "node --test tests/image-playground.test.mjs tests/reference-image.test.mjs && python3 -m unittest discover -s tests -p 'test_image_*.py' -v",
     "test:image:browser": "node tests/image-browser.mjs",
+    "test:workflow:browser": "node tests/local-studio-browser.mjs",
     "test:content:browser": "node tests/content-browser.mjs",
     "test": "node --test tests/*.test.mjs tests/image-playground.test.mjs && python3 -m unittest discover -s tests -p 'test_*.py'",
     "test:browser": "node tests/browser-check.mjs",

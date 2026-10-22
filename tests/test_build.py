@@ -23,6 +23,17 @@ class Markup(HTMLParser):
         self.tags.append((tag, dict(attrs)))
 
 class BuildTests(unittest.TestCase):
+    def test_local_studio_is_independent_and_ships_reference_compression(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = builder.build(output=directory)
+            page = (output / 'local-studio/index.html').read_text(encoding='utf-8')
+            self.assertIn('https://workflow.strgo.com/', page)
+            self.assertIn('noindex,nofollow', page)
+            self.assertIn('AI 生图的管理员账号', page)
+            self.assertNotIn('api-key', page)
+            for filename in ('app.js', 'styles.css', 'reference-image.js'):
+                self.assertTrue((output / 'local-studio' / filename).is_file())
+
     def test_forum_route_assets_and_shared_account_entries(self):
         with tempfile.TemporaryDirectory() as directory:
             output = builder.build(output=directory)

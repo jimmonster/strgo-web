@@ -5,6 +5,7 @@
 ## 项目
 
 - 主站、AI 图片工作台、集成的 NEXUS 与 DREAMS 门户：仓库根目录
+- 独立管理员本地创作台（H3 / Qwen-Image-2.1）：`src/local-studio/`，配置与部署见 [WORKFLOW.md](WORKFLOW.md)
 - 终端：`apps/terminal/`
 - 会员交流社区：`src/forum/`，复用 AI 生图与终端账号，说明见 [FORUM.md](FORUM.md)
 - DREAMS 独立应用：`apps/dreams/`

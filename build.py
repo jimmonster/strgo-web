@@ -23,7 +23,7 @@ def validate(config):
         raise ValueError('domain must be a plain hostname')
     if config.get('scheme', 'http') not in ('http', 'https'):
         raise ValueError('scheme must be http or https')
-    for name in ('BASE_ORIGIN', 'TERMINAL_TARGET_URL'):
+    for name in ('BASE_ORIGIN', 'TERMINAL_TARGET_URL', 'WORKFLOW_ORIGIN'):
         value = config.get(name, '')
         if not isinstance(value, str):
             raise ValueError(f'{name} must be a string')
@@ -34,8 +34,8 @@ def validate(config):
             raise ValueError(f'{name} must be an HTTP(S) URL' + (' or an absolute site path' if name == 'TERMINAL_TARGET_URL' else ''))
         try: parsed.port
         except ValueError: raise ValueError(f'{name} has an invalid port')
-        if name == 'BASE_ORIGIN' and (parsed.path not in ('', '/') or parsed.query or parsed.fragment):
-            raise ValueError('BASE_ORIGIN must contain only scheme and hostname')
+        if name in ('BASE_ORIGIN', 'WORKFLOW_ORIGIN') and (parsed.path not in ('', '/') or parsed.query or parsed.fragment):
+            raise ValueError(name + ' must contain only scheme and hostname')
     if config.get('email') and not re.fullmatch(r'[^\s<>@?]+@[^\s<>@?]+\.[^\s<>@?]+', config['email']):
         raise ValueError('email must be a plain email address')
     github = config.get('github')
@@ -132,6 +132,8 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
         if asset.is_file(): digest.update(asset.read_bytes())
     for asset in sorted((ROOT / 'src/forum').rglob('*')):
         if asset.is_file(): digest.update(asset.read_bytes())
+    for asset in sorted((ROOT / 'src/local-studio').rglob('*')):
+        if asset.is_file(): digest.update(asset.read_bytes())
     version = digest.hexdigest()[:12]
     origin = config.get('BASE_ORIGIN', '').rstrip('/') or f"{config.get('scheme', 'http')}://{config['domain']}"
     if scheme: origin = re.sub(r'^https?:', scheme + ':', origin)
@@ -214,6 +216,13 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     shutil.copytree(ROOT / 'src/forum', forum_output)
     forum_page = forum_output / 'index.html'
     forum_page.write_text(forum_page.read_text(encoding='utf-8').replace('{{origin}}', html.escape(origin, quote=True)), encoding='utf-8')
+    studio_output = output / 'local-studio'
+    if studio_output.exists():
+        shutil.rmtree(studio_output)
+    shutil.copytree(ROOT / 'src/local-studio', studio_output)
+    studio_page = studio_output / 'index.html'
+    studio_page.write_text(studio_page.read_text(encoding='utf-8').replace('{{workflow_origin}}', html.escape((config.get('WORKFLOW_ORIGIN') or 'https://workflow.strgo.com').rstrip('/'), quote=True)), encoding='utf-8')
+    shutil.copy2(ROOT / 'src/image-playground/reference-image.js', studio_output / 'reference-image.js')
     if (ROOT / 'legacy/archive').is_dir():
         shutil.copytree(ROOT / 'legacy/archive', output / 'archive', dirs_exist_ok=True)
     content_template = (ROOT / 'src/pages/content.html').read_text(encoding='utf-8')

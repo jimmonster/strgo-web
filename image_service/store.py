@@ -9,6 +9,7 @@ import time
 import uuid
 
 from .presets import DEFAULT_PRESETS
+from .local_studio import SCHEMA as LOCAL_STUDIO_SCHEMA
 from .security import Problem
 
 
@@ -68,7 +69,7 @@ class Store:
         self.cipher = cipher
         self._backup_lock = threading.Lock()
         with self.connect() as db:
-            db.executescript(SCHEMA)
+            db.executescript(SCHEMA + LOCAL_STUDIO_SCHEMA)
             db.execute('BEGIN IMMEDIATE')
             columns = {row['name'] for row in db.execute('PRAGMA table_info(users)')}
             if 'updated' not in columns:

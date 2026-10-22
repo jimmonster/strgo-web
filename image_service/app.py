@@ -21,6 +21,7 @@ from .security import Problem, digest, encryption_key, image_type, password_hash
 from .storage import create_storage
 from .store import Store
 from . import forum
+from . import local_studio
 
 API = '/api/image'
 COOKIE = 'strgo_image_session'
@@ -279,13 +280,14 @@ class Service:
         finally:
             self.store._backup_lock.release()
 
-    def session(self, headers):
+    def session(self, headers, cookie_names=None):
         jar = cookies.SimpleCookie()
         try:
             jar.load(headers.get('cookie', ''))
             # A shared cookie takes precedence even when stale: never silently
             # fall back to another account's legacy image-only login.
-            token = jar[ACCOUNT_COOKIE].value if ACCOUNT_COOKIE in jar else (jar[COOKIE].value if COOKIE in jar else '')
+            names = cookie_names if cookie_names is not None else (ACCOUNT_COOKIE, COOKIE)
+            token = next((jar[name].value for name in names if name in jar), '')
         except cookies.CookieError:
             token = ''
         if not token:
@@ -306,12 +308,23 @@ class Service:
         remaining = max(0, user['session_expires'] - int(time.time()))
         return {'Set-Cookie': self.set_cookie(jar[COOKIE].value, remaining)}
 
-    def create_session(self, user_id):
+    def authenticate(self, username, password):
+        """Shared account/password verification for image and workflow login."""
+        if not isinstance(username, str) or not re.fullmatch(r'[A-Za-z0-9_-]{3,32}', username):
+            raise Problem(400, '用户名需为 3–32 位字母、数字、下划线或连字符。')
+        with self.store.connect() as db:
+            user = db.execute('SELECT * FROM users WHERE username=?', (username.lower(),)).fetchone()
+        matched = password_matches(password, user['password'] if user else self.dummy_hash)
+        if not user or not matched:
+            raise Problem(401, '用户名或密码错误。')
+        return user
+
+    def create_session(self, user_id, cookie_factory=None):
         token, csrf = secrets.token_urlsafe(40), secrets.token_urlsafe(32)
         with self.store.connect() as db:
             db.execute('DELETE FROM sessions WHERE expires<?', (int(time.time()),))
             db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (digest(token), user_id, csrf, int(time.time()) + SESSION_AGE))
-        return csrf, {'Set-Cookie': self.set_cookie(token)}
+        return csrf, {'Set-Cookie': (cookie_factory or self.set_cookie)(token)}
 
     def invite(self, creator, role='member'):
         token = 'STRGO-' + secrets.token_urlsafe(24)
@@ -379,6 +392,8 @@ class Service:
             raise Problem(404, '接口不存在。')
         if method not in ('GET', 'POST', 'PUT', 'DELETE'):
             raise Problem(405, '不支持该请求方法。')
+        if path.startswith(local_studio.PREFIX + '/'):
+            return local_studio.dispatch(self, method, path, query, payload, headers, ip)
         if method != 'GET' and headers.get('origin') != self.origin:
             raise Problem(403, '请求来源无效，请从本站打开工作台。')
         user = self.session(headers)
@@ -422,11 +437,7 @@ class Service:
                     user = db.execute('SELECT * FROM users WHERE id=?', (user_id,)).fetchone()
                     self.persist_user(user)
             else:
-                with self.store.connect() as db:
-                    user = db.execute('SELECT * FROM users WHERE username=?', (username,)).fetchone()
-                matched = password_matches(password, user['password'] if user else self.dummy_hash)
-                if not user or not matched:
-                    raise Problem(401, '用户名或密码错误。')
+                user = self.authenticate(username, password)
             csrf, cookie = self.create_session(user['id'])
             self.dirty()
             return 200, {'user': self.user_info(user), 'csrf': csrf}, cookie

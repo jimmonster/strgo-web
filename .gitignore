@@ -22,6 +22,7 @@ apps/swarmera/artifacts/*
 **/*.fernet
 **/.image-data/
 **/.image-venv/
+**/.local-studio/
 
 # Local archives and logs
 **/*.zip

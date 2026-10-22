@@ -1,5 +1,6 @@
 """Operations CLI. Run on the server, never expose these operations over HTTP."""
 import argparse
+from contextlib import closing
 from datetime import datetime, timezone
 import getpass
 import hashlib
@@ -66,12 +67,15 @@ def main():
         with destination.open('xb') as handle:
             handle.write(data)
         os.chmod(destination, 0o600)
-        with sqlite3.connect(destination) as db:
+        with closing(sqlite3.connect(destination)) as db, db:
             if db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                 raise SystemExit('数据库完整性检查失败，未触碰线上数据库。')
             db.execute('DELETE FROM sessions')
             db.execute('UPDATE invites SET expires=0 WHERE used_by IS NULL')
             db.execute("UPDATE jobs SET status='failed',error='数据库恢复后停止未完成的模型调用，避免重复计费。' WHERE status IN ('queued','generating')")
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='local_jobs'").fetchone():
+                db.execute("UPDATE local_jobs SET status='failed',reference=NULL,error='数据库恢复后停止未完成的本机任务，避免重复生成。' WHERE status IN ('queued','running')")
+                db.execute('DELETE FROM local_chunks')
             db.execute("UPDATE images SET state='pending' WHERE state IN ('staged','uploading')")
         print('备份恢复到：' + str(destination) + '；登录会话已全部撤销。请先核对，再在停服后切换。')
         return
