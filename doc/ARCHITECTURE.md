@@ -46,7 +46,7 @@ flowchart LR
 
 账号、配置和结果恢复依赖数据库、持久化文件与原加密密钥。静态 `dist/`、运行数据和密钥不应当作为源码提交。备份和恢复细节见 [生图说明](../IMAGE-PLAYGROUND.md) 与 [Workflow](../WORKFLOW.md)。
 
-AI 空间另有模块/模型授权、TOTP 管理验证、额度与预算预占、任务结算、SSE 和私有音频。管理员身份不自动获得 AI 使用权。AI 本地模型之间以资源组锁共享 GPU；ComfyUI Workflow 是独立队列，目前不能与 AI 任务同时使用同一 GPU，部署时需隔离硬件或暂停另一条队列。参见 [AI 接入](../AI-WORKSPACE.md) 与 [实现契约](ai/implementation.md)。
+AI 空间另有模块/模型授权、TOTP 管理验证、额度与预算预占、任务结算、SSE 和私有音频。管理员身份不自动获得 AI 使用权。AI本地模型与ComfyUI Workflow共用中央资源组锁；Workflow结果保存后仍需连接程序确认队列空闲和模型卸载才能释放。真实硬件共享前须验证各模型卸载策略，未验收时保持硬件隔离或错峰；参见 [GPU调度](GPU-SCHEDULING.md)、[AI接入](../AI-WORKSPACE.md)与[实现契约](ai/implementation.md)。
 
 ## 构建和发布边界
 

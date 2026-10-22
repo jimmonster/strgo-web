@@ -48,7 +48,7 @@ def request(url, body=None, headers=None, limit=8 * CHUNK):
             data = response.read(limit + 1)
             if len(data) > limit:
                 raise ExecutionError('response exceeds configured limit')
-            return json.loads(data)
+            return json.loads(data) if data else {}
     except urllib.error.HTTPError as error:
         raise HTTPError(error.code) from None
 
@@ -249,6 +249,35 @@ class Worker:
                 parts += 1
         self.remote(path + '/complete', {'claim': job['claim'], 'parts': parts, 'sha256': sha.hexdigest()})
 
+    def release_gpu(self, state):
+        """Release only after both the queue and torch allocator are empty.
+
+        /free is asynchronous. Its HTTP acknowledgement alone is not proof of
+        unload; keep the durable claim and retry cleanup if idle cannot be proved.
+        """
+        def idle_queue():
+            queue = self.local('/queue')
+            return (isinstance(queue, dict) and queue.get('queue_running') == []
+                    and queue.get('queue_pending') == [])
+        if not idle_queue():
+            raise OSError('ComfyUI queue is not idle; GPU lock retained')
+        self.local('/free', {'unload_models': True, 'free_memory': True})
+        for attempt in range(30):
+            devices = self.local('/system_stats').get('devices')
+            if isinstance(devices, list) and devices and all(
+                isinstance(device, dict) and (device.get('type') == 'cpu' or (
+                    device.get('type') in ('cuda', 'xpu', 'npu')
+                    and type(device.get('torch_vram_total')) is int and device['torch_vram_total'] == 0
+                    and type(device.get('torch_vram_free')) is int and device['torch_vram_free'] == 0
+                )) for device in devices
+            ) and idle_queue():
+                job = state['job']
+                self.remote('/worker/jobs/' + job['id'] + '/release', {'claim': job['claim'], 'gpuIdle': True})
+                return
+            if attempt < 29:
+                time.sleep(1)
+        raise OSError('ComfyUI unload not verified; GPU lock retained')
+
     def step(self):
         if self.pending.exists():
             state = json.loads(self.pending.read_text(encoding='utf-8'))
@@ -271,7 +300,8 @@ class Worker:
                     # Execution history/output remains journaled for reconnect.
                     pass
         receipt = self.remote('/worker/jobs/' + job['id'] + '/heartbeat', {'claim': job['claim']})
-        if receipt.get('complete'):
+        if receipt.get('complete') or receipt.get('terminal'):
+            self.release_gpu(state)
             if state.get('output'):
                 (self.directory / state['output']).unlink(missing_ok=True)
             self.pending.unlink(missing_ok=True)
@@ -293,6 +323,7 @@ class Worker:
         finally:
             stop.set()
             thread.join(timeout=31)
+        self.release_gpu(state)
         if state.get('output'):
             (self.directory / state['output']).unlink(missing_ok=True)
         self.pending.unlink(missing_ok=True)
@@ -330,7 +361,9 @@ def main():
                     state = json.loads(runner.pending.read_text(encoding='utf-8'))
                     state['failure'] = 'server claim expired; inspect ComfyUI before submitting a new task'
                     atomic_json(runner.directory / 'last-failure.json', state)
-                    runner.pending.unlink()
+                    # Keep the claim for idle/unload cleanup on the next poll;
+                    # deleting it here could strand a GPU lock or allow replay.
+                    atomic_json(runner.pending, state)
             except (OSError, ValueError, ExecutionError):
                 print('Connection unavailable; preserving local execution journal.', flush=True)
             time.sleep(5)

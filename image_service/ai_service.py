@@ -95,6 +95,9 @@ class AIService:
         self.health_inflight = set()
         with self.store.connect() as db:
             db.executescript(SCHEMA)
+            from .local_studio import reserve_existing
+            db.execute('BEGIN IMMEDIATE')
+            reserve_existing(db)
             for model_id, name, kind, adapter, locality, config in DEFAULT_MODELS:
                 config.update(adapter=adapter, locality=locality)
                 db.execute('INSERT OR IGNORE INTO ai_models VALUES(?,?,?,?,?,1,0,0,?,?)',

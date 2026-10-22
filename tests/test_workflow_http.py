@@ -29,6 +29,11 @@ class FakeComfy(BaseHTTPRequestHandler):
             self.respond({'name': 'uploaded-reference.png', 'subfolder': '', 'type': 'input'})
             return
         body = json.loads(raw)
+        if self.path == '/free':
+            self.send_response(200)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
         assert self.path == '/prompt'
         self.server.submissions += 1
         self.server.prompt_id = body['prompt_id']
@@ -45,6 +50,10 @@ class FakeComfy(BaseHTTPRequestHandler):
         elif self.path.startswith('/history/'):
             prompt_id = self.server.prompt_id
             self.respond({prompt_id: {'status': {'status_str': 'success', 'completed': True}, 'outputs': {'2': {'images': [{'filename': 'result.png', 'subfolder': '', 'type': 'output'}]}}}})
+        elif self.path == '/queue':
+            self.respond({'queue_running': [], 'queue_pending': []})
+        elif self.path == '/system_stats':
+            self.respond({'devices': [{'type': 'cuda', 'torch_vram_total': 0, 'torch_vram_free': 0}]})
         else:
             self.respond({})
 

@@ -155,7 +155,9 @@ class LocalStudioTests(unittest.TestCase):
         self.worker('/jobs/' + job['id'] + '/heartbeat', {'claim': job['claim']})
         with self.app.store.connect() as db:
             db.execute('UPDATE local_jobs SET expires=? WHERE id=?', (int(time.time()) - 1, job['id']))
-        self.problem(409, lambda: self.worker('/jobs/' + job['id'] + '/heartbeat', {'claim': job['claim']}))
+        self.assertTrue(self.worker('/jobs/' + job['id'] + '/heartbeat', {'claim': job['claim']})['terminal'])
+        self.assertIsNone(self.worker()['job'])
+        self.worker('/jobs/' + job['id'] + '/release', {'claim': job['claim'], 'gpuIdle': True})
         other = self.worker()['job']
         self.assertNotEqual(other['id'], job['id'])
         jobs = self.call('GET', '/jobs', session=self.admin)[1]['jobs']

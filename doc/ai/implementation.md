@@ -151,4 +151,4 @@ assistant.addEventListener('strgo:draft-applied', event => {
 - DeepSeek 使用 Chat Completions SSE；其他兼容供应商必须真实验证 usage、终止标记、输出上限和价格上界，不能只凭接口名称标为已验收。
 - 当前先提供四个可配置连接槽；多连接 CRUD、更多 scope、游标分页和跨供应商计价规则应按新需求逐步扩展。
 
-现有 `WORKFLOW.md` 所述 ComfyUI 创作台使用独立任务队列。若与 AI 节点共用同一 GPU，当前版本必须错峰运行或使用不同硬件；开通共用硬件前应将该队列接入统一资源锁/节点代理。不要仅设置两个界面的资源组名称就假定已有跨队列互斥。
+现有ComfyUI队列已接入统一 `ai_leases`。服务器资源组由 `LOCAL_STUDIO_RESOURCE_GROUP` 指定，连接程序在结果保存或失败后验证队列空闲与模型卸载，再使用原claim释放自己的锁。未知执行、断线和重启不会自动抢锁；旧版本升级、排空与人工释放见 [GPU调度与恢复](../GPU-SCHEDULING.md)。这不是站外多调度器的节点代理，部署前仍须禁止绕过本系统提交，核实ACE-Step空闲释放与真实GPU效果。

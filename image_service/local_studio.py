@@ -69,10 +69,34 @@ def capabilities(value):
     return result
 
 
+def resource_group():
+    value = os.environ.get('LOCAL_STUDIO_RESOURCE_GROUP', 'local-studio-gpu').strip()
+    if not value or len(value) > 80 or any(ord(ch) < 32 for ch in value):
+        raise Problem(503, '本机 GPU 资源组配置无效。')
+    return value
+
+
+def reserve_existing(db):
+    """Protect jobs already running before this additive scheduler upgrade."""
+    group = resource_group()
+    existing = db.execute("SELECT * FROM ai_leases WHERE worker='workflow'").fetchone()
+    if existing:
+        if existing['resource_group'] != group:
+            raise RuntimeError('Workflow resource group changed with a held lock; drain and reconcile before changing it.')
+        return
+    running = db.execute("SELECT * FROM local_jobs WHERE status='running' ORDER BY created LIMIT 1").fetchone()
+    if running:
+        db.execute('INSERT INTO ai_leases VALUES(?,?,?,1,?)', (group, 'workflow:' + running['id'], 'workflow', running['expires']))
+
+
 def status(service):
     registry = json.loads(service.store.metadata('local_studio_worker', '{}'))
     enabled = len(os.environ.get('LOCAL_STUDIO_WORKER_TOKEN', '')) >= 32
+    with service.store.connect() as db:
+        lease = db.execute('SELECT task_id,expires,worker FROM ai_leases WHERE resource_group=?', (resource_group(),)).fetchone()
     return {'enabled': enabled, 'online': enabled and time.time() - registry.get('seen', 0) < 90,
+            'resourceGroup': resource_group(), 'resourceHeld': bool(lease),
+            'draining': os.environ.get('LOCAL_STUDIO_DRAINING') == '1',
             'lastSeen': registry.get('seen'), 'workflows': registry.get('workflows', []) if enabled else []}
 
 
@@ -113,18 +137,26 @@ def worker(service, method, path, payload, headers):
         with service.store.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             expire(service, db)
+            if os.environ.get('LOCAL_STUDIO_DRAINING') == '1' or db.execute("SELECT 1 FROM ai_leases WHERE resource_group=? OR worker='workflow'", (resource_group(),)).fetchone():
+                return 200, {'job': None}, {}
             if db.execute("SELECT 1 FROM local_jobs WHERE status='running'").fetchone():
                 return 200, {'job': None}, {}
             ids = [item['id'] for item in workflows]
             job = db.execute("SELECT * FROM local_jobs WHERE status='queued' AND workflow IN (" + ','.join('?' for _ in ids) + ') ORDER BY created,id LIMIT 1', ids).fetchone()
             if not job:
                 return 200, {'job': None}, {}
+            owner = db.execute("""SELECT u.role,COALESCE(c.status,'active') AS status,COALESCE(m.status,'active') AS ai_status
+                FROM users u LEFT JOIN account_controls c ON c.user_id=u.id LEFT JOIN ai_members m ON m.user_id=u.id WHERE u.id=?""", (job['user_id'],)).fetchone()
+            if not owner or owner['role'] != 'admin' or owner['status'] != 'active' or owner['ai_status'] != 'active':
+                db.execute("UPDATE local_jobs SET status='failed',reference=NULL,error='账号权限已变更，未执行本机任务。' WHERE id=?", (job['id'],))
+                return 200, {'job': None}, {}
             claim = secrets.token_urlsafe(32)
+            db.execute('INSERT INTO ai_leases VALUES(?,?,?,1,?)', (resource_group(), 'workflow:' + job['id'], 'workflow', now + LEASE))
             db.execute("UPDATE local_jobs SET status='running',claim=?,expires=?,updated=? WHERE id=?", (digest(claim), now + LEASE, now, job['id']))
             reference = base64.b64encode(service.store.cipher.decrypt(job['reference'])).decode() if job['reference'] else None
         service.dirty()
         return 200, {'job': {'id': job['id'], 'workflow': job['workflow'], 'prompt': job['prompt'], 'claim': claim, 'reference': reference}}, {}
-    match = re.fullmatch(r'/worker/jobs/([a-f0-9]{32})/(heartbeat|chunk|complete|fail)', path)
+    match = re.fullmatch(r'/worker/jobs/([a-f0-9]{32})/(heartbeat|chunk|complete|fail|release)', path)
     if not match:
         raise Problem(404, '连接接口不存在。')
     job_id, action = match.groups()
@@ -137,11 +169,22 @@ def worker(service, method, path, payload, headers):
         job = db.execute('SELECT * FROM local_jobs WHERE id=?', (job_id,)).fetchone()
         if not job or not job['claim'] or not secrets.compare_digest(job['claim'], digest(claim)):
             raise Problem(409, '任务凭据失效。')
+        if action == 'release':
+            expire(service, db)
+            job = db.execute('SELECT * FROM local_jobs WHERE id=?', (job_id,)).fetchone()
+            if job['status'] not in ('complete', 'failed') or payload.get('gpuIdle') is not True:
+                raise Problem(409, '需先确认任务结束、ComfyUI 空闲并卸载模型，再释放资源。')
+            db.execute("DELETE FROM ai_leases WHERE task_id=? AND worker='workflow'", ('workflow:' + job_id,))
+            return 200, {'ok': True, 'released': True}, {}
+        if action == 'heartbeat' and (job['status'] == 'failed' or (job['status'] == 'running' and job['expires'] < now)):
+            expire(service, db)
+            return 200, {'ok': True, 'terminal': True, 'status': 'failed'}, {}
         if action in ('complete', 'heartbeat') and job['status'] == 'complete':
             return 200, {'ok': True, 'complete': True}, {}
         if job['status'] != 'running' or job['expires'] < now:
             raise Problem(409, '任务已结束或连接超时，未重新生成。')
         db.execute('UPDATE local_jobs SET expires=?,updated=? WHERE id=?', (now + LEASE, now, job_id))
+        db.execute("UPDATE ai_leases SET expires=? WHERE task_id=? AND worker='workflow'", (now + LEASE, 'workflow:' + job_id))
         registry = json.loads(service.store.metadata('local_studio_worker', '{}'))
         registry['seen'] = now
         db.execute("INSERT INTO meta VALUES('local_studio_worker',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (json.dumps(registry, ensure_ascii=False),))

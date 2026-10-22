@@ -47,13 +47,21 @@ def main():
                 print('动态口令和所有登录已撤销。请重新登录并绑定。')
             db.execute('INSERT INTO ai_audit VALUES(?,?,?,?,?,?)', (uid(), 'cli', args.command, user['id'], '{}', int(time.time())))
         elif args.command == 'release-resource':
-            lease = db.execute('SELECT l.*,t.state FROM ai_leases l JOIN ai_tasks t ON t.id=l.task_id WHERE resource_group=?', (args.resource_group,)).fetchone()
+            lease = db.execute('SELECT l.*,t.state FROM ai_leases l LEFT JOIN ai_tasks t ON t.id=l.task_id WHERE resource_group=?', (args.resource_group,)).fetchone()
             if not lease:
                 raise SystemExit('该资源组没有待释放的锁。')
-            if lease['state'] not in ('FAILED', 'CANCELLED', 'INTERRUPTED', 'SUCCEEDED'):
+            workflow = lease['worker'] == 'workflow'
+            state = lease['state']
+            if workflow:
+                job = db.execute('SELECT status FROM local_jobs WHERE id=?', (lease['task_id'].removeprefix('workflow:'),)).fetchone()
+                state = job['status'].upper() if job else None
+            if state not in ('FAILED', 'CANCELLED', 'INTERRUPTED', 'SUCCEEDED', 'COMPLETE'):
                 raise SystemExit('任务尚未结算。请先核对上游任务，等待正常完成或24小时结果核对期限。')
             if db.execute('SELECT 1 FROM ai_nodes WHERE resource_group=? AND draining=0', (args.resource_group,)).fetchone():
                 raise SystemExit('请先在管理页排空该资源组的全部服务节点，再停止模型服务。')
+            from .local_studio import resource_group
+            if (workflow or args.resource_group == resource_group()) and os.environ.get('LOCAL_STUDIO_DRAINING') != '1':
+                raise SystemExit('请先设置 LOCAL_STUDIO_DRAINING=1 并在维护窗口重启账号服务，停止该组全部模型及 ComfyUI 后再释放。')
             db.execute('DELETE FROM ai_leases WHERE resource_group=?', (args.resource_group,))
             db.execute('INSERT INTO ai_audit VALUES(?,?,?,?,?,?)', (uid(), 'cli', 'resource.release', args.resource_group, packed({'task_id': lease['task_id'], 'services_stopped': True}), int(time.time())))
             print('资源锁已释放。先重启私有模型服务并检查连接，再取消排空。')

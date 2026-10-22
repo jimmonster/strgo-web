@@ -24,6 +24,6 @@ Windows 路径从文件 URL 转换时使用 `fileURLToPath`，不要将 URL 的 
 
 涉及共享账号时检查 Cookie、Origin、CSRF、成员/管理员边界与账号切换。涉及任务时保留请求幂等标识，区分上传重试和模型重生成，不能将中断后的自动重生成作为通用重试修复。修改 Workflow 恢复逻辑前读 [WORKFLOW.md](../../../WORKFLOW.md)。
 
-AI 的本地模型共享资源组锁，ComfyUI Workflow 使用另一条队列；不可假定两者已经共享 GPU 互斥。涉及预算、额度、SSE 或助手补丁时运行 `npm run test:ai`，验证重复提交、结算、权限变化及表单版本冲突。
+AI本地模型与ComfyUI Workflow共用中央资源组锁；修改领取、超时和清理前读 [GPU调度](../../../doc/GPU-SCHEDULING.md)。Workflow成功/失败均需确认空闲卸载后释放，不能凭租期过期抢锁。涉及预算、额度、SSE或助手补丁时运行 `npm run test:ai`，验证重复提交、结算、权限变化及表单版本冲突。
 
 完成后更新相关 `doc/` 文档；说明执行的验证和仍需 Linux、真实浏览器、Docker 或 GPU 的检查。用户要求上传 GitHub 时，只提交本次任务文件，保留其他未提交工作；网站发布按 [DEPLOYMENT.md](../../../DEPLOYMENT.md) 和本次授权范围执行。
