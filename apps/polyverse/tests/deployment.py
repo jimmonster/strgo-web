@@ -114,5 +114,6 @@ checks.append('Deployment waits between reload and route checks; both Bash files
 report = {'status': 'passed',
           'type': 'Offline regression tests with simulated HTTP; no real Nginx or network validation',
           'checks': checks}
+(ROOT / 'artifacts/deployment').mkdir(parents=True, exist_ok=True)
 (ROOT / 'artifacts/deployment/http-regression.json').write_text(json.dumps(report, indent=2))
 print(json.dumps(report, indent=2))
