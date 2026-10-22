@@ -1,8 +1,9 @@
 import {createHash} from 'node:crypto';
 import {mkdir, readFile, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
-const root = path.resolve(new URL('..', import.meta.url).pathname);
+const root = fileURLToPath(new URL('..', import.meta.url));
 const artifacts = path.join(root, 'artifacts/deployment');
 const target = 'https://strgo.com/polyverse/';
 const base = '/polyverse/';
