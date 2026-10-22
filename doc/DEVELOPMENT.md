@@ -56,6 +56,7 @@ POLYVERSE 生产构建使用 `BASE_PATH=/polyverse/`，MEOW 使用 `MEOW_BASE=/m
 | 路由、作品内容 | 根目录 `npm run test:content:browser`；结合内容维护文档 |
 | 生图 | 根目录 `npm run test:image`、`npm run test:image:browser` |
 | 论坛与共享账号 | 根目录 `python3 -m unittest tests.test_forum_service tests.test_terminal_account -v` |
+| 全站后台 | 根目录 `python3 -m unittest tests.test_admin -v`、`node --test tests/admin.test.mjs`；构建后 `node tests/admin-browser.mjs`；要求见 [后台说明](ADMIN-SYSTEM.md) |
 | 本地工作流 | 根目录 `python3 -m unittest tests.test_local_studio tests.test_comfy_worker tests.test_workflow_http -v`、`npm run test:workflow:browser` |
 | AI 音乐、对话和权限 | 根目录 `npm run test:ai`；接入、权限初始化与真实模型验收见 [AI-WORKSPACE.md](../AI-WORKSPACE.md) |
 | DREAMS | 应用目录 `npm run build`、`npm test`；渲染变更再运行浏览器或 shader 检查 |
@@ -88,4 +89,4 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 
 `.github/workflows/verify.yml` 在push、pull_request和手动触发时运行Linux检查：Node22、Python3.12、各应用构建/回归、Bash部署辅助回归，以及Rust1.88终端测试。Actions只读仓库权限，不部署生产。实际Linux结果以对应提交的CI运行记录为准。
 
-Windows明确跳过Bash配置生成、创建符号链接与POSIX0600文件权限检查；这些在Linux CI执行。文件内容、持久化恢复、路径边界及业务断言仍在Windows运行。不能将跳过项记为通过。2026-10-23本机根Node91项通过，根Python201项中197项通过、4项平台跳过；终端Python31项中30项通过、1项平台跳过。
+Windows明确跳过Bash配置生成、创建符号链接与POSIX0600文件权限检查；这些在Linux CI执行。文件内容、持久化恢复、路径边界及业务断言仍在Windows运行。不能将跳过项记为通过。2026-10-23最终本机根Node91项通过，根Python204项中200项通过、4项平台跳过；终端Python31项中30项通过、1项平台跳过。Linux CI已实际跑通两个job，含终端Rust20项；提交与结果见 [审查记录](PROJECT-REVIEW.md)。
