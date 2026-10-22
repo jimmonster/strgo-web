@@ -21,15 +21,16 @@ class Page(HTMLParser):
         if tag == 'link' and attrs.get('rel') == 'stylesheet': self.resources.append(attrs['href'])
 
 
-page = Page()
-page.feed((ROOT / 'web/index.html').read_text())
-for identifier in re.findall(r"\$\('([^']+)'\)", (ROOT / 'web/app.js').read_text()):
-    assert identifier in page.ids, f'Missing element: {identifier}'
-assert all(resource.startswith('/terminal/') for resource in page.resources)
 backend = (ROOT / 'src/web.rs').read_text()
-for resource in page.resources:
-    assert f'.route("{resource}"' in backend, f'Missing route: {resource}'
-    if '/vendor/' not in resource: assert (ROOT / 'web' / resource.removeprefix('/terminal/')).is_file()
+for document, script in [('index.html', 'workspace.js'), ('session.html', 'app.js')]:
+    page = Page()
+    page.feed((ROOT / 'web' / document).read_text())
+    for identifier in re.findall(r"\$\('([^']+)'\)", (ROOT / 'web' / script).read_text()):
+        assert identifier in page.ids, f'Missing element in {document}: {identifier}'
+    assert all(resource.startswith('/terminal/') for resource in page.resources)
+    for resource in page.resources:
+        assert f'.route("{resource}"' in backend, f'Missing route: {resource}'
+        if '/vendor/' not in resource: assert (ROOT / 'web' / resource.removeprefix('/terminal/')).is_file()
 manifest = (ROOT / 'Cargo.toml').read_text()
 assert '[package]' in manifest and '[dependencies]' in manifest
 assert 'name = "strgo-terminal"' in manifest and 'build = "build.rs"' in manifest

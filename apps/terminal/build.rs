@@ -9,5 +9,8 @@ fn main() {
     println!("cargo:rerun-if-changed=web/index.html");
     println!("cargo:rerun-if-changed=web/app.js");
     println!("cargo:rerun-if-changed=web/style.css");
+    println!("cargo:rerun-if-changed=web/session.html");
+    println!("cargo:rerun-if-changed=web/workspace.js");
+    println!("cargo:rerun-if-changed=web/workspace.css");
 }
 

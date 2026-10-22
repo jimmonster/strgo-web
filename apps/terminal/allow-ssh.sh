@@ -85,4 +85,4 @@ if [[ "$ready" != 1 ]]; then on_error 1; fi
 python3 "$PROJECT_DIR/tests/smoke.py" --env /etc/strgo-terminal/web.env
 TRANSACTION=0
 printf '目标 SSH 地址和端口已放行。备份：%s\n' "$BACKUP"
-printf '请刷新 /terminal 并重新输入访问口令，再连接 %s:%s。SSH 密码仍由目标服务器验证。\n' "$SSH_HOST" "$SSH_PORT"
+printf '请刷新 /terminal 并用站点账号登录，再从 SSH 入口连接 %s:%s。SSH 密码仍由目标服务器验证。\n' "$SSH_HOST" "$SSH_PORT"

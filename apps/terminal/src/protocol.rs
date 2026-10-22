@@ -49,7 +49,8 @@ pub fn validate_size(cols: u16, rows: u16) -> Result<()> {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ClientMessage {
-    Connect { host: String, port: u16, username: String, cols: u16, rows: u16 },
+    Connect { host: String, port: u16, username: String, cols: u16, rows: u16, #[serde(default)] identity: bool },
+    Workspace { #[serde(default)] owner: String, cols: u16, rows: u16 },
     Input { data: String },
     Resize { cols: u16, rows: u16 },
     Disconnect,
@@ -58,9 +59,13 @@ pub enum ClientMessage {
 impl ClientMessage {
     pub fn validate(&self) -> Result<()> {
         match self {
-            Self::Connect { host, port, username, cols, rows } => Connect {
+            Self::Connect { host, port, username, cols, rows, .. } => Connect {
                 host: host.clone(), port: *port, username: username.clone(), cols: *cols, rows: *rows,
             }.validate(),
+            Self::Workspace { owner, cols, rows } => {
+                if !owner.is_empty() && !crate::account::valid_owner(owner) { bail!("工作区账号无效"); }
+                validate_size(*cols, *rows)
+            },
             Self::Input { data } if data.len() > MAX_INPUT => bail!("单次输入过长，请分段粘贴"),
             Self::Input { .. } | Self::Disconnect => Ok(()),
             Self::Resize { cols, rows } => validate_size(*cols, *rows),

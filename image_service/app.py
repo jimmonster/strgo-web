@@ -23,6 +23,7 @@ from .store import Store
 
 API = '/api/image'
 COOKIE = 'strgo_image_session'
+ACCOUNT_COOKIE = 'strgo_account_session'
 SESSION_AGE = 7 * 24 * 3600
 BUSY = ('queued', 'generating', 'uploading')
 QUALITIES = ('', 'auto', 'low', 'medium', 'high', 'standard', 'hd')
@@ -281,16 +282,28 @@ class Service:
         jar = cookies.SimpleCookie()
         try:
             jar.load(headers.get('cookie', ''))
-            token = jar[COOKIE].value if COOKIE in jar else ''
+            # A shared cookie takes precedence even when stale: never silently
+            # fall back to another account's legacy image-only login.
+            token = jar[ACCOUNT_COOKIE].value if ACCOUNT_COOKIE in jar else (jar[COOKIE].value if COOKIE in jar else '')
         except cookies.CookieError:
             token = ''
         if not token:
             return None
         with self.store.connect() as db:
-            return db.execute('SELECT users.*,sessions.csrf,sessions.hash AS session_hash FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.hash=? AND sessions.expires>?', (digest(token), int(time.time()))).fetchone()
+            return db.execute('SELECT users.*,sessions.csrf,sessions.hash AS session_hash,sessions.expires AS session_expires FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.hash=? AND sessions.expires>?', (digest(token), int(time.time()))).fetchone()
 
     def set_cookie(self, value, age=SESSION_AGE):
-        return f'{COOKIE}={value}; Path=/api/image/; HttpOnly; SameSite=Strict; Max-Age={age}' + ('; Secure' if self.secure else '')
+        return f'{ACCOUNT_COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={age}' + ('; Secure' if self.secure else '')
+
+    def shared_cookie(self, headers, user):
+        if not user:
+            return {}
+        jar = cookies.SimpleCookie()
+        jar.load(headers.get('cookie', ''))
+        if ACCOUNT_COOKIE in jar or COOKIE not in jar:
+            return {}
+        remaining = max(0, user['session_expires'] - int(time.time()))
+        return {'Set-Cookie': self.set_cookie(jar[COOKIE].value, remaining)}
 
     def create_session(self, user_id):
         token, csrf = secrets.token_urlsafe(40), secrets.token_urlsafe(32)
@@ -368,13 +381,18 @@ class Service:
         if method != 'GET' and headers.get('origin') != self.origin:
             raise Problem(403, '请求来源无效，请从本站打开工作台。')
         user = self.session(headers)
+        if path == API + '/terminal-session' and method == 'GET':
+            if not user:
+                raise Problem(401, '请使用 AI 生图的账号登录。')
+            return 200, {'user': self.user_info(user), 'csrf': user['csrf'],
+                         'expires': user['session_expires'], 'maxWindows': 8}, self.shared_cookie(headers, user)
         if path == API + '/session' and method == 'GET':
             return 200, {'user': self.user_info(user) if user else None, 'csrf': user['csrf'] if user else None,
                          'config': self.config_public(user['id']) if user else None,
                          'generationQuota': self.generation_quota(user) if user else None,
                          'storageReady': self.storage.ready,
                          'storage': {'kind': getattr(self.storage, 'kind', 'local'), 'label': getattr(self.storage, 'label', 'ECS 硬盘')},
-                         'backup': ({'last': self.store.metadata('last_backup'), 'error': self.store.metadata('backup_error')} if user else None)}, {}
+                         'backup': ({'last': self.store.metadata('last_backup'), 'error': self.store.metadata('backup_error')} if user else None)}, self.shared_cookie(headers, user)
         if path in (API + '/login', API + '/register') and method == 'POST':
             self.store.rate_limit('auth-ip:' + digest(ip), 15, 900)
             username, password = payload.get('username'), payload.get('password')
@@ -755,6 +773,10 @@ class HTTPHandler(BaseHTTPRequestHandler):
         self.send_header('X-Frame-Options', 'DENY')
         for key, value in extra.items():
             self.send_header(key, value)
+            if key.lower() == 'set-cookie':
+                # Clear the old path-scoped cookie on login, migration and
+                # logout so switching accounts cannot resurrect a legacy login.
+                self.send_header('Set-Cookie', f'{COOKIE}=; Path=/api/image/; HttpOnly; SameSite=Strict; Max-Age=0' + ('; Secure' if self.server.service.secure else ''))
         self.send_header('Connection', 'close')
         self.end_headers()
         self.close_connection = True

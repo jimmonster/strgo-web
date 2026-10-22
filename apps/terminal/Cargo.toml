@@ -10,6 +10,7 @@ anyhow = "=1.0.95"
 axum = { version = "=0.7.9", features = ["ws"] }
 base64 = "=0.22.1"
 futures-util = { version = "=0.3.31", features = ["sink"] }
+httparse = "=1.10.1"
 portable-pty = "=0.8.1"
 rand = "=0.8.5"
 serde = { version = "=1.0.217", features = ["derive"] }

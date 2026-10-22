@@ -4,12 +4,16 @@
   "version": "0.1.0",
   "scripts": {
     "assets": "node scripts/prepare-assets.mjs",
-    "test": "node --test tests/ui.test.mjs",
-    "test:browser": "node tests/browser-check.mjs"
+    "test": "node tests/ui.test.mjs && node tests/workspace.test.mjs",
+    "test:browser": "node tests/browser-check.mjs && node tests/workspace-browser.mjs"
   },
   "dependencies": {
     "@xterm/xterm": "5.5.0",
     "@xterm/addon-fit": "0.10.0"
+  },
+  "devDependencies": {
+    "linkedom": "0.18.12",
+    "playwright-core": "1.59.1"
   }
 }
 

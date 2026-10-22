@@ -829,6 +829,7 @@ dependencies = [
  "axum",
  "base64",
  "futures-util",
+ "httparse",
  "portable-pty",
  "rand",
  "serde",

@@ -146,7 +146,7 @@ class ImageServiceTests(unittest.TestCase):
     def test_session_cookie_is_secure_and_tokens_are_hashed_at_rest(self):
         _, body, headers = self.call('POST', '/login', {'username': 'OWNER', 'password': PASSWORD})
         cookie = headers['Set-Cookie']
-        for flag in ('Secure', 'HttpOnly', 'SameSite=Strict', 'Path=/api/image/'):
+        for flag in ('Secure', 'HttpOnly', 'SameSite=Strict', 'Path=/;'):
             self.assertIn(flag, cookie)
         token = cookie.split(';')[0].split('=')[1]
         with self.store.connect() as db:

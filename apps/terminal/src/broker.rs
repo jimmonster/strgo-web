@@ -18,6 +18,59 @@ struct Settings {
     identity: Option<PathBuf>,
 }
 
+enum Target {
+    Ssh { connection: Connect, ip: IpAddr, identity: bool },
+    Workspace { owner: String, cols: u16, rows: u16 },
+}
+
+#[cfg(test)]
+mod workspace_tests {
+    use super::*;
+
+    fn settings() -> Settings {
+        Settings { image: "sandbox:test".into(), network: "ssh-network".into(), access: AccessPolicy::new(false, "", "").unwrap(),
+            ttl: Duration::from_secs(3600), slots: Arc::new(Semaphore::new(8)), identity: Some("/etc/terminal/private-key".into()) }
+    }
+    fn argv(target: Target) -> Vec<String> {
+        sandbox_command(&target, "test-container", &settings()).get_argv().iter().map(|s| s.to_string_lossy().to_string()).collect()
+    }
+    #[test]
+    fn workspace_is_offline_nonroot_and_mounts_only_its_account_volume() {
+        let owner = "0123456789abcdef0123456789abcdef";
+        let args = argv(Target::Workspace { owner: owner.into(), cols: 80, rows: 24 });
+        assert!(args.windows(2).any(|a| a == ["--network", "none"]));
+        assert!(args.contains(&format!("type=volume,src=strgo-workspace-{owner},dst=/home/terminal")));
+        assert!(args.contains(&"--entrypoint=/bin/sh".to_string()));
+        assert!(args.contains(&"--user=10001:10001".to_string()));
+        assert!(args.contains(&"--read-only".to_string()));
+        assert!(!args.iter().any(|a| a.contains("type=bind") || a.contains("private-key")));
+        assert_eq!(args.last().unwrap(), "-il");
+    }
+    #[test]
+    fn members_do_not_receive_the_service_ssh_key() {
+        let target = || Connect { host: "server.example".into(), username: "user".into(), port: 22, cols: 80, rows: 24 };
+        let member = argv(Target::Ssh { connection: target(), ip: "8.8.8.8".parse().unwrap(), identity: false });
+        assert!(!member.iter().any(|a| a.contains("type=bind")));
+        let admin = argv(Target::Ssh { connection: target(), ip: "8.8.8.8".parse().unwrap(), identity: true });
+        assert!(admin.iter().any(|a| a.contains("src=/etc/terminal/private-key,")));
+    }
+    #[test]
+    fn different_accounts_always_have_different_persistent_volumes() {
+        let first = argv(Target::Workspace { owner: "a".repeat(32), cols: 80, rows: 24 });
+        let second = argv(Target::Workspace { owner: "b".repeat(32), cols: 80, rows: 24 });
+        assert_ne!(first.iter().find(|a| a.starts_with("type=volume")), second.iter().find(|a| a.starts_with("type=volume")));
+    }
+}
+
+impl Target {
+    fn size(&self) -> (u16, u16) {
+        match self {
+            Self::Ssh { connection, .. } => (connection.cols, connection.rows),
+            Self::Workspace { cols, rows, .. } => (*cols, *rows),
+        }
+    }
+}
+
 pub async fn run() -> Result<()> {
     let path = PathBuf::from(std::env::var("TERMINAL_BROKER_SOCKET").unwrap_or("/run/strgo-terminal/broker.sock".into()));
     let max: usize = std::env::var("TERMINAL_MAX_SESSIONS").unwrap_or("8".into()).parse()?;
@@ -88,21 +141,27 @@ async fn handle(stream: UnixStream, settings: Arc<Settings>) -> Result<()> {
         .context("Missing connect request")??;
     let request: ClientMessage = serde_json::from_slice(&packet)?;
     request.validate()?;
-    let ClientMessage::Connect { host, port, username, cols, rows } = request else { bail!("Expected connect request"); };
-    let target = Connect { host, port, username, cols, rows };
-    let ip = match resolve(&target, &settings).await {
-        Ok(ip) => ip,
-        Err(error) => {
-            send(&mut wire, ServerMessage::Error { message: format!("无法连接：{error}") }).await?;
-            return Ok(());
-        }
+    let target = match request {
+        ClientMessage::Connect { host, port, username, cols, rows, identity } => {
+            let connection = Connect { host, port, username, cols, rows };
+            let ip = match resolve(&connection, &settings).await {
+                Ok(ip) => ip,
+                Err(error) => {
+                    send(&mut wire, ServerMessage::Error { message: format!("无法连接：{error}") }).await?;
+                    return Ok(());
+                }
+            };
+            Target::Ssh { connection, ip, identity }
+        },
+        ClientMessage::Workspace { owner, cols, rows } if crate::account::valid_owner(&owner) => Target::Workspace { owner, cols, rows },
+        _ => bail!("Expected an authenticated connect request"),
     };
     let mut random = [0u8; 16];
     OsRng.fill_bytes(&mut random);
     let name = format!("strgo-ssh-{}", random.iter().map(|b| format!("{b:02x}")).collect::<String>());
     let cleanup_name = name.clone();
     // Nothing after this point exits without running cleanup, including WebSocket disconnects.
-    let outcome = run_container(&mut wire, &target, ip, &name, &settings).await;
+    let outcome = run_container(&mut wire, &target, &name, &settings).await;
     if let Err(error) = remove_container(&cleanup_name).await {
         eprintln!("Sandbox cleanup failed for {cleanup_name}: {error:#}");
     }
@@ -116,24 +175,42 @@ async fn handle(stream: UnixStream, settings: Arc<Settings>) -> Result<()> {
 
 async fn run_container(
     wire: &mut Framed<UnixStream, tokio_util::codec::LengthDelimitedCodec>,
-    target: &Connect, ip: IpAddr, name: &str, settings: &Settings,
+    target: &Target, name: &str, settings: &Settings,
 ) -> Result<()> {
     let ttl = settings.ttl;
-    let pair = native_pty_system().openpty(PtySize { rows: target.rows, cols: target.cols, pixel_width: 0, pixel_height: 0 })?;
+    let (cols, rows) = target.size();
+    let pair = native_pty_system().openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })?;
+    let cmd = sandbox_command(target, name, settings);
+    let mut child = pair.slave.spawn_command(cmd).context("Cannot start sandbox process")?;
+    drop(pair.slave);
+    run_pty(wire, child.as_mut(), pair.master, name, ttl).await
+}
+
+fn sandbox_command(target: &Target, name: &str, settings: &Settings) -> CommandBuilder {
     let mut cmd = CommandBuilder::new("/usr/bin/docker");
     for arg in [
         "run", "--rm", "--interactive", "--tty", "--init", "--name", name,
         "--label", "com.strgo.terminal.sandbox=1",
-        "--network", settings.network.as_str(),
+        "--network", if matches!(target, Target::Workspace { .. }) { "none" } else { settings.network.as_str() },
         "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges:true",
         "--memory=128m", "--memory-swap=128m", "--cpus=0.5", "--pids-limit=32",
         "--ulimit=nofile=128:128", "--ulimit=nproc=32:32", "--user=10001:10001",
         "--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=8m,mode=1777",
-        "--tmpfs=/home/terminal:rw,noexec,nosuid,nodev,size=8m,uid=10001,gid=10001,mode=0700",
         "--env=HOME=/home/terminal", "--env=TERM=xterm-256color",
         "--log-driver=none", "--pull=never",
     ] { cmd.arg(arg); }
-    if let Some(identity) = &settings.identity {
+    if let Target::Workspace { owner, .. } = target {
+        cmd.arg("--mount");
+        cmd.arg(format!("type=volume,src=strgo-workspace-{owner},dst=/home/terminal"));
+        cmd.arg("--ulimit=fsize=16777216:16777216");
+        cmd.arg("--entrypoint=/bin/sh");
+        cmd.arg(settings.image.as_str());
+        cmd.arg("-il");
+        return cmd;
+    }
+    cmd.arg("--tmpfs=/home/terminal:rw,noexec,nosuid,nodev,size=8m,uid=10001,gid=10001,mode=0700");
+    let Target::Ssh { connection: target, ip, identity: use_identity } = target else { unreachable!() };
+    if let Some(identity) = settings.identity.as_ref().filter(|_| *use_identity) {
         // A configured identity is the only permitted host mount; the web process cannot select it.
         cmd.arg("--mount");
         cmd.arg(format!("type=bind,src={},dst=/opt/terminal-key/id_ed25519,readonly", identity.display()));
@@ -153,9 +230,15 @@ async fn run_container(
     cmd.arg("-p"); cmd.arg(target.port.to_string());
     cmd.arg("-l"); cmd.arg(&target.username);
     cmd.arg(ip.to_string());
-    let mut child = pair.slave.spawn_command(cmd).context("Cannot start sandbox process")?;
-    drop(pair.slave);
-    let master = Mutex::new(pair.master);
+    cmd
+}
+
+async fn run_pty(
+    wire: &mut Framed<UnixStream, tokio_util::codec::LengthDelimitedCodec>,
+    child: &mut (dyn portable_pty::Child + Send + Sync), master: Box<dyn portable_pty::MasterPty + Send>,
+    name: &str, ttl: Duration,
+) -> Result<()> {
+    let master = Mutex::new(master);
     let mut reader = master.lock().unwrap().try_clone_reader()?;
     let mut writer = master.lock().unwrap().take_writer()?;
     let (output_tx, mut output_rx) = mpsc::channel::<Vec<u8>>(16);
@@ -202,7 +285,7 @@ async fn run_container(
                             rows, cols, pixel_width: 0, pixel_height: 0,
                         })?,
                         ClientMessage::Disconnect => break,
-                        ClientMessage::Connect { .. } => bail!("Connection is already established"),
+                        ClientMessage::Connect { .. } | ClientMessage::Workspace { .. } => bail!("Connection is already established"),
                     }
                 }
             }

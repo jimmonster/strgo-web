@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#ededed">
+  <meta name="robots" content="noindex,nofollow">
+  <title>STRGO · 终端会话</title>
+  <link rel="stylesheet" href="/terminal/vendor/xterm.css">
+  <link rel="stylesheet" href="/terminal/style.css">
+  <script defer src="/terminal/vendor/xterm.js"></script>
+  <script defer src="/terminal/vendor/addon-fit.js"></script>
+  <script defer src="/terminal/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="返回 STRGO 首页"><span class="brand-symbol">&gt;_</span> STRGO <span class="brand-path">/ terminal</span></a>
+    <div class="topbar-actions"><span class="sandbox-badge"><span class="dot"></span>独立沙箱</span><button id="logout" class="text-button" type="button" aria-label="返回终端列表" hidden>返回终端</button></div>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="intro"><p class="eyebrow">YOUR SERVER. ANYWHERE.</p><h1>像聊天一样，操作服务器。</h1><p>发一条命令，收一条回复。</p></div>
+      <section id="access-panel" class="card">
+        <h2>请先登录账号</h2>
+        <p>使用 AI 生图的账号即可进入终端。</p>
+        <a class="primary-button" href="/terminal/" target="_top">前往登录</a>
+      </section>
+      <details id="connection-details" class="card" open>
+        <summary class="card-heading"><span class="step">02</span><h2>SSH 连接</h2><span class="collapse-icon" aria-hidden="true">⌄</span></summary>
+        <form id="connect-form">
+          <fieldset id="connection-fields" disabled>
+            <label for="host">服务器地址</label>
+            <input id="host" name="host" type="text" inputmode="url" placeholder="公网 IP 或域名" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="253">
+            <div class="form-row"><div><label for="username">用户名</label><input id="username" name="username" type="text" value="root" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="64"></div><div class="port-field"><label for="port">端口</label><input id="port" name="port" type="number" inputmode="numeric" value="22" min="1" max="65535" required></div></div>
+            <label class="check-label"><input id="remember-target" type="checkbox"> 记住服务器地址与用户名</label>
+            <p class="help-text">SSH 密码在连接后输入。首次连接，请核对终端显示的主机指纹再输入 yes。</p>
+            <button id="connect-button" class="primary-button" type="submit">新建 SSH 会话 <span aria-hidden="true">→</span></button>
+          </fieldset>
+          <p id="connect-message" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </details>
+      <div class="sandbox-note"><span class="shield" aria-hidden="true">◇</span><div><strong>每次连接，一个新沙箱</strong><p>SSH 客户端在隔离容器中运行，断开即销毁。远端命令在你的 SSH 服务器执行。</p></div></div>
+      <a class="home-link" href="/">← 返回 STRGO</a>
+    </aside>
+    <section class="terminal-panel" aria-label="SSH 终端">
+      <div class="terminal-heading"><div class="terminal-title"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span id="target-label">尚未连接</span></div><div class="terminal-actions"><span id="status" class="status" data-state="idle">待连接</span><button id="focus-mode" type="button" class="small-button" aria-pressed="false" aria-label="切换终端专注模式">专注</button><button id="disconnect" type="button" class="small-button" disabled>断开</button></div></div>
+      <p id="terminal-notice" class="terminal-notice" role="status" aria-live="polite" hidden></p>
+      <div class="terminal-stage">
+        <div id="terminal"></div>
+        <div id="chat-log" class="chat-log" role="log" aria-label="命令与服务器回复" aria-live="off"><div class="chat-welcome"><span class="welcome-icon" aria-hidden="true">&gt;_</span><h2>服务器，也可以聊着用。</h2><p>连接后，在下方输入命令并发送。<br>你的命令在右边，服务器的回复在左边。</p><span>支持中文、长文本和连续交互</span></div></div>
+        <div id="terminal-empty" hidden></div>
+      </div>
+      <nav id="keys" class="keybar" aria-label="终端快捷键">
+        <div class="keybar-main"><button type="button" data-key="esc" disabled>Esc</button><button type="button" data-key="tab" disabled>Tab</button><button type="button" id="ctrl-key" aria-pressed="false" disabled>Ctrl</button><button type="button" data-key="interrupt" disabled>^C</button><button type="button" data-key="up" aria-label="上方向键" disabled>↑</button><button type="button" data-key="down" aria-label="下方向键" disabled>↓</button><button type="button" data-key="left" aria-label="左方向键" disabled>←</button><button type="button" data-key="right" aria-label="右方向键" disabled>→</button></div>
+        <div id="extra-keys" class="extra-keys" hidden>
+          <div class="keybar-extra"><button type="button" data-key="home" disabled>Home</button><button type="button" data-key="end" disabled>End</button><button type="button" data-key="delete" disabled>Del</button><button type="button" data-key="clear" disabled>^L</button><button type="button" data-key="eof" disabled>^D</button><button type="button" data-key="undo-line" disabled>^U</button><button type="button" data-key="suspend" disabled>^Z</button><button type="button" data-key="enter" disabled>Enter</button></div>
+          <div class="symbol-keys" aria-label="常用编程符号"><button type="button" data-insert="/" disabled>/</button><button type="button" data-insert="-" disabled>-</button><button type="button" data-insert="_" disabled>_</button><button type="button" data-insert="|" disabled>|</button><button type="button" data-insert="&amp;" disabled>&amp;</button><button type="button" data-insert="~" disabled>~</button><button type="button" data-insert="'" disabled>'</button><button type="button" data-insert="&quot;" disabled>&quot;</button><button type="button" data-insert="$" disabled>$</button><button type="button" data-insert="`" disabled>`</button><button type="button" data-insert="=" disabled>=</button><button type="button" data-insert="\" disabled>\</button><button type="button" data-insert="(" disabled>(</button><button type="button" data-insert=")" disabled>)</button><button type="button" data-insert="{" disabled>{</button><button type="button" data-insert="}" disabled>}</button><button type="button" data-insert="[" disabled>[</button><button type="button" data-insert="]" disabled>]</button><button type="button" data-insert="&lt;" disabled>&lt;</button><button type="button" data-insert="&gt;" disabled>&gt;</button></div>
+        </div>
+        <div class="keybar-tools"><button type="button" id="more-keys" aria-expanded="false" aria-controls="extra-keys">＋ 符号</button><button type="button" id="paste" disabled>粘贴</button><button type="button" id="copy-selection" title="复制终端选中文本">复制选区</button><button type="button" data-key="interrupt" aria-label="中断当前命令 Ctrl+C" disabled>中断</button><button type="button" id="font-size" aria-label="调整终端与聊天字号">A±</button><button type="button" id="keyboard-toggle" aria-label="显示或收起手机键盘" disabled>键盘</button><button type="button" id="scroll-bottom" aria-label="滚动到最新回复" disabled>↓ 最新</button></div>
+      </nav>
+      <section id="mobile-input-bar" class="mobile-input-bar" aria-label="命令编辑区">
+        <div class="composer-heading"><div class="input-modes" role="group" aria-label="显示方式"><button id="edit-mode" type="button" aria-pressed="true">聊天</button><button id="direct-mode" type="button" aria-pressed="false" disabled>终端</button></div><div class="composer-actions"><button id="secret-input" type="button" class="small-button" aria-pressed="false" disabled>密码模式</button><button id="expand-editor" type="button" class="small-button" aria-expanded="false" aria-controls="command-editor" disabled>展开 ↗</button></div></div>
+        <div id="composer-body" class="composer-body"><label class="sr-only" for="mobile-input">密码输入</label><input id="mobile-input" type="text" inputmode="text" enterkeyhint="send" placeholder="密码不会显示在聊天记录中" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" hidden disabled><label class="sr-only" for="command-editor">输入要执行的命令或文本</label><textarea id="command-editor" rows="1" inputmode="text" enterkeyhint="enter" placeholder="输入命令或消息…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" disabled></textarea><button id="submit-input" type="button" class="small-button send-button" disabled>发送</button></div>
+        <p id="editor-hint" class="editor-hint">回车换行，点发送执行 · Ctrl+Enter 快速发送</p>
+      </section>
+      <footer class="terminal-footer"><span id="dimensions">80 × 24</span><span id="session-clock">SESSION —</span><span id="history-note">当前页最近 120 条 · 每条最近约 300 行</span></footer>
+    </section>
+  </main>
+  <footer class="site-legal"><a class="icp-link" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" lang="zh-CN">渝ICP备2026024419号-1</a></footer>
+  <noscript>请启用 JavaScript 以使用 SSH 终端。</noscript>
+</body>
+</html>

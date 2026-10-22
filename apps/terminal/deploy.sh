@@ -25,7 +25,8 @@ usage() {
 用法：bash deploy.sh [--identity /绝对路径/SSH私钥] [--build-mode native|docker]
 将 Rust 终端接入现有 https://strgo.com/terminal。
 在普通 SSH / 阿里云 Workbench 终端中以 root 执行；需要现有主站已启用 HTTPS。
-不传 --identity 时使用交互式 SSH 密码登录。已有访问口令会保留。
+使用已有 AI 生图账号登录；需要账号服务已升级至支持 /api/image/terminal-session。
+不传 --identity 时 SSH 使用目标服务器密码；配置的服务私钥只提供给管理员。
 默认 native 使用本地 Rust 与国内下载源，不访问 Docker Hub；运行时仍使用独立容器。
 使用 docker 模式时，可加 --image-prefix 你的仓库/library 指定基础镜像来源。
 HELP
@@ -45,6 +46,7 @@ done
 [[ -d /run/systemd/system ]] || fail '需要 systemd 环境。'
 for tool in python3 curl openssl nginx ip; do command -v "$tool" >/dev/null || fail "缺少工具：$tool"; done
 python3 -c 'import socket; s=socket.socket(); s.close()' || fail '当前会话禁止网络 socket，请在普通 SSH / Workbench 终端执行。'
+[[ "$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8092/api/image/terminal-session)" == 401 ]] || fail '请先升级 AI 生图账号服务，详见 ACCOUNT-TERMINAL.md。'
 [[ -f "$CONFIG" && ! -L "$CONFIG" ]] || fail "未找到现有主站配置：$CONFIG"
 python3 "$PROJECT_DIR/scripts/integrate-nginx.py" "$CONFIG" --check
 nginx -t
@@ -149,9 +151,7 @@ TRANSACTION=1
 
 STAGE='安装并启动沙箱代理和网页服务'
 if [[ ! -f "$ENV_DIR/web.env" ]]; then
-    access_token="$(openssl rand -hex 32)"
-    printf 'TERMINAL_ACCESS_TOKEN=%s\nTERMINAL_PUBLIC_ORIGIN=https://strgo.com\nTERMINAL_BIND=127.0.0.1:3081\nTERMINAL_BROKER_SOCKET=/run/strgo-terminal/broker.sock\n' "$access_token" > "$ENV_DIR/web.env"
-    unset access_token
+    printf 'TERMINAL_PUBLIC_ORIGIN=https://strgo.com\nTERMINAL_BIND=127.0.0.1:3081\nTERMINAL_BROKER_SOCKET=/run/strgo-terminal/broker.sock\nTERMINAL_ACCOUNT_ADDRESS=127.0.0.1:8092\n' > "$ENV_DIR/web.env"
 fi
 if [[ ! -f "$ENV_DIR/broker.env" ]]; then
     python3 - "$ENV_DIR/broker.env" <<'PY'
@@ -211,6 +211,6 @@ done
 systemctl enable strgo-terminal-broker.service strgo-terminal.service
 TRANSACTION=0
 printf '\n终端部署完成，本机 HTTPS 验证通过：https://strgo.com/terminal\n'
-printf '访问口令已保存到 %s/web.env；请在服务器上私下查看，不要粘贴到公开聊天中。\n' "$ENV_DIR"
-printf '查看口令：sudo sed -n "s/^TERMINAL_ACCESS_TOKEN=//p" %s/web.env\n' "$ENV_DIR"
+printf '使用 AI 生图的账号登录；旧 TERMINAL_ACCESS_TOKEN 已不参与认证。\n'
+printf '请按 ACCOUNT-TERMINAL.md 完成真实账号、工作区持久化和浏览器验收。\n'
 printf '日志：journalctl -u strgo-terminal -u strgo-terminal-broker -n 80 --no-pager\n'
