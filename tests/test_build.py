@@ -23,6 +23,17 @@ class Markup(HTMLParser):
         self.tags.append((tag, dict(attrs)))
 
 class BuildTests(unittest.TestCase):
+    def test_site_admin_keeps_shared_login_static_assets_and_ai_admin(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = builder.build(output=directory)
+            page = (output / 'admin/index.html').read_text(encoding='utf-8')
+            self.assertIn('noindex,nofollow', page)
+            self.assertIn('全站管理', page)
+            for asset in ('app.js', 'boot.js', 'styles.css'):
+                self.assertTrue((output / 'admin' / asset).is_file())
+            self.assertTrue((output / 'admin/ai/index.html').is_file())
+            self.assertFalse(list((output / 'admin').rglob('*.py')))
+
     def test_local_studio_is_independent_and_ships_reference_compression(self):
         with tempfile.TemporaryDirectory() as directory:
             output = builder.build(output=directory)

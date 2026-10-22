@@ -11,6 +11,7 @@
 | 会员社区 | `src/forum/` | 随主站发布；共享账号 API |
 | 管理员创作台 | `src/local-studio/` | 随主站构建；独立 Workflow 域名与 Cookie |
 | AI 音乐、对话、助手与管理后台 | `src/ai-workspace/`、`image_service/ai_*.py` | 根构建生成 `/ai/`、`/admin/ai/`，共享后端提供 `/api/ai/v1/` |
+| 全站后台 | `src/admin/`、`image_service/admin.py` | `/admin/`、共享账号管理员、账号/内容/运行摘要及审计 |
 | 账号、生图、社区、工作流 API | `image_service/` | Python、SQLite、加密存储，默认回环端口 8092 |
 | DREAMS | `apps/dreams/` | 独立构建，再同步到 `src/dreams/`，由主站发布 |
 | NEXUS | `apps/nexus/`、主站副本 `src/nexus/` | 独立工程和集成副本同时存在；主站构建读取集成副本 |

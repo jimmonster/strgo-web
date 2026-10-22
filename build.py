@@ -225,6 +225,10 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     studio_page = studio_output / 'index.html'
     studio_page.write_text(studio_page.read_text(encoding='utf-8').replace('{{workflow_origin}}', html.escape((config.get('WORKFLOW_ORIGIN') or 'https://workflow.strgo.com').rstrip('/'), quote=True)), encoding='utf-8')
     shutil.copy2(ROOT / 'src/image-playground/reference-image.js', studio_output / 'reference-image.js')
+    admin_output = output / 'admin'
+    if admin_output.exists():
+        shutil.rmtree(admin_output)
+    shutil.copytree(ROOT / 'src/admin', admin_output)
     ai_output = output / 'ai'
     if ai_output.exists():
         shutil.rmtree(ai_output)

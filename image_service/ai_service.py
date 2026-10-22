@@ -168,7 +168,8 @@ class AIService:
 
     def authorize(self, db, user, kind, model_id=None):
         member = self.member(db, user['id'])
-        if member['status'] != 'active':
+        control = db.execute('SELECT status FROM account_controls WHERE user_id=?', (user['id'],)).fetchone()
+        if member['status'] != 'active' or (control and control['status'] != 'active'):
             fail(403, 'ACCOUNT_DISABLED', '账号已停用。')
         if not member[kind] or (member['expires'] is not None and member['expires'] <= int(time.time())):
             fail(403, 'PERMISSION_REQUIRED', '当前模块尚未授权或授权已过期，请申请权限。')
@@ -177,7 +178,11 @@ class AIService:
         return member
 
     def require_admin(self, db, user, mutation=False):
-        if user['role'] != 'admin':
+        current = db.execute("""SELECT u.role FROM users u JOIN sessions s ON s.user_id=u.id
+            LEFT JOIN account_controls c ON c.user_id=u.id LEFT JOIN ai_members m ON m.user_id=u.id
+            WHERE u.id=? AND s.hash=? AND s.expires>? AND COALESCE(c.status,'active')='active'
+            AND COALESCE(m.status,'active')='active'""", (user['id'], user['session_hash'], int(time.time()))).fetchone()
+        if not current or current['role'] != 'admin':
             fail(403, 'ADMIN_REQUIRED', '仅管理员可访问。')
         if mutation and not db.execute('SELECT 1 FROM ai_stepups WHERE session_hash=? AND expires>?', (user['session_hash'], int(time.time()))).fetchone():
             fail(403, 'MFA_REQUIRED', '管理操作需要验证动态口令，有效期五分钟。')
@@ -443,6 +448,7 @@ class AIService:
             self.providers.check(config)
             with self.store.connect() as db:
                 db.execute('BEGIN IMMEDIATE')
+                self.require_admin(db, user, True)
                 if not db.execute('UPDATE ai_models SET verified=1,updated=? WHERE id=? AND revision=?', (int(time.time()), model['id'], model['revision'])).rowcount:
                     fail(409, 'MODEL_REVISION_CONFLICT', '配置在检查过程中发生变化，请重试。')
                 if config.get('node_id'):
@@ -729,7 +735,7 @@ class AIService:
             if status not in ('active', 'disabled'):
                 fail(422, 'VALIDATION_ERROR', '账号状态无效。')
             if target['role'] == 'admin' and status == 'disabled':
-                active_admins = db.execute("SELECT COUNT(*) FROM users u LEFT JOIN ai_members m ON m.user_id=u.id WHERE u.role='admin' AND COALESCE(m.status,'active')='active'").fetchone()[0]
+                active_admins = db.execute("SELECT COUNT(*) FROM users u LEFT JOIN ai_members m ON m.user_id=u.id LEFT JOIN account_controls c ON c.user_id=u.id WHERE u.role='admin' AND COALESCE(m.status,'active')='active' AND COALESCE(c.status,'active')='active'").fetchone()[0]
                 if active_admins <= 1:
                     fail(409, 'LAST_ADMIN', '不能停用最后一位管理员。')
             for field, maximum in [('chat_limit', 10000), ('music_limit', 86400)]:
