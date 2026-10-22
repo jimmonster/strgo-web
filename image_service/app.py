@@ -323,14 +323,21 @@ class Service:
             raise Problem(401, '用户名或密码错误。')
         return user
 
-    def create_session(self, user_id, cookie_factory=None):
-        token, csrf = secrets.token_urlsafe(40), secrets.token_urlsafe(32)
+    def create_session(self, user_id, cookie_factory=None, expected_version=None):
         with self.store.connect() as db:
             db.execute('BEGIN IMMEDIATE')
-            if db.execute("SELECT 1 FROM account_controls WHERE user_id=? AND status<>'active' UNION SELECT 1 FROM ai_members WHERE user_id=? AND status<>'active'", (user_id, user_id)).fetchone():
-                raise Problem(401, '账号已停用，请联系管理员。')
-            db.execute('DELETE FROM sessions WHERE expires<?', (int(time.time()),))
-            db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (digest(token), user_id, csrf, int(time.time()) + SESSION_AGE))
+            return self._create_session(db, user_id, cookie_factory, expected_version)
+
+    def _create_session(self, db, user_id, cookie_factory=None, expected_version=None):
+        # Called only while holding the account mutation's write transaction.
+        current = db.execute('SELECT updated FROM users WHERE id=?', (user_id,)).fetchone()
+        if not current or (expected_version is not None and current['updated'] != expected_version):
+            raise Problem(401, '账号已变更，请重新登录。')
+        if db.execute("SELECT 1 FROM account_controls WHERE user_id=? AND status<>'active' UNION SELECT 1 FROM ai_members WHERE user_id=? AND status<>'active'", (user_id, user_id)).fetchone():
+            raise Problem(401, '账号已停用，请联系管理员。')
+        token, csrf = secrets.token_urlsafe(40), secrets.token_urlsafe(32)
+        db.execute('DELETE FROM sessions WHERE expires<?', (int(time.time()),))
+        db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (digest(token), user_id, csrf, int(time.time()) + SESSION_AGE))
         return csrf, {'Set-Cookie': (cookie_factory or self.set_cookie)(token)}
 
     def invite(self, creator, role='member'):
@@ -453,7 +460,7 @@ class Service:
                     self.persist_user(user)
             else:
                 user = self.authenticate(username, password)
-            csrf, cookie = self.create_session(user['id'])
+            csrf, cookie = self.create_session(user['id'], expected_version=user['updated'])
             self.dirty()
             return 200, {'user': self.user_info(user), 'csrf': csrf}, cookie
         if not user:
@@ -484,14 +491,21 @@ class Service:
             if not password_matches(payload.get('oldPassword'), user['password']):
                 raise Problem(400, '当前密码不正确。')
             hashed = password_hash(payload.get('newPassword'))
-            updated = dict(user)
-            updated['password'] = hashed
-            updated['updated'] = max(int(time.time()), int(user['updated']) + 1)
-            self.persist_user(updated)
             with self.store.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                current = db.execute("""SELECT u.*,COALESCE(c.status,'active') AS account_status
+                    FROM users u JOIN sessions s ON s.user_id=u.id LEFT JOIN account_controls c ON c.user_id=u.id
+                    LEFT JOIN ai_members m ON m.user_id=u.id WHERE u.id=? AND s.hash=? AND s.expires>?
+                    AND COALESCE(c.status,'active')='active' AND COALESCE(m.status,'active')='active'""",
+                    (user['id'], user['session_hash'], int(time.time()))).fetchone()
+                if not current or current['updated'] != user['updated']:
+                    raise Problem(401, '账号或会话已变更，请重新登录后修改密码。')
+                updated = {**dict(current), 'password': hashed,
+                           'updated': max(int(time.time()), current['updated'] + 1)}
+                self.persist_user(updated)
                 db.execute('UPDATE users SET password=?,updated=? WHERE id=?', (hashed, updated['updated'], user['id']))
                 db.execute('DELETE FROM sessions WHERE user_id=?', (user['id'],))
-            csrf, cookie = self.create_session(user['id'])
+                csrf, cookie = self._create_session(db, user['id'], expected_version=updated['updated'])
             self.dirty()
             return 200, {'ok': True, 'csrf': csrf}, cookie
         if path == API + '/config' and method == 'PUT':

@@ -210,18 +210,17 @@ def main():
             raise SystemExit('两次密码不一致。')
         hashed = password_hash(password)
         with store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             user = db.execute('SELECT id FROM users WHERE username=?', (args.username.lower(),)).fetchone()
             if not user:
                 raise SystemExit('账号不存在。')
             record = db.execute('SELECT * FROM users WHERE id=?', (user['id'],)).fetchone()
             snapshot = dict(record)
             snapshot['password'] = hashed
-            with store.connect() as db:
-                control = db.execute('SELECT status FROM account_controls WHERE user_id=?', (user['id'],)).fetchone()
+            control = db.execute('SELECT status FROM account_controls WHERE user_id=?', (user['id'],)).fetchone()
             snapshot['account_status'] = control['status'] if control else 'active'
             snapshot['updated'] = max(int(time.time()), int(record['updated']) + 1)
-        storage.put(storage.key(f'system/users/{snapshot["id"]}.fernet'), cipher.encrypt(json.dumps(snapshot).encode()), 'application/octet-stream')
-        with store.connect() as db:
+            storage.put(storage.key(f'system/users/{snapshot["id"]}.fernet'), cipher.encrypt(json.dumps(snapshot).encode()), 'application/octet-stream')
             db.execute('UPDATE users SET password=?,updated=? WHERE id=?', (hashed, snapshot['updated'], user['id']))
             db.execute('DELETE FROM sessions WHERE user_id=?', (user['id'],))
         print('密码已重置，所有会话已撤销。')

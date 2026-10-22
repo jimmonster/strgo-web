@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from image_service.security import Problem, digest
 from image_service import cli
+from image_service import app as accounts
 from image_service.app import Service
 from image_service.store import Store
 from tests import test_image_service as fixtures
@@ -182,3 +183,41 @@ class AdminTests(unittest.TestCase):
         self.assertTrue(any(code in (401, 403) for code in codes))
         with self.store.connect() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM users u LEFT JOIN account_controls c ON c.user_id=u.id WHERE u.role='admin' AND COALESCE(c.status,'active')='active'").fetchone()[0], 1)
+
+    def test_revocation_during_password_hash_cannot_recreate_session_or_old_role_snapshot(self):
+        self.update(self.member, role='admin')
+        _, body, headers = self.fixture.call('POST', '/login', {'username': 'member', 'password': PASSWORD})
+        session = {'user': body['user'], 'csrf': body['csrf'], 'cookie': headers['Set-Cookie'].split(';')[0]}
+        original = accounts.password_hash
+        def revoke_and_hash(password):
+            self.update(self.member, role='member')
+            return original(password)
+        with patch.object(accounts, 'password_hash', side_effect=revoke_and_hash):
+            self.error(401, lambda: self.fixture.call('PUT', '/password', {'oldPassword': PASSWORD, 'newPassword': 'A-new-private-password-2026'}, session))
+        identifier = self.member['user']['id']
+        snapshot = json.loads(self.fixture.cipher.decrypt(self.fixture.cloud.objects['tests/system/users/' + identifier + '.fernet']))
+        self.assertEqual(snapshot['role'], 'member')
+        with self.store.connect() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM sessions WHERE user_id=?', (identifier,)).fetchone()[0], 0)
+
+    def test_login_started_before_password_reset_cannot_issue_a_new_session(self):
+        original = accounts.password_matches
+        def reset_and_verify(password, hashed):
+            with patch.dict(os.environ, {'IMAGE_DATA_DIR': str(self.store.directory), 'IMAGE_ENCRYPTION_KEY': self.fixture.fernet_key.decode()}), \
+                    patch('image_service.cli.create_storage', return_value=self.fixture.cloud), \
+                    patch('getpass.getpass', return_value='Reset-private-password-2026'), patch('builtins.print'), \
+                    patch('sys.argv', ['cli', 'reset-password', 'member']):
+                cli.main()
+            return original(password, hashed)
+        with patch.object(accounts, 'password_matches', side_effect=reset_and_verify):
+            self.error(401, lambda: self.fixture.call('POST', '/login', {'username': 'member', 'password': PASSWORD}))
+
+    def test_login_started_before_admin_revocation_cannot_issue_a_new_session(self):
+        original = accounts.password_matches
+        def revoke_and_verify(password, hashed):
+            self.call('DELETE', '/users/' + self.member['user']['id'] + '/sessions')
+            return original(password, hashed)
+        with patch.object(accounts, 'password_matches', side_effect=revoke_and_verify):
+            self.error(401, lambda: self.fixture.call('POST', '/login', {'username': 'member', 'password': PASSWORD}))
+        # A fresh authentication after revocation is still allowed.
+        self.fixture.call('POST', '/login', {'username': 'member', 'password': PASSWORD})

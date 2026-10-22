@@ -245,7 +245,7 @@ def dispatch(service, method, path, query, payload, headers, ip):
         record = service.authenticate(username, payload.get('password'))
         if record['role'] != 'admin':
             raise Problem(403, '仅管理员可登录本地创作台。')
-        csrf, extra = service.create_session(record['id'], cookie_factory=lambda token: cookie(service, token))
+        csrf, extra = service.create_session(record['id'], cookie_factory=lambda token: cookie(service, token), expected_version=record['updated'])
         return 200, {'user': service.user_info(record), 'csrf': csrf}, extra
     if user and user['role'] != 'admin':
         raise Problem(403, '仅管理员可使用本地创作台。')

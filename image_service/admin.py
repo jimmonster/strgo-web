@@ -101,6 +101,11 @@ def dispatch(service, method, path, query, payload, user):
             if match[2]:
                 if target['id'] == actor['id']:
                     raise Problem(409, '请使用退出登录结束自己的会话。')
+                # Also invalidate authentication that began before revocation
+                # but has not issued a session yet.
+                snapshot = {**dict(target), 'updated': max(int(time.time()), target['updated'] + 1)}
+                service.persist_user(snapshot)
+                db.execute('UPDATE users SET updated=? WHERE id=?', (snapshot['updated'], target['id']))
                 db.execute('DELETE FROM sessions WHERE user_id=?', (target['id'],))
                 audit(db, actor['id'], 'user.sessions.revoke', target['id'])
             else:
