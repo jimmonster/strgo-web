@@ -125,3 +125,7 @@ python3 tests/render-offscreen.py --animate
 ## 素材与依赖
 
 见 `ASSETS.md`。所有网站资源均使用相对路径。运行时总文件体积约 1MB；不包含测试产物和开发依赖。Three.js 以固定版本在 `package-lock.json` 锁定，随项目提供本地压缩模块及 MIT 许可。
+
+## 2026-10-23 本机浏览器补验
+
+本机Chrome155（SwiftShader）已通过六种尺寸、搜索、设置暂停、旅程退出、观景/语言及交互脚本检查。搜索输入现在一次Escape即可关闭面板。6张截图见 `artifacts/browser/`；本轮未录屏，未执行180秒硬件性能测试。源码同步及主站构建另行通过。

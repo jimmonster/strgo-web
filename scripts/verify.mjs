@@ -55,6 +55,7 @@ if (all || options.has('--terminal')) {
 }
 if (rootBuilt && options.has('--browser')) {
   node('Admin real HTTP browser regression', ['tests/admin-browser.mjs'], '', { STRGO_PYTHON: python });
+  node('AI real HTTP browser regression', ['tests/ai-browser.mjs'], '', { STRGO_PYTHON: python });
   node('Workflow browser regression', ['tests/local-studio-browser.mjs']);
   node('Image browser regression', ['tests/image-browser.mjs']);
 }

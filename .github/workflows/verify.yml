@@ -47,6 +47,7 @@ jobs:
           CHROME_PATH: /usr/bin/google-chrome
         run: |
           node tests/admin-browser.mjs
+          node tests/ai-browser.mjs
   terminal:
     runs-on: ubuntu-latest
     timeout-minutes: 20
