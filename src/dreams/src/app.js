@@ -96,6 +96,7 @@ document.addEventListener('change',event=>{if(event.target.id==='gallery-dream')
 dialog.addEventListener('cancel',e=>{e.preventDefault();closePanel();});
 dialog.addEventListener('click',e=>{const b=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom))closePanel();});
 document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&dialog.open){e.preventDefault();closePanel();return;}
  if(e.key==='Escape'&&state.journey==='entering'){e.preventDefault();finishJourney();return;}
  if(e.key==='Tab'&&state.journey==='entering'){e.preventDefault();$('#skip-journey').focus();return;}
  if(dialog.open&&e.key==='Tab'){const focusable=$$('a[href],button:not(:disabled),input,select,[tabindex="0"]',dialog).filter(el=>el.getClientRects().length);const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
