@@ -68,3 +68,4 @@
 @media(prefers-reduced-motion:reduce){.explore-route,.space-filters button{transition:none}.story-preview *{animation:none!important}}
 /* STRGO site filing */
 .content-footer .icp-link{font:11px/1.8 var(--font-sans,sans-serif);letter-spacing:0;white-space:nowrap;color:#a7bacd;min-height:28px;display:inline-flex;align-items:center}
+.nav-forum{font-size:11px;white-space:nowrap;color:#b7cfa9;padding:10px 0}.forum-tool-entry{background:#121b12;border-color:#b7cfa939;color:#d3e3c7}.forum-tool-entry:hover{border-color:#b7cfa980}@media(max-width:1023px){.nav-forum{display:none}}

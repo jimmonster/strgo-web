@@ -6,6 +6,7 @@
 
 - 主站、AI 图片工作台、集成的 NEXUS 与 DREAMS 门户：仓库根目录
 - 终端：`apps/terminal/`
+- 会员交流社区：`src/forum/`，复用 AI 生图与终端账号，说明见 [FORUM.md](FORUM.md)
 - DREAMS 独立应用：`apps/dreams/`
 - POLYVERSE：`apps/polyverse/`
 - MEOW：`apps/meow/`

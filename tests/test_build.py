@@ -23,6 +23,19 @@ class Markup(HTMLParser):
         self.tags.append((tag, dict(attrs)))
 
 class BuildTests(unittest.TestCase):
+    def test_forum_route_assets_and_shared_account_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = builder.build(output=directory)
+            page = (output / 'forum/index.html').read_text(encoding='utf-8')
+            self.assertNotIn('{{', page)
+            self.assertIn('https://strgo.com/forum/', page)
+            self.assertIn('noindex,nofollow', page)
+            self.assertIn('viewport-fit=cover', page)
+            self.assertGreaterEqual((output / 'index.html').read_text(encoding='utf-8').count('href="/forum/"'), 3)
+            for asset in ('styles.css', 'app.js'):
+                self.assertTrue((output / 'forum' / asset).is_file())
+            self.assertIn('href="/forum/"', (output / 'image-playground/index.html').read_text(encoding='utf-8'))
+
     def setUp(self): self.config = json.loads((ROOT / 'site.json').read_text())
     def test_generated_site_has_no_missing_local_assets_or_template_tokens(self):
         import re

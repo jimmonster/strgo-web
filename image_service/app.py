@@ -20,6 +20,7 @@ from .cloud import ImageProvider
 from .security import Problem, digest, encryption_key, image_type, password_hash, password_matches, validate_endpoint
 from .storage import create_storage
 from .store import Store
+from . import forum
 
 API = '/api/image'
 COOKIE = 'strgo_image_session'
@@ -433,6 +434,8 @@ class Service:
             raise Problem(401, '请先登录。')
         if method != 'GET' and not secrets.compare_digest(headers.get('x-csrf-token', ''), user['csrf']):
             raise Problem(403, '登录校验失效，请刷新页面后重试。')
+        if path.startswith(API + '/forum/'):
+            return forum.dispatch(self, method, path, query, payload, user)
         if path == API + '/generation-quota' and method == 'GET':
             return 200, self.generation_quota(user), {}
         if path == API + '/generation-policy' and method == 'PUT':
