@@ -3,6 +3,10 @@
 set -Eeuo pipefail
 umask 022
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+HOMEPAGE_DIR="${STRGO_HOMEPAGE_DIR:-$PROJECT_DIR/../..}"
+if [[ -z "${STRGO_HOMEPAGE_DIR:-}" && ! -f "$HOMEPAGE_DIR/site.json" ]]; then
+    HOMEPAGE_DIR='/root/strgo-homepage'
+fi
 SITE_ROOT='/var/www/swarmera'
 CONFIG='/etc/nginx/sites-available/strgo.conf'
 SNIPPET='/etc/nginx/snippets/swarmera.conf'
@@ -62,6 +66,7 @@ trap 'rollback 130' INT
 trap 'rollback 143' TERM
 
 [[ "$EUID" -eq 0 ]] || fail '请在服务器普通终端以 root 执行。'
+[[ -f "$HOMEPAGE_DIR/deploy.sh" && -f "$HOMEPAGE_DIR/site.json" ]] || fail '找不到主站源码，请通过 STRGO_HOMEPAGE_DIR 指定主站目录。'
 for command in node python3 nginx curl systemctl flock cmp sha256sum; do
     command -v "$command" >/dev/null || fail "缺少命令：$command"
 done
@@ -137,7 +142,7 @@ printf '版本：%s\n回滚备份：%s\n' "$RELEASE" "$BACKUP"
 
 STAGE='发布主站可点击入口'
 printf '\n正在发布 STRGO 首页的 SWARMERA 入口。\n'
-bash /root/strgo-homepage/deploy.sh
+bash "$HOMEPAGE_DIR/deploy.sh"
 swarmera_request --fail "https://$DOMAIN/" -o "$BACKUP/home-with-swarmera.html"
 python3 - "$BACKUP/home-with-swarmera.html" <<'PYVERIFY'
 from pathlib import Path

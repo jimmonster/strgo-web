@@ -13,7 +13,7 @@
 - SWARMERA：`apps/swarmera/`
 - NEXUS 独立项目与测试：`apps/nexus/`（网站集成版本位于 `src/nexus/`）
 
-各应用保留自己的依赖锁文件、测试、部署脚本和项目说明。主站的详细说明见 [HOMEPAGE-README.md](HOMEPAGE-README.md)。
+各应用保留自己的依赖锁文件、测试、部署脚本和项目说明。统一仓库的安装、升级与验收见 [部署说明](DEPLOYMENT.md)；主站的详细说明见 [HOMEPAGE-README.md](HOMEPAGE-README.md)。
 
 ## 本地构建和测试
 
