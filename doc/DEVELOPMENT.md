@@ -44,7 +44,7 @@ npm run build:production
 
 DREAMS 同步目标固定为当前仓库的 `src/dreams/`。同步会替换该集成副本，先提交或保存对它的手工修改。同步失败时保留原集成目录；异常中断若遗留 `src/.dreams-sync-*-previous`，先核对内容再清理。
 
-NEXUS 目前存在两份源码；独立应用测试通过不代表 `src/nexus/` 已更新。修改后对照两份源码，并验证主站产物。
+NEXUS独立构建使用源码原样复制。修改后在根运行 `node apps/nexus/scripts/sync-strgo.mjs`，再运行 `node apps/nexus/scripts/sync-strgo.mjs --check` 和主站构建。同步先检查资源与相对依赖、暂存完整副本并校验，再替换 `src/nexus/`；失败保留旧副本。`--check` 只读比较独立应用源码与主站集成目录，发现缺失、多余或不同文件即失败。
 
 POLYVERSE 生产构建使用 `BASE_PATH=/polyverse/`，MEOW 使用 `MEOW_BASE=/meow/`；Windows 请用 PowerShell 环境变量语法。独立应用构建完成后，根预览服务会从 `apps/polyverse/dist`、`apps/meow/dist`、`apps/swarmera/dist` 读取对应空间。
 

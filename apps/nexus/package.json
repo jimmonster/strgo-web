@@ -8,6 +8,8 @@
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "build": "node scripts/build.mjs",
+    "sync:strgo": "node scripts/sync-strgo.mjs",
+    "check:integration": "node scripts/sync-strgo.mjs --check",
     "preview": "node server.mjs --dir dist",
     "test": "node tests/interactions.mjs",
     "test:browser": "node tests/browser.mjs",
