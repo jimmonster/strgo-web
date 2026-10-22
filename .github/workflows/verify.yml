@@ -1,0 +1,70 @@
+name: Repository verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: |
+          npm ci
+          for app in dreams polyverse meow swarmera nexus; do
+            npm ci --prefix "apps/$app"
+          done
+          python -m pip install -r image_service/requirements.txt tzdata
+      - name: Root production build and regressions
+        run: node scripts/verify.mjs --root
+      - name: Application builds, integration and deployment helpers
+        if: success() || failure()
+        run: node scripts/verify.mjs --apps
+      - name: Admin real HTTP browser regression
+        if: success()
+        env:
+          STRGO_PYTHON: python3
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          node tests/admin-browser.mjs
+  terminal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install terminal dependencies
+        run: |
+          npm ci
+          npm ci --prefix apps/terminal
+          python -m pip install -r image_service/requirements.txt
+          rustup toolchain install 1.88.0 --profile minimal
+      - name: Terminal assets, UI, Python and locked Rust tests
+        env:
+          RUSTUP_TOOLCHAIN: 1.88.0
+        run: node scripts/verify.mjs --terminal

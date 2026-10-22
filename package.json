@@ -20,7 +20,8 @@
     "preview:scenes:offscreen": "node tests/export-scene-previews.mjs && python3 tests/render-scene-previews.py",
     "test:gpu": "node tests/record-particles.mjs && python3 tests/render-particles.py",
     "test:ai": "node --test tests/ai-workspace.test.mjs && python3 -m unittest discover -s tests -p \"test_ai_*.py\" -v",
-    "test:admin:browser": "node tests/admin-browser.mjs"
+    "test:admin:browser": "node tests/admin-browser.mjs",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "@studio-freight/lenis": "1.0.42",

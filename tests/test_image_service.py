@@ -1,4 +1,5 @@
 import base64
+from contextlib import closing
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
@@ -478,7 +479,7 @@ class ImageServiceTests(unittest.TestCase):
         self.assertTrue(restored.startswith(b'SQLite format 3'))
         target = Path(self.temp.name) / 'restore.sqlite3'
         target.write_bytes(restored)
-        with sqlite3.connect(target) as db:
+        with closing(sqlite3.connect(target)) as db:
             self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
             encrypted = db.execute('SELECT encrypted FROM configs').fetchone()[0]
             config = json.loads(self.cipher.decrypt(encrypted))
@@ -560,7 +561,7 @@ class ImageServiceTests(unittest.TestCase):
             cli.main()
             with self.assertRaises(FileExistsError):
                 cli.main()
-        with sqlite3.connect(destination) as db:
+        with closing(sqlite3.connect(destination)) as db:
             self.assertEqual(db.execute('SELECT COUNT(*) FROM sessions').fetchone()[0], 0)
             self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
             self.assertEqual(db.execute('SELECT expires FROM invites WHERE hash=?', (digest(invitation),)).fetchone()[0], 0)

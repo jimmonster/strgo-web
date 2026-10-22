@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -196,5 +197,5 @@ class ImagePermissionsTests(unittest.TestCase):
         self.app.backup()
         restored = Path(self.temp.name) / 'restored.sqlite3'
         restored.write_bytes(self.cipher.decrypt(self.cloud.objects[self.store.metadata('backup_key')]))
-        with sqlite3.connect(restored) as db:
+        with closing(sqlite3.connect(restored)) as db:
             self.assertEqual(db.execute("SELECT value FROM meta WHERE key='daily_image_limit'").fetchone()[0], '5')

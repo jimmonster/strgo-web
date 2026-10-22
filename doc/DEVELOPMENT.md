@@ -81,3 +81,11 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 修改会话、权限、用户数据、任务重试或工作流执行时，验证实际行为：普通成员不能越权、旧会话按预期失效、数据可恢复、同一任务不会重复生成。真实收费模型、GPU、Docker 或生产服务的验证结果必须与离线模拟测试分别记录。
 
 新增开发说明放入 `doc/` 并更新索引；可重复使用的项目操作经验放入 `codex/skills/`。
+
+## 统一验证和 CI
+
+安装根及各应用的锁定依赖后运行 `npm run verify`，或使用 `node scripts/verify.mjs --root`、`--apps`、`--terminal` 选择范围。脚本先构建根主站，再按依赖关系构建和测试应用；不发布或调用真实模型。Python不在PATH时设置 `STRGO_PYTHON` 为可执行文件。`--browser` 额外执行需要Chrome及空闲回环8092端口的浏览器验收。
+
+`.github/workflows/verify.yml` 在push、pull_request和手动触发时运行Linux检查：Node22、Python3.12、各应用构建/回归、Bash部署辅助回归，以及Rust1.88终端测试。Actions只读仓库权限，不部署生产。实际Linux结果以对应提交的CI运行记录为准。
+
+Windows明确跳过Bash配置生成、创建符号链接与POSIX0600文件权限检查；这些在Linux CI执行。文件内容、持久化恢复、路径边界及业务断言仍在Windows运行。不能将跳过项记为通过。2026-10-23本机根Node91项通过，根Python201项中197项通过、4项平台跳过；终端Python31项中30项通过、1项平台跳过。

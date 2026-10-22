@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import os
 import unittest
 from unittest.mock import patch
 import socket
@@ -73,6 +74,7 @@ class TargetExceptionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.render(CONFIG + 'TERMINAL_ALLOWED_TARGETS=' + invalid + '\n', [module.canonical('47.108.255.179')], 22)
 
+    @unittest.skipUnless(hasattr(os, 'fchmod'), 'POSIX 0600 output requires fchmod; Linux CI runs this check.')
     def test_cli_generates_a_private_file_without_mutating_the_original(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / 'broker.env'
