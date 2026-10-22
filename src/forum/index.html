@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f6f2">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="STRGO 会员社区，分享创作、交流想法。与 AI 生图和终端共用一个账号。">
+  <link rel="canonical" href="{{origin}}/forum/">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+  <title>交流社区 · STRGO</title>
+</head>
+<body>
+  <a class="skip" href="#main">跳到社区内容</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="STRGO 首页">STRGO<span>®</span></a>
+      <span class="brand-divider"></span><a class="product" href="/forum/">交流社区<span class="beta">COMMUNITY</span></a>
+      <nav class="app-links" aria-label="站内应用"><a href="/image-playground/">AI 生图 <span aria-hidden="true">↗</span></a><a href="/terminal/">终端 <span aria-hidden="true">↗</span></a></nav>
+      <button id="account-button" class="account-button" type="button" hidden aria-label="查看我的帖子"><span class="avatar avatar-small" id="header-avatar"></span><span id="header-name"></span></button>
+    </div>
+  </header>
+  <main id="main">
+    <section id="auth-view" class="auth-layout" aria-labelledby="auth-heading">
+      <div class="auth-story">
+        <p class="eyebrow"><span class="online-dot"></span> A SPACE FOR CURIOUS MINDS</p>
+        <h1 id="auth-heading">好想法，<br>值得<span>一起聊聊。</span></h1>
+        <p class="auth-description">分享一张新作品，记录一次小发现，<br>或是把还没想明白的问题，放在这里。</p>
+        <div class="orbit-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-center">✳</div><span class="orbit-note note-ai">灵感与创作 <span>↗</span></span><span class="orbit-note note-code">代码与探索 <span>⌘</span></span><span class="orbit-point"></span></div>
+        <p class="auth-caption">保持好奇，慢慢把想法变成现实。<span>STRGO / COMMUNITY</span></p>
+      </div>
+      <div class="auth-card">
+        <span class="auth-mark" aria-hidden="true">↳</span><p class="eyebrow">WELCOME BACK</p>
+        <h2 id="auth-title">加入这场对话</h2>
+        <p class="muted">使用 AI 生图或终端的会员账号登录。</p>
+        <div class="auth-tabs" role="group" aria-label="账号操作"><button type="button" data-auth="login" aria-pressed="true">账号登录</button><button type="button" data-auth="register" aria-pressed="false">邀请码注册</button></div>
+        <form id="auth-form">
+          <label for="username">用户名</label><input id="username" name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_-]+" placeholder="输入会员用户名" required>
+          <label for="password">密码</label><input id="password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" placeholder="输入账号密码" required>
+          <div id="invite-field" hidden><label for="invite">邀请码</label><input id="invite" name="invite" autocomplete="off" maxlength="100" placeholder="输入管理员提供的邀请码"></div>
+          <p id="auth-message" class="form-message" role="status">正在连接会员账号…</p>
+          <button class="primary wide" id="auth-submit" type="submit" disabled><span id="auth-label">登录社区</span><span aria-hidden="true">→</span></button>
+        </form>
+        <p class="account-note"><span data-icon="shield"></span> 一个账号，连接社区、AI 生图与终端</p>
+        <div class="auth-apps"><a href="/image-playground/">前往 AI 生图 ↗</a><a href="/terminal/">前往终端 ↗</a></div>
+      </div>
+    </section>
+
+    <section id="workspace" class="community-layout" hidden aria-label="会员交流社区">
+      <aside class="sidebar">
+        <p class="eyebrow sidebar-label">YOUR LITTLE UNIVERSE</p>
+        <nav aria-label="社区导航" class="side-nav"><button type="button" data-scope="all" aria-pressed="true"><span data-icon="grid"></span>社区广场<span class="nav-end">↗</span></button><button type="button" data-scope="mine" aria-pressed="false"><span data-icon="user"></span>我的帖子<span id="mine-count" class="count">0</span></button></nav>
+        <div class="sidebar-section"><p class="eyebrow">话题分类</p><nav class="category-nav" aria-label="话题分类"><button type="button" data-category="" aria-pressed="true"><span class="category-dot dot-all"></span>全部话题</button><button type="button" data-category="general" aria-pressed="false"><span class="category-dot dot-general"></span>日常闲聊</button><button type="button" data-category="ai" aria-pressed="false"><span class="category-dot dot-ai"></span>AI 创作</button><button type="button" data-category="terminal" aria-pressed="false"><span class="category-dot dot-terminal"></span>终端交流</button><button type="button" data-category="help" aria-pressed="false"><span class="category-dot dot-help"></span>问题反馈</button></nav></div>
+        <div class="sidebar-section other-spaces"><p class="eyebrow">继续探索</p><a href="/image-playground/"><span data-icon="sparkles"></span>AI 生图工作台 <span>↗</span></a><a href="/terminal/"><span data-icon="terminal"></span>随身终端 <span>↗</span></a><a href="/"><span data-icon="globe"></span>返回主站 <span>↗</span></a></div>
+        <div class="sidebar-footer"><span class="avatar" id="side-avatar"></span><div><b id="side-name"></b><small id="side-role"></small></div><button type="button" id="logout" class="icon-button" aria-label="退出所有应用的当前登录" title="退出登录"><span data-icon="logout"></span></button></div>
+      </aside>
+
+      <div class="feed-column">
+        <section class="welcome-banner"><div><p class="eyebrow"><span class="online-dot"></span> THE COMMUNITY SPACE</p><h1>小小社区，<br><span>让想法遇见同频的人。</span></h1><p>聊创作，聊技术，也聊聊今天的新发现。</p></div><span class="banner-symbol" aria-hidden="true">✳</span><span class="banner-index" aria-hidden="true">STRGO / 01</span></section>
+        <button type="button" class="compose-entry" data-compose><span class="avatar" id="compose-avatar"></span><span>有什么新鲜事，想和大家分享？</span><span class="compose-entry-icon" data-icon="plus"></span></button>
+        <div class="feed-toolbar"><div><h2 id="feed-heading">社区广场</h2><span id="result-count">正在加载…</span></div><button class="quiet refresh-button" id="refresh" type="button"><span data-icon="refresh"></span><span>刷新</span></button></div>
+        <form id="search-form" class="search-form" role="search"><span data-icon="search"></span><input id="search" type="search" aria-label="搜索帖子标题和正文" maxlength="80" placeholder="搜索感兴趣的话题…"><button type="submit">搜索</button></form>
+        <div class="mobile-filters" role="group" aria-label="帖子筛选"><button type="button" data-category="" aria-pressed="true">全部</button><button type="button" data-category="general" aria-pressed="false">日常闲聊</button><button type="button" data-category="ai" aria-pressed="false">AI 创作</button><button type="button" data-category="terminal" aria-pressed="false">终端交流</button><button type="button" data-category="help" aria-pressed="false">问题反馈</button></div>
+        <p class="feed-message form-message" id="feed-message" role="status"></p>
+        <div id="posts" class="post-list" aria-label="帖子列表" aria-busy="false"></div>
+        <div id="empty-state" class="empty-state" hidden><span data-icon="message"></span><h3 id="empty-title">对话，从你开始。</h3><p id="empty-description">分享一个想法，成为这里的第一位发帖人。</p><button type="button" class="primary" data-compose>发布第一篇帖子 <span aria-hidden="true">↗</span></button></div>
+        <button type="button" id="load-more" class="load-more" hidden>加载更多帖子 <span aria-hidden="true">↓</span></button>
+        <p class="feed-end" id="feed-end" hidden>每个想法，都有自己的回响。<span>YOU’RE ALL CAUGHT UP</span></p>
+      </div>
+
+      <aside class="rightbar" aria-label="社区信息">
+        <div class="intro-card"><span class="card-mark" aria-hidden="true">↗</span><p class="eyebrow">NICE TO MEET YOU</p><h2>欢迎来到<br>STRGO 交流社区。</h2><p>这里没有标准答案。<br>只有好奇的人，和不断发生的想法。</p><div class="community-stats"><div><b id="stat-posts">—</b><span>篇话题</span></div><div><b id="stat-members">—</b><span>位分享者</span></div></div></div>
+        <div class="guidelines"><p class="eyebrow">让交流轻松一点</p><p><span>01</span> 友善表达，尊重不同的声音。</p><p><span>02</span> 一个好标题，让想法更容易被看见。</p><p><span>03</span> 保护自己和他人的隐私。</p></div>
+        <div id="admin-note" class="admin-note" hidden><span data-icon="shield"></span><div><b>管理员模式</b><p>可置顶话题、删除所有帖子。<br>请一起照顾这个小社区。</p></div></div>
+        <footer class="community-footer">© STRGO <span>MADE WITH CURIOSITY.</span></footer>
+      </aside>
+    </section>
+  </main>
+
+  <nav class="mobile-bottom" id="mobile-bottom" aria-label="手机社区导航" hidden><button type="button" data-scope="all" aria-pressed="true"><span data-icon="grid"></span>广场</button><button type="button" class="mobile-compose" data-compose><span data-icon="plus"></span>发帖</button><button type="button" data-scope="mine" aria-pressed="false"><span data-icon="user"></span>我的</button><button type="button" id="mobile-logout"><span data-icon="logout"></span>退出</button></nav>
+
+  <dialog id="compose-dialog" class="compose-dialog" aria-labelledby="compose-title"><form id="post-form"><div class="dialog-header"><div><p class="eyebrow">SHARE SOMETHING NEW</p><h2 id="compose-title">把想法，放在这里。</h2></div><button class="icon-button" type="button" id="compose-close" aria-label="关闭发帖，保留当前草稿"><span data-icon="close"></span></button></div><label for="post-category">选择话题</label><select id="post-category" name="category"><option value="general">日常闲聊</option><option value="ai">AI 创作</option><option value="terminal">终端交流</option><option value="help">问题反馈</option></select><label for="post-title">标题 <span id="title-count">0 / 80</span></label><input id="post-title" name="title" maxlength="80" required placeholder="用一句话，说说你想分享的事" autocomplete="off"><label for="post-body">正文 <span id="body-count">0 / 10000</span></label><textarea id="post-body" name="body" maxlength="10000" required rows="9" placeholder="分享创作过程、一个小发现，或者一个问题…"></textarea><p class="form-message" id="post-message" role="status"></p><div class="compose-footer"><small>关闭后，草稿保留在当前页面。</small><button class="primary" id="publish" type="submit">发布帖子 <span data-icon="arrow"></span></button></div></form></dialog>
+
+  <dialog id="detail-dialog" class="detail-dialog" aria-labelledby="detail-title"><div class="dialog-header"><span class="eyebrow">COMMUNITY / TOPIC</span><button type="button" class="icon-button" id="detail-close" aria-label="关闭帖子详情"><span data-icon="close"></span></button></div><div id="detail-content"></div><p id="detail-message" class="form-message" role="status"></p></dialog>
+
+  <dialog id="delete-dialog" class="delete-dialog" aria-labelledby="delete-title"><span class="delete-mark" data-icon="trash"></span><h2 id="delete-title">确定删除这篇帖子？</h2><p id="delete-description">删除后，帖子将从社区移除，无法在页面恢复。</p><p id="delete-message" class="form-message" role="status"></p><div class="delete-actions"><button type="button" class="secondary" id="delete-cancel">再想一下</button><button type="button" class="danger" id="delete-confirm">确认删除</button></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="noscript">请启用 JavaScript 以登录社区和发布帖子。</p></noscript>
+</body>
+</html>

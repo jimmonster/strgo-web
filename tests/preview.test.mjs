@@ -34,7 +34,7 @@ test('Direct requests and repeated visits serve independent project routes and t
 
 test('Existing static spaces and local assets are served without exposing filesystem paths', async () => {
   for (const path of ['/home', '/dance', '/terminal']) assert.equal((await request(path)).status, 308);
-  for (const path of ['/home/', '/dance/', '/terminal/', '/nexus/', '/dreams/', '/archive/', '/assets/content.css']) assert.equal((await request(path)).status, 200);
+  for (const path of ['/home/', '/dance/', '/terminal/', '/nexus/', '/dreams/', '/forum/', '/archive/', '/assets/content.css']) assert.equal((await request(path)).status, 200);
   assert.equal((await request('/assets/projects/galactic-frontier-share.png', 'HEAD')).body, '');
   for (const path of ['/missing/', '/%2e%2e%2fsite.json', '/assets/%2e%2e%2f%2e%2e%2fsite.json']) assert.equal((await request(path)).status, 404);
   assert.equal((await request('/', 'POST')).status, 405);

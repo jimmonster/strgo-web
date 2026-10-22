@@ -47,6 +47,13 @@ CREATE INDEX IF NOT EXISTS image_owner ON images(user_id, job_id);
 CREATE TABLE IF NOT EXISTS limits (key TEXT NOT NULL, bucket INTEGER NOT NULL, count INTEGER NOT NULL,
  PRIMARY KEY(key,bucket));
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS forum_posts (
+ id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+ title TEXT NOT NULL, body TEXT NOT NULL, category TEXT NOT NULL,
+ pinned INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0,
+ created INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS forum_feed ON forum_posts(deleted,pinned DESC,created DESC,id DESC);
+CREATE INDEX IF NOT EXISTS forum_owner ON forum_posts(user_id,deleted,created DESC);
 '''
 
 

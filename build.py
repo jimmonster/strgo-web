@@ -130,6 +130,8 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
         if asset.is_file(): digest.update(asset.read_bytes())
     for asset in sorted((ROOT / 'src/image-playground').rglob('*')):
         if asset.is_file(): digest.update(asset.read_bytes())
+    for asset in sorted((ROOT / 'src/forum').rglob('*')):
+        if asset.is_file(): digest.update(asset.read_bytes())
     version = digest.hexdigest()[:12]
     origin = config.get('BASE_ORIGIN', '').rstrip('/') or f"{config.get('scheme', 'http')}://{config['domain']}"
     if scheme: origin = re.sub(r'^https?:', scheme + ':', origin)
@@ -206,6 +208,12 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     shutil.copytree(image_source, output / 'image-playground')
     image_page = output / 'image-playground/index.html'
     image_page.write_text(image_page.read_text(encoding='utf-8').replace('{{origin}}', html.escape(origin, quote=True)), encoding='utf-8')
+    forum_output = output / 'forum'
+    if forum_output.exists():
+        shutil.rmtree(forum_output)
+    shutil.copytree(ROOT / 'src/forum', forum_output)
+    forum_page = forum_output / 'index.html'
+    forum_page.write_text(forum_page.read_text(encoding='utf-8').replace('{{origin}}', html.escape(origin, quote=True)), encoding='utf-8')
     if (ROOT / 'legacy/archive').is_dir():
         shutil.copytree(ROOT / 'legacy/archive', output / 'archive', dirs_exist_ok=True)
     content_template = (ROOT / 'src/pages/content.html').read_text(encoding='utf-8')
