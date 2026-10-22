@@ -4,6 +4,7 @@ This package deliberately shares the image/forum/terminal identity and storage.
 No provider is enabled by a migration, and no external call is made on startup.
 """
 import concurrent.futures
+import base64
 import hashlib
 import json
 import logging
@@ -234,6 +235,38 @@ class AIService:
 
     def form_public(self, row):
         return {**{k: row[k] for k in ('id', 'kind', 'revision', 'updated')}, 'fields': json.loads(row['fields'])}
+
+    def list_page(self, db, table, owner, query, convert, *, column='created', where='', values=()):
+        assert table in ('ai_tasks', 'ai_assets', 'ai_conversations') and column in ('created', 'updated')
+        paginated = 'limit' in query or 'cursor' in query
+        raw_limit = query.get('limit', ['20' if paginated else '100'])[0]
+        if not re.fullmatch(r'\d{1,3}', raw_limit) or not 1 <= int(raw_limit) <= 100:
+            fail(400, 'INVALID_PAGE', '每页数量需为 1–100。')
+        limit, cursor = int(raw_limit), query.get('cursor', [''])[0]
+        clause, parameters = 'user_id=?' + where, (owner, *values)
+        if cursor:
+            try:
+                if len(cursor) > 200 or not re.fullmatch(r'[A-Za-z0-9_-]+', cursor):
+                    raise ValueError()
+                decoded = json.loads(base64.b64decode(cursor + '=' * (-len(cursor) % 4), altchars=b'-_', validate=True))
+                if not isinstance(decoded, list) or len(decoded) != 2:
+                    raise ValueError()
+                stamp, identifier = decoded
+                if type(stamp) is not int or not 0 <= stamp <= 2**63 - 1 or not isinstance(identifier, str) or not re.fullmatch(r'[a-f0-9]{32}', identifier):
+                    raise ValueError()
+            except (ValueError, TypeError, UnicodeError):
+                fail(400, 'INVALID_CURSOR', '列表游标无效，请刷新后重试。')
+            clause += f' AND ({column}<? OR ({column}=? AND id<?))'
+            parameters += (stamp, stamp, identifier)
+        rows = db.execute(f'SELECT * FROM {table} WHERE {clause} ORDER BY {column} DESC,id DESC LIMIT ?', (*parameters, limit + 1)).fetchall()
+        items = [convert(row) for row in rows[:limit]]
+        if not paginated:
+            return items
+        next_cursor = None
+        if len(rows) > limit:
+            last = rows[limit - 1]
+            next_cursor = base64.urlsafe_b64encode(packed([last[column], last['id']]).encode()).decode().rstrip('=')
+        return {'items': items, 'next_cursor': next_cursor}
 
     def normalize_input(self, db, user, kind, payload):
         local_only = payload.get('local_only', False)
@@ -531,7 +564,11 @@ class AIService:
         if path == '/conversations':
             if method == 'GET':
                 scope = query.get('scope', ['global'])[0]
-                return 200, [dict(r) for r in db.execute('SELECT * FROM ai_conversations WHERE user_id=? AND scope=? AND deleted=0 ORDER BY updated DESC,id DESC LIMIT 100', (user['id'], scope))], {}
+                if scope not in ('global', 'music', 'image'):
+                    fail(400, 'INVALID_SCOPE', '对话场景无效。')
+                search = text(query.get('q', [''])[0], '搜索关键词', 80)
+                return 200, self.list_page(db, 'ai_conversations', user['id'], query, dict, column='updated',
+                    where=' AND scope=? AND deleted=0 AND instr(lower(title),lower(?))>0', values=(scope, search)), {}
             if method == 'POST':
                 scope, form_id = payload.get('scope', 'global'), payload.get('form_id')
                 if scope not in ('global', 'music', 'image'):
@@ -579,8 +616,8 @@ class AIService:
         if path in ('/runs', '/music/jobs') and method == 'POST':
             return 202, self.submit(db, user, 'chat' if path == '/runs' else 'music', payload, headers), {}
         if path in ('/tasks', '/music/jobs') and method == 'GET':
-            rows = db.execute('SELECT * FROM ai_tasks WHERE user_id=? ORDER BY created DESC,id DESC LIMIT 100', (user['id'],)).fetchall()
-            return 200, [self.task_public(db, r) for r in rows if path == '/tasks' or r['kind'] == 'music'], {}
+            return 200, self.list_page(db, 'ai_tasks', user['id'], query, lambda row: self.task_public(db, row),
+                where=" AND kind='music'" if path == '/music/jobs' else ''), {}
         task_match = re.fullmatch(r'/(?:tasks|runs|music/jobs)/([a-f0-9]{32})(/events|/cancel)?', path)
         if task_match:
             task = self.owned(db, 'ai_tasks', task_match[1], user['id'])
@@ -624,7 +661,7 @@ class AIService:
                 self.audit(db, user['id'], 'draft.apply', draft['id'], {'form_id': form['id']})
                 return 200, self.form_public(self.owned(db, 'ai_forms', form['id'], user['id'])), {}
         if path == '/assets' and method == 'GET':
-            return 200, [self.asset_public(r) for r in db.execute('SELECT * FROM ai_assets WHERE user_id=? AND deleted=0 ORDER BY created DESC LIMIT 100', (user['id'],))], {}
+            return 200, self.list_page(db, 'ai_assets', user['id'], query, self.asset_public, where=' AND deleted=0'), {}
         asset_match = re.fullmatch(r'/assets/([a-f0-9]{32})(/audio)?', path)
         if asset_match:
             asset = self.owned(db, 'ai_assets', asset_match[1], user['id'])

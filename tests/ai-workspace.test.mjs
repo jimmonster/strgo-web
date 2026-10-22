@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import postcss from 'postcss';
 import { parseHTML } from 'linkedom';
 import { AIClient, APIError, uuid7, escapeHTML, costLabel } from '../src/ai-workspace/client.js';
+import { PagedList } from '../src/ai-workspace/pagination.js';
 
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { globalThis.fetch = originalFetch; });
@@ -15,6 +16,26 @@ test('UUIDv7 has timestamp, version, variant and fresh randomness', () => {
   assert.match(key, /^[a-f\d]{8}-[a-f\d]{4}-7[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/);
   assert.equal(Number(BigInt('0x' + key.replaceAll('-', '').slice(0, 12))), now);
   assert.notEqual(key, uuid7(now));
+});
+
+test('cursor lists preserve loaded rows, deduplicate and retry the failed page', async () => {
+  const paths = []; let fail = false;
+  const list = new PagedList({ request: async path => { paths.push(path); if (fail) throw new Error('offline'); return path.includes('cursor=') ? { items: [{ id: 'first' }, { id: 'second' }], next_cursor: null } : { items: [{ id: 'first' }], next_cursor: 'older' }; } }, '/assets');
+  await list.load({ reset: true }); fail = true;
+  await assert.rejects(list.load(), /offline/);
+  assert.equal(list.cursor, 'older'); assert.equal(list.items.length, 1);
+  fail = false; await list.load();
+  assert.deepEqual(list.items.map(item => item.id), ['first', 'second']);
+  assert.equal(list.cursor, null); assert.match(paths.at(-1), /limit=20&cursor=older/);
+});
+
+test('a stale conversation search cannot overwrite a newer server result', async () => {
+  let resolveOld;
+  const list = new PagedList({ request: path => path.includes('q=old') ? new Promise(resolve => { resolveOld = resolve; }) : Promise.resolve({ items: [{ id: 'new' }], next_cursor: null }) }, '/conversations');
+  const pending = list.load({ reset: true, query: { q: 'old' } });
+  await list.load({ reset: true, query: { q: 'new' } });
+  resolveOld({ items: [{ id: 'old' }], next_cursor: 'stale' }); await pending;
+  assert.deepEqual(list.items, [{ id: 'new' }]); assert.equal(list.cursor, null);
 });
 
 test('mutations carry same-origin credentials, CSRF and an explicit idempotency key', async () => {

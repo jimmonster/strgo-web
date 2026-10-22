@@ -1,9 +1,18 @@
 import { AIClient, escapeHTML as esc, modelLabel, stateLabel, costLabel, terminalStates, uuid7 } from './client.js';
 import './assistant.js';
+import { PagedList } from './pagination.js';
 
 const $ = selector => document.querySelector(selector), client = new AIClient();
 const route = location.pathname.startsWith('/admin/ai') ? 'admin' : location.pathname.split('/').filter(Boolean)[1] || 'overview';
 const state = { session: null, models: [], tasks: [], assets: [], form: null, formDirty: false, saving: Promise.resolve(), polling: null, adminTab: 'models' };
+const feeds = new Map();
+function feed(path) { if (!feeds.has(path)) feeds.set(path, new PagedList(client, path)); return feeds.get(path); }
+function moreButton(target, list, load) {
+  if (!list.cursor) return;
+  const button = document.createElement('button'); button.type = 'button'; button.className = 'secondary full'; button.textContent = '加载更早记录';
+  button.onclick = async () => { button.disabled = true; try { await load(); } catch (error) { handleError(error); } finally { button.disabled = false; } };
+  target.append(button);
+}
 client.addEventListener('auth-changed', () => location.reload());
 const icons = { overview: '<path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/>', music: '<path d="M9 18V5l12-2v13M9 8l12-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="18" cy="16" rx="3" ry="3"/>', chat: '<path d="M21 11a9 9 0 0 1-12 8l-6 2 2-6a9 9 0 1 1 16-4Z"/>', assets: '<path d="M3 7V4h6l3 3h9v14H3z"/>', tasks: '<rect x="5" y="5" width="15" height="16" rx="3"/><path d="M9 3v5m7-5v5M9 13l2 2 5-5"/>', admin: '<path d="m9 3 6 0 1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z"/><circle cx="12" cy="12" r="3"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>', lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>', plus: '<path d="M12 4v16M4 12h16"/>', download: '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>', arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>', image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="2"/><path d="m4 19 6-7 4 4 3-3 4 6"/>', help: '<circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3v2m-1 3h.01"/>' };
 const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.plus}</svg>`;
@@ -129,12 +138,13 @@ async function chatPage() {
   $('#main').innerHTML = `<div class="chat-layout"><aside class="history"><button id="new-chat" class="primary full">${icon('plus')} 新建对话</button><div class="search-field"><span>⌕</span><input id="search-chats" type="search" placeholder="搜索对话" aria-label="搜索对话"></div><p class="eyebrow">我的对话</p><div id="conversation-list"></div><div class="history-foot">${icon('lock')} 对话独立保存<br>明确选择后，才会带入其他模块。</div></aside><section class="chat-content"><strgo-assistant></strgo-assistant></section></div>`;
   const component = $('strgo-assistant');
   await component.configure({ client, fullPage: true, conversationId: new URLSearchParams(location.search).get('conversation') || undefined });
-  async function historyList() {
+  async function historyList(more = false) {
     if (!state.session?.user) { $('#conversation-list').innerHTML = '<p class="muted small">登录后查看对话记录。</p>'; return; }
-    const conversations = await client.request('/conversations?scope=global'); state.conversations = conversations;
     const search = $('#search-chats').value.toLowerCase();
+    const list = await feed('/conversations').load({ reset: !more, query: { scope: 'global', q: search } }), conversations = list.items; state.conversations = conversations;
     $('#conversation-list').innerHTML = conversations.filter(c => c.title.toLowerCase().includes(search)).map(c => `<div class="history-row ${c.id === component.context.conversationId ? 'active' : ''}"><button class="history-open" data-id="${c.id}">${icon('chat')}<span>${esc(c.title)}</span></button><button class="history-delete" data-id="${c.id}" aria-label="删除对话 ${esc(c.title)}">×</button></div>`).join('') || '<p class="muted small">还没有对话，从一个想法开始。</p>';
     document.querySelectorAll('.history-open').forEach(b => { b.onclick = () => { if (component.busy) { toast('请先停止当前回复。'); return; } location.assign('/ai/chat/?conversation=' + b.dataset.id); }; });
+    moreButton($('#conversation-list'), list, () => historyList(true));
     document.querySelectorAll('.history-delete').forEach(b => { b.onclick = async () => { try { modal('<h2>删除这段对话？</h2><p class="muted">文字内容将被清除，额度记录继续保留。</p><button class="danger" id="confirm-chat-delete">确认删除</button>'); action('#confirm-chat-delete', async () => { await client.request('/conversations/' + b.dataset.id, { method: 'DELETE', body: {} }); $('#dialog').close(); if (component.context.conversationId === b.dataset.id) location.assign('/ai/chat/'); else await historyList(); }); } catch (error) { handleError(error); } }; });
   }
   action('#new-chat', () => { if (component.busy) toast('请先停止当前回复。'); else location.assign('/ai/chat/'); });
@@ -147,14 +157,16 @@ async function overviewPage() {
   const tasks = state.session?.user ? await client.request('/tasks') : [];
   $('#main').innerHTML = `<div class="overview-heading"><p class="eyebrow">A LITTLE IDEA. A WHOLE NEW WORLD.</p><h1>让灵感，自由发生<span>。</span></h1><p>从一段旋律、一句话，开始你的下一次创作。</p></div><div class="overview-cards"><a href="/ai/music/" class="overview-card music-entry"><span class="card-index">01 / SOUND</span><img src="/ai/static/music-cover.svg" alt="流动的虹彩金属声波"><div><span class="mint small">AI MUSIC STUDIO</span><h2>把想象，写成旋律。</h2><p>自定义歌词与风格，让下一首作品在这里发生。</p><span class="card-link">进入音乐工作台 ${icon('arrow')}</span></div></a><a href="/ai/chat/" class="overview-card chat-entry"><span class="card-index">02 / IDEAS</span><div class="chat-art" aria-hidden="true"><span>✳</span><i></i><i></i><i></i></div><div><span class="mint small">YOUR CREATIVE COMPANION</span><h2>每个想法，都值得聊聊。</h2><p>梳理灵感，打磨细节。创作助手，随时在身边。</p><span class="card-link">开始一段对话 ${icon('arrow')}</span></div></a></div><div class="overview-bottom"><section class="panel recent-panel"><div class="panel-title"><h2>最近的创作</h2><a class="text-button" href="/ai/tasks/">查看全部 ↗</a></div>${tasks.length ? tasks.slice(0, 4).map(t => `<a class="recent-row" href="${t.kind === 'music' ? '/ai/music/?form=' + t.form_id : '/ai/chat/?conversation=' + t.conversation_id}">${icon(t.kind === 'music' ? 'music' : 'chat')}<span>${t.kind === 'music' ? '音乐创作' : '灵感对话'}<small>${new Date(t.created * 1000).toLocaleString('zh-CN')}</small></span><span class="status ${t.state === 'SUCCEEDED' ? 'success' : ''}">${stateLabel(t.state)}</span></a>`).join('') : empty('你的创作故事，从这里开始。', '完成的音乐和对话会出现在这里。', 'chat')}</section><section class="panel quota-card"><p class="eyebrow">YOUR SPACE</p><h2>留一点时间，给创作。</h2><div class="quota-metrics"><div><strong>${state.session?.usage?.music.remaining ?? '—'}<small>秒</small></strong><span>今日音乐可用</span></div><div><strong>${state.session?.usage?.chat.remaining ?? '—'}<small>次</small></strong><span>今日对话可用</span></div></div><a class="secondary full" href="/ai/settings/">查看权限与额度 ${icon('arrow')}</a></section></div>`;
 }
-async function tasksPage() {
-  const tasks = state.session?.user ? await client.request('/tasks') : [];
+async function tasksPage(more = false) {
+  const list = state.session?.user ? await feed('/tasks').load({ reset: !more }) : null, tasks = list?.items || [];
   $('#main').innerHTML = `<div class="page-heading"><div><h1>任务中心</h1><p>每一次创作，都有迹可循。</p></div><button id="refresh-tasks" class="secondary">↻ 刷新状态</button></div><section class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>创作任务</th><th>模型</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody>${tasks.map(t => `<tr><td><strong>${t.kind === 'music' ? '音乐生成' : 'AI 对话'}</strong><small class="task-error">${esc(t.error)}</small></td><td>${esc(state.models.find(m => m.id === t.model_id)?.name || t.model_id)}</td><td><span class="status ${t.state === 'SUCCEEDED' ? 'success' : ''}">${stateLabel(t.state)}</span></td><td>${new Date(t.created * 1000).toLocaleString('zh-CN')}</td><td>${!terminalStates.has(t.state) ? `<button class="secondary cancel-task" data-id="${t.id}">停止</button>` : `<a class="text-button" href="${t.kind === 'music' ? '/ai/music/?form=' + t.form_id : '/ai/chat/?conversation=' + t.conversation_id}">查看 ↗</a>`}</td></tr>`).join('')}</tbody></table></div>${!tasks.length ? empty('暂时还没有任务', '开始一次音乐创作或对话，进度会自动保存在这里。', 'tasks') : ''}<p class="table-note">断开页面不会取消任务。结果不明确时会核对上游记录，不会自动重复请求。</p></section>`;
-  action('#refresh-tasks', tasksPage); document.querySelectorAll('.cancel-task').forEach(b => { b.onclick = () => client.cancel(b.dataset.id).then(tasksPage).catch(handleError); });
+  if (list) moreButton($('#main'), list, () => tasksPage(true));
+  action('#refresh-tasks', () => tasksPage()); document.querySelectorAll('.cancel-task').forEach(b => { b.onclick = () => client.cancel(b.dataset.id).then(() => tasksPage()).catch(handleError); });
 }
-async function assetsPage() {
-  const assets = state.session?.user ? await client.request('/assets') : [];
+async function assetsPage(more = false) {
+  const list = state.session?.user ? await feed('/assets').load({ reset: !more }) : null, assets = list?.items || [];
   $('#main').innerHTML = `<div class="page-heading"><div><h1>我的作品</h1><p>收藏每一次，灵感成真的瞬间。</p></div><a class="primary" href="/ai/music/">${icon('plus')} 新建音乐</a></div><div class="asset-grid">${assets.map(a => audioCard(a, true)).join('')}</div>${!assets.length ? `<section class="panel">${empty('你的作品，正在路上。', '生成的音乐会自动保存到私有作品库。')}</section>` : ''}<p class="privacy-note">${icon('lock')} 私有音频保存 90 天，请及时下载需要长期保留的作品。</p>`; bindAssetActions();
+  if (list) moreButton($('#main'), list, () => assetsPage(true));
 }
 async function settingsPage() {
   const s = state.session;
