@@ -63,7 +63,8 @@ mkdir -p .build/account-release
 install -m 0755 /root/strgo-terminal/.build/target/release/strgo-terminal .build/account-release/strgo-terminal
 sha256sum .build/account-release/strgo-terminal Cargo.toml Cargo.lock build.rs \
   src/*.rs web/*.html web/*.js web/*.css web/vendor/*.js web/vendor/*.css \
-  ../../image_service/app.py tests/*.mjs tests/*.py update-account.sh update-mobile.sh \
+  ../../image_service/app.py tests/*.mjs tests/*.py deploy/*.service deploy/*.conf \
+  update-account.sh update-mobile.sh repair-sandbox.sh \
   > .build/account-release/SHA256SUMS
 bash update-account.sh --check
 ```
@@ -102,6 +103,7 @@ python3 tests/smoke.py --env /etc/strgo-terminal/web.env --account 测试账号
 
 - 浏览器脚本路由提供真实 HTML/CSS/xterm，模拟账号 API 与 WS；覆盖 320/390/430/844/1440 宽度，三窗口后台输出与草稿、刷新恢复、退出和软键盘视口，截图位于 `artifacts/chat/` 与 `artifacts/workspace/`。这不是 SSH 服务端测试。
 - `workspace-check.sh` 只使用带唯一探针名称的新卷，验证 UID、无网络、只读根目录、跨容器文件保留与不同卷隔离，退出自动清理探针。
+- `python3 tests/broker-smoke.py` 进一步通过实际代理服务执行 shell，覆盖 systemd 环境和 PTY 启动，升级脚本也会运行。若出现 `Cannot start sandbox process: Permission denied`，见 [启动目录修复](SANDBOX-STARTUP-FIX.md)。
 - 不带 `--account` 的冒烟仅检查匿名拒绝、资源、账号接口及跨源拒绝，不声称通过登录验收。
 - `--account` 通过隐藏输入读取密码，不把密码放入命令行或输出；验证共享登录、SSH 地址拒绝、实际工作区命令和 30 秒内退出撤销。使用独立测试账号，避免影响个人工作。
 - 真实手机系统剪贴板与 SSH 登录、vim/top、远程断开清理仍需按需求文档人工核验。

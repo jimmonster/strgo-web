@@ -9,6 +9,8 @@ INSTALL_DIR=/usr/local/lib/strgo-terminal
 ACCOUNT_DIR=/opt/strgo-image
 BACKUP=''
 TRANSACTION=0
+BROKER_DROPIN_DIR=/etc/systemd/system/strgo-terminal-broker.service.d
+BROKER_DROPIN="$BROKER_DROPIN_DIR/20-runtime-home.conf"
 [[ $# -eq 0 || ( $# -eq 1 && "$1" == --check ) ]] || { printf '用法：bash %s [--check]\n' "$0" >&2; exit 2; }
 [[ -f "$RELEASE_DIR/SHA256SUMS" && -x "$RELEASE_DIR/strgo-terminal" ]] || { printf '请先按 ACCOUNT-TERMINAL.md 构建账号终端并生成校验清单。\n' >&2; exit 1; }
 cd "$PROJECT_DIR"
@@ -60,6 +62,12 @@ rollback() {
         systemctl stop strgo-terminal strgo-terminal-broker strgo-image
         install -m 0755 "$BACKUP/strgo-terminal" "$INSTALL_DIR/strgo-terminal"
         install -m 0644 "$BACKUP/image-app.py" "$ACCOUNT_DIR/image_service/app.py"
+        if [[ -f "$BACKUP/runtime-home.conf" ]]; then
+            cp -a "$BACKUP/runtime-home.conf" "$BROKER_DROPIN"
+        else
+            rm -f "$BROKER_DROPIN"
+        fi
+        systemctl daemon-reload
         systemctl start strgo-image strgo-terminal-broker strgo-terminal
         printf '更新检查未通过，已恢复旧程序。备份：%s\n' "$BACKUP" >&2
     fi
@@ -71,12 +79,16 @@ trap 'rollback 143' TERM
 BACKUP="$(mktemp -d "$INSTALL_DIR/account-backup.XXXXXXXX")"
 cp -a "$INSTALL_DIR/strgo-terminal" "$BACKUP/strgo-terminal"
 cp -a "$ACCOUNT_DIR/image_service/app.py" "$BACKUP/image-app.py"
+if [[ -e "$BROKER_DROPIN" ]]; then cp -a "$BROKER_DROPIN" "$BACKUP/runtime-home.conf"; fi
 TRANSACTION=1
 systemctl stop strgo-terminal strgo-terminal-broker strgo-image
 install -m 0755 "$RELEASE_DIR/strgo-terminal" "$INSTALL_DIR/.strgo-terminal.account-new"
 mv -f "$INSTALL_DIR/.strgo-terminal.account-new" "$INSTALL_DIR/strgo-terminal"
 install -m 0644 "$SOURCE_DIR/image_service/app.py" "$ACCOUNT_DIR/image_service/.app.account-new.py"
 mv -f "$ACCOUNT_DIR/image_service/.app.account-new.py" "$ACCOUNT_DIR/image_service/app.py"
+install -d -m 0755 "$BROKER_DROPIN_DIR"
+install -m 0644 "$PROJECT_DIR/deploy/strgo-terminal-broker-home.conf" "$BROKER_DROPIN"
+systemctl daemon-reload
 systemctl start strgo-image strgo-terminal-broker strgo-terminal
 ready=0
 for attempt in {1..20}; do
@@ -84,6 +96,7 @@ for attempt in {1..20}; do
     sleep 1
 done
 [[ "$ready" == 1 ]] || rollback 1
+python3 tests/broker-smoke.py
 python3 tests/smoke.py --env /etc/strgo-terminal/web.env
 TRANSACTION=0
 printf '账号终端已更新。使用既有 AI 生图账号访问 /terminal/。旧会话已结束。\n'

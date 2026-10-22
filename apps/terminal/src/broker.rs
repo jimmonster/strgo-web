@@ -60,6 +60,24 @@ mod workspace_tests {
         let second = argv(Target::Workspace { owner: "b".repeat(32), cols: 80, rows: 24 });
         assert_ne!(first.iter().find(|a| a.starts_with("type=volume")), second.iter().find(|a| a.starts_with("type=volume")));
     }
+
+    #[test]
+    fn pty_starts_from_root_even_when_the_service_home_is_unavailable() {
+        // portable-pty otherwise chdirs to HOME before exec. ProtectHome hides
+        // /root in the service; a missing HOME reproduces the same dependency.
+        let mut cmd = sandbox_command(&Target::Workspace { owner: "a".repeat(32), cols: 80, rows: 24 }, "probe", &settings());
+        cmd.get_argv_mut().truncate(1);
+        cmd.get_argv_mut()[0] = "/bin/pwd".into();
+        cmd.env("HOME", "/proc/strgo-terminal-unavailable-home");
+        let pair = native_pty_system().openpty(PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 }).unwrap();
+        let mut reader = pair.master.try_clone_reader().unwrap();
+        let mut child = pair.slave.spawn_command(cmd).expect("PTY must not try to enter the service HOME");
+        drop(pair.slave);
+        assert!(child.wait().unwrap().success());
+        let mut output = [0u8; 64];
+        let count = reader.read(&mut output).unwrap();
+        assert_eq!(std::str::from_utf8(&output[..count]).unwrap().trim(), "/");
+    }
 }
 
 impl Target {
@@ -188,6 +206,9 @@ async fn run_container(
 
 fn sandbox_command(target: &Target, name: &str, settings: &Settings) -> CommandBuilder {
     let mut cmd = CommandBuilder::new("/usr/bin/docker");
+    // portable-pty defaults to HOME rather than inheriting the service cwd.
+    // ProtectHome makes root's /root inaccessible in the broker namespace.
+    cmd.cwd("/");
     for arg in [
         "run", "--rm", "--interactive", "--tty", "--init", "--name", name,
         "--label", "com.strgo.terminal.sandbox=1",

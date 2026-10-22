@@ -8,6 +8,9 @@ Wants=network-online.target
 Type=simple
 User=root
 Group=strgo-terminal
+WorkingDirectory=/
+Environment=HOME=/run/strgo-terminal
+Environment=DOCKER_CONFIG=/run/strgo-terminal/docker
 EnvironmentFile=/etc/strgo-terminal/broker.env
 RuntimeDirectory=strgo-terminal
 RuntimeDirectoryMode=0750
