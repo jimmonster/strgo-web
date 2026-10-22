@@ -1,0 +1,5 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,stat} from 'node:fs/promises';
+import {parseHTML} from 'linkedom';
+test('all generated pages resolve local scripts/styles/images and internal links',async()=>{const info=JSON.parse(await readFile('dist/build-info.json','utf8'));assert.equal(info.paths.length,40);let checked=0;for(const path of info.paths){const file='dist/'+path.slice(info.base.length)+'index.html';const text=await readFile(file,'utf8');const {document}=parseHTML(text);assert.ok(document.querySelector('main h1'));const page=new URL(path,'http://meow.test');for(const element of document.querySelectorAll('[src],link[href],a[href]')){const target=element.getAttribute('src')||element.getAttribute('href');if(!target||target.startsWith('#')||/^(https?:|mailto:|data:)/.test(target))continue;const url=new URL(target,page);assert.ok(url.pathname.startsWith(info.base));const relative=url.pathname.slice(info.base.length);const local='dist/'+relative+(url.pathname.endsWith('/')?'index.html':'');await stat(local);checked++;}}assert.ok(checked>1000);});

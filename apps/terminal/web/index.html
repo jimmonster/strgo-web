@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080c12">
+  <meta name="robots" content="noindex,nofollow">
+  <title>STRGO · SSH 终端</title>
+  <link rel="stylesheet" href="/terminal/vendor/xterm.css">
+  <link rel="stylesheet" href="/terminal/style.css">
+  <script defer src="/terminal/vendor/xterm.js"></script>
+  <script defer src="/terminal/vendor/addon-fit.js"></script>
+  <script defer src="/terminal/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="返回 STRGO 首页"><span class="brand-symbol">&gt;_</span> STRGO <span class="brand-path">/ terminal</span></a>
+    <div class="topbar-actions"><span class="sandbox-badge"><span class="dot"></span>独立沙箱</span><button id="logout" class="text-button" type="button" hidden>退出</button></div>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="intro"><p class="eyebrow">YOUR SERVER. ANYWHERE.</p><h1>把终端带在身边。</h1><p>打开浏览器，连接你的 SSH 服务器。</p></div>
+      <section id="access-panel" class="card">
+        <div class="card-heading"><span class="step">01</span><h2>访问验证</h2></div>
+        <form id="login-form">
+          <label for="access-token">终端访问口令</label>
+          <input id="access-token" type="password" autocomplete="current-password" placeholder="输入部署时生成的口令" required maxlength="256">
+          <button id="login-button" class="primary-button" type="submit">解锁终端 <span aria-hidden="true">↗</span></button>
+          <p id="login-message" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+      <details id="connection-details" class="card" open>
+        <summary class="card-heading"><span class="step">02</span><h2>SSH 连接</h2><span class="collapse-icon" aria-hidden="true">⌄</span></summary>
+        <form id="connect-form">
+          <fieldset id="connection-fields" disabled>
+            <label for="host">服务器地址</label>
+            <input id="host" name="host" type="text" inputmode="url" placeholder="公网 IP 或域名" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="253">
+            <div class="form-row"><div><label for="username">用户名</label><input id="username" name="username" type="text" value="root" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="64"></div><div class="port-field"><label for="port">端口</label><input id="port" name="port" type="number" inputmode="numeric" value="22" min="1" max="65535" required></div></div>
+            <label class="check-label"><input id="remember-target" type="checkbox"> 记住服务器地址与用户名</label>
+            <p class="help-text">SSH 密码在连接后输入。首次连接，请核对终端显示的主机指纹再输入 yes。</p>
+            <button id="connect-button" class="primary-button" type="submit">新建 SSH 会话 <span aria-hidden="true">→</span></button>
+          </fieldset>
+          <p id="connect-message" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </details>
+      <div class="sandbox-note"><span class="shield" aria-hidden="true">◇</span><div><strong>每次连接，一个新沙箱</strong><p>SSH 客户端在隔离容器中运行，断开即销毁。远端命令在你的 SSH 服务器执行。</p></div></div>
+      <a class="home-link" href="/">← 返回 STRGO</a>
+    </aside>
+    <section class="terminal-panel" aria-label="SSH 终端">
+      <div class="terminal-heading"><div class="terminal-title"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span id="target-label">尚未连接</span></div><div class="terminal-actions"><span id="status" class="status" data-state="idle">待连接</span><button id="disconnect" type="button" class="small-button" disabled>断开</button></div></div>
+      <div class="terminal-stage">
+        <div id="terminal"></div>
+        <div id="terminal-empty" class="terminal-empty"><span class="terminal-glyph" aria-hidden="true">&gt;_</span><h2>你的下一条命令，从这里开始。</h2><p>连接后可运行 shell、vim、top 或 tmux。</p><span class="empty-command" aria-hidden="true">ssh user@your-server<span class="cursor-block"></span></span></div>
+      </div>
+      <nav id="keys" class="keybar" aria-label="终端快捷键"><button type="button" data-key="esc" disabled>Esc</button><button type="button" data-key="tab" disabled>Tab</button><button type="button" id="ctrl-key" aria-pressed="false" disabled>Ctrl</button><button type="button" data-key="interrupt" disabled>Ctrl+C</button><button type="button" data-key="up" aria-label="上方向键" disabled>↑</button><button type="button" data-key="down" aria-label="下方向键" disabled>↓</button><button type="button" data-key="left" aria-label="左方向键" disabled>←</button><button type="button" data-key="right" aria-label="右方向键" disabled>→</button><button type="button" data-key="enter" disabled>Enter</button><button type="button" id="paste" disabled>粘贴</button><button type="button" id="font-size" aria-label="调整终端字号">A±</button></nav>
+      <div id="mobile-input-bar" class="mobile-input-bar"><label class="sr-only" for="mobile-input">手机整行输入</label><input id="mobile-input" type="text" inputmode="text" placeholder="整行输入命令 / 密码" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" disabled><button id="secret-input" type="button" class="small-button" aria-pressed="false" disabled>隐藏输入</button><button id="submit-input" type="button" class="small-button" disabled>发送 ↵</button></div>
+      <footer class="terminal-footer"><span id="dimensions">80 × 24</span><span id="session-clock">SESSION —</span><span>UTF-8 · xterm-256color</span></footer>
+    </section>
+  </main>
+  <footer class="site-legal"><a class="icp-link" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" lang="zh-CN">渝ICP备2026024419号-1</a></footer>
+  <noscript>请启用 JavaScript 以使用 SSH 终端。</noscript>
+</body>
+</html>

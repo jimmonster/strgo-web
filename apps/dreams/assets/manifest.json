@@ -1,0 +1,186 @@
+{
+  "version": "1.0",
+  "date": "2026-10-15",
+  "images": [
+    {
+      "file": "art/dream-01.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 148420,
+      "sha256": "8d8e7761ed41aa41f4a77ee8879f625736db46f176358e9ba676a61e34472828",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/dream-02.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 159966,
+      "sha256": "466825232429b8e32b14ea343ac6bc0e3b6fe57d90a43aca41856854715fbe93",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/dream-03.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 109646,
+      "sha256": "68d157b1981a715bba2b3db653cadbbd7f5df8be6bd551c69c74103405c4c7bf",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/dream-04.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 45044,
+      "sha256": "d4752f5194cfca46b528c858447e94fd4543a22fb9719bbce432bf54247ff5cc",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/dream-05.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 119704,
+      "sha256": "8876235c3a4a3b1739ca108e4e72ad08cd987d619b7af160148bacd84ad7fc67",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/dream-06.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 138112,
+      "sha256": "b28afafd87deae0f779091a1b3bd2445d93b4d54e8e5a6ee565100bc5f049adb",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/dream-07.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 128050,
+      "sha256": "083c60fe0e5688fdc0262d581b6c9d61dbfa33c4e06152e20e448b2e2e7d41e5",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/dream-08.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 143014,
+      "sha256": "6ad38d135a5d02fadac9fde676a40f792dabc6e13a087abc0f5ba8d6491c8d05",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/film-01.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 180750,
+      "sha256": "ac6698c175dd6b219e7e2337ae46b0c86e69a13f9cfbb76ae7dcc6e562a61047",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/film-02.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 159966,
+      "sha256": "466825232429b8e32b14ea343ac6bc0e3b6fe57d90a43aca41856854715fbe93",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/film-03.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 116274,
+      "sha256": "43bbae581cd9307f3c2f6847529e206d4b4ee0c1765285edb273da5eb63a9046",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/film-04.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 45044,
+      "sha256": "d4752f5194cfca46b528c858447e94fd4543a22fb9719bbce432bf54247ff5cc",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/film-05.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 113102,
+      "sha256": "af6410a7c9ceecee48d1a371819cb0cff00cef29334ecb23bc733c4087406b66",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/film-06.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 144428,
+      "sha256": "3fd546c746ffcd220a599fedb331e6a9339eaa7d81f40e5ed6926d78931eb527",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/film-07.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 133510,
+      "sha256": "07abfae834d51f6d8e676b76fc55e6fd751338f0aab92549cdc02a67b397cfc3",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/film-08.webp",
+      "width": 640,
+      "height": 840,
+      "bytes": 138972,
+      "sha256": "b14bec3321ee8c85cc6d7a3506d46e89d902db123c4fe5c2de40792899edd285",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/hero-mobile.webp",
+      "width": 720,
+      "height": 1240,
+      "bytes": 199504,
+      "sha256": "7f2c45c7fdcc00f18d6adbbd204a978f6f591b92063a7771085860f03f3b9341",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/hero.webp",
+      "width": 2400,
+      "height": 720,
+      "bytes": 326064,
+      "sha256": "2ff594a49bb101e0c5553064e32e2b1688cc7c33508d47b559449de61445c899",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/paper.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 25666,
+      "sha256": "4d15e6288293b6f5a0e8ee083958bd64b331ebd43c5a08dc813bade55160475d",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    },
+    {
+      "file": "art/themes.webp",
+      "width": 2400,
+      "height": 640,
+      "bytes": 237686,
+      "sha256": "ec10d5c9f3808830b12b7f17c890dd857a677cf3faf071d3c07e84617326d0e2",
+      "source": "Original deterministic Canvas painting; scripts/paintings.js",
+      "type": "independent artwork; not a film still"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+node_modules/
+dist/
+artifacts/render-input.json
+artifacts/animation-transforms.bin

@@ -1,0 +1,65 @@
+{
+  "filters": [
+    {"id": "all", "name": "全部"},
+    {"id": "life", "name": "治愈生活"},
+    {"id": "sci-fi", "name": "科幻想象"},
+    {"id": "art", "name": "艺术几何"},
+    {"id": "tools", "name": "实用工具"}
+  ],
+  "spaces": [
+    {"id": "terminal", "name": "终端", "description": "回到熟悉的命令行。", "path": "/terminal", "tags": ["工具", "开发"], "categories": ["tools"], "style": "terminal", "eyebrow": "WORKSPACE", "symbol": ">_"},
+    {"id": "room", "name": "个人卧室", "description": "日光、木香和窗外的花园。", "path": "/home", "tags": ["生活", "治愈"], "categories": ["life"], "style": "room", "eyebrow": "PERSONAL SPACE", "symbol": "☀"},
+    {"id": "dance", "name": "舞蹈舞台", "description": "同一个节拍，无限次起舞。", "path": "/dance", "tags": ["动态", "艺术"], "categories": ["art"], "style": "stage", "eyebrow": "MOVEMENT STUDY", "symbol": "✳"},
+    {"id": "nexus", "name": "星际穿越", "description": "穿过引力的边界，抵达更远的星辰。", "path": "/nexus/", "tags": ["科幻", "探索"], "categories": ["sci-fi"], "style": "nexus", "eyebrow": "NEXUS INTERSTELLAR", "symbol": "◉"},
+    {"id": "dreams", "name": "梦境花园", "description": "走进花田、水光与记忆交织的八个梦。", "path": "/dreams/", "tags": ["梦境", "艺术"], "categories": ["life", "art"], "style": "dream", "eyebrow": "NATURE & MEMORY", "symbol": "夢"},
+    {"id": "polyverse", "name": "多维几何宇宙", "description": "旋转高维立方体，探索轨道、分形与几何法则。", "path": "/polyverse/", "tags": ["几何", "探索"], "categories": ["sci-fi", "art"], "style": "polyverse", "eyebrow": "POLYVERSE", "symbol": "◇"},
+    {"id": "meow", "name": "粉色猫咪天堂", "description": "走进云朵与糖果色的猫咪世界。", "path": "/meow/", "tags": ["猫咪", "治愈"], "categories": ["life"], "style": "meow", "eyebrow": "MEOW PARADISE", "symbol": "♧"},
+    {"id": "swarmera", "name": "虫族狂潮", "description": "巨型女皇、虫族机甲与实时三维虫族战场。", "path": "/swarmera/", "tags": ["科幻", "概念"], "categories": ["sci-fi"], "style": "swarmera", "eyebrow": "SWARMERA", "symbol": "⌁"}
+  ],
+  "routes": [
+    {"id": "wander", "name": "轻松漫游", "eyebrow": "SLOW WANDER", "description": "从日常的一角，走进柔软的想象。", "stops": ["room", "meow", "dreams"], "action": "开始轻松漫游"},
+    {"id": "imagine", "name": "科幻与想象", "eyebrow": "BEYOND THE EVERYDAY", "description": "向星辰、维度与未知的生命出发。", "stops": ["nexus", "polyverse", "swarmera"], "action": "开始科幻探索"},
+    {"id": "author", "name": "先认识作者", "eyebrow": "MEET THE CREATOR", "description": "从作品背后的人开始，慢慢认识这个小宇宙。", "stops": ["about", "projects", "contact"], "action": "认识 STRGO"}
+  ],
+  "projects": [
+    {
+      "id": "galaxy", "slug": "galactic-frontier", "name": "银河舰队", "englishName": "Galactic Frontier",
+      "description": "三维银河、星际舰队与交互能量场，构成一个可以探索的想象空间。",
+      "category": "CREATIVE CODING / WEBGL", "type": "三维网页交互", "status": "银河归档可体验",
+      "contentState": "introduction", "theme": "#00dfd8", "cover": "galaxy", "coverLabel": "银河舰队的原有银河视觉插画",
+      "previewCaption": "主页原有银河视觉插画", "tags": ["WebGL", "三维场景", "网页交互"],
+      "experience": {"href": "/archive/", "label": "体验原版银河", "description": "在银河归档中观察飞船、机甲与机器人沿轨道运行，拖动调整视角，或选择单位与能量场互动。"},
+      "secondaryExperience": {"href": "/#lab", "label": "探索交互实验"},
+      "chapters": []
+    },
+    {
+      "id": "terminal", "slug": "terminal-anywhere", "name": "随身终端", "englishName": "Terminal, Anywhere",
+      "description": "面向移动使用场景的浏览器终端项目。",
+      "category": "DEVELOPER TOOLS / BROWSER", "type": "浏览器终端", "status": "沿用现有终端入口",
+      "contentState": "introduction", "theme": "#ff0080", "cover": "terminal", "coverLabel": "随身终端的原有主页视觉示意，非连接会话截图",
+      "previewCaption": "主页原有终端视觉示意", "tags": ["浏览器", "工具", "移动使用场景"],
+      "experience": {"href": "/terminal", "label": "打开已有终端", "description": "通过原有入口访问浏览器终端。继续使用现有服务的访问条件与权限；主站不会自动建立连接。本地预览的终端入口会引导至已配置的服务地址。"},
+      "secondaryExperience": null,
+      "chapters": []
+    },
+    {
+      "id": "optical", "slug": "digital-universe", "name": "数字宇宙", "englishName": "Digital Universe",
+      "description": "STRGO 个人主页的视觉与交互探索，围绕光、粒子与动态体验展开。",
+      "category": "VISUAL DESIGN / MOTION SYSTEM", "type": "个人创作者主页", "status": "当前主站",
+      "contentState": "introduction", "theme": "#7928ca", "cover": "optical", "coverLabel": "数字宇宙原有主页光效视觉预览",
+      "previewCaption": "主页原有光效视觉预览", "tags": ["视觉表达", "光与粒子", "网页交互"],
+      "experience": {"href": "/#home", "label": "进入数字宇宙", "description": "从主站首屏出发，观察光与粒子的动态变化，浏览空间入口、作品与交互实验。首页可暂停动态效果，也会遵循系统的减少动态效果设置。"},
+      "secondaryExperience": null,
+      "chapters": []
+    }
+  ],
+  "updates": [],
+  "author": {
+    "introduction": "你好，我是 STRGO。这里收录了我的网页交互、三维场景与视觉创作探索。我喜欢把脑海里的画面变成可以进入、可以操作的小世界，也会在这里持续记录作品的变化。",
+    "focus": ["网页交互", "三维场景", "创意编程", "视觉表达"],
+    "featuredProjects": ["galaxy", "terminal", "optical"],
+    "contactText": "有个有趣的想法，或想聊聊这里的作品？欢迎写信给我。",
+    "collaboration": null,
+    "now": null
+  }
+}

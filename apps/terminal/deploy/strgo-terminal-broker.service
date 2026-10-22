@@ -1,0 +1,36 @@
+[Unit]
+Description=STRGO per-session SSH sandbox broker
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=strgo-terminal
+EnvironmentFile=/etc/strgo-terminal/broker.env
+RuntimeDirectory=strgo-terminal
+RuntimeDirectoryMode=0750
+ExecStart=/usr/local/lib/strgo-terminal/strgo-terminal broker
+ExecStopPost=/usr/local/lib/strgo-terminal/cleanup.sh
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=25
+KillMode=mixed
+UMask=0007
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/run/strgo-terminal
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+MemoryMax=256M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target
+

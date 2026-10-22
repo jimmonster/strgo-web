@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="{{scene_color}}">
+  <meta name="description" content="{{scene_description}}">
+  <title>{{scene_title}} · STRGO</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/scenes/scenes.css?v={{asset_version}}">
+  <script src="/assets/scenes/boot.js?v={{asset_version}}" defer></script>
+</head>
+<body class="scene-page {{scene_mode}}-page" data-scene="{{scene_mode}}" data-state="loading">
+  <header class="scene-header">
+    <a class="scene-brand" href="/" aria-label="STRGO 返回主页">STRGO<span>®</span></a>
+    <nav aria-label="场景导航"><a href="/">主页</a><a href="/home" {{home_current}}>个人卧室</a><a href="/dance" {{dance_current}}>舞蹈舞台</a><a href="/nexus/">星际穿越</a><a href="/dreams/">DREAMS</a><a href="/terminal">终端 ↗</a></nav>
+    <span class="header-note">A SMALL WORLD OF MY OWN</span>
+  </header>
+  <main class="scene-main">
+    <div class="scene-heading"><p class="scene-eyebrow"><span></span> {{scene_eyebrow}}</p><h1>{{scene_title}}<span>{{scene_english}}</span></h1><p class="scene-description">{{scene_description}}</p></div>
+    <div class="scene-coordinate" aria-hidden="true">{{scene_coordinate}}</div>
+    <canvas id="scene-canvas" tabindex="0" role="img" aria-label="{{canvas_description}}" aria-describedby="scene-help"></canvas>
+    <div id="scene-loading" class="scene-overlay" role="status"><span class="loading-orbit"></span><strong>正在构建这一小片世界</strong><span>准备空间、光线与细节…</span><p>如加载停滞，可以重新加载或返回主页。</p><div><a href="">重新加载</a><a href="/">返回主页 ↗</a></div></div>
+    <div id="scene-error" class="scene-overlay" role="alert" hidden><span class="error-symbol">⌁</span><strong>暂时无法进入场景</strong><p id="scene-error-detail">请重试，或换用支持 WebGL 的浏览器。</p><div><button type="button" data-action="retry">重试加载</button><a href="/">返回主页 ↗</a></div></div>
+    <noscript><div class="scene-overlay"><strong>需要启用 JavaScript 才能浏览三维场景。</strong><a href="/">返回主页</a></div></noscript>
+    <aside class="scene-caption"><span class="caption-index">{{scene_index}} / 02</span><span>{{scene_caption}}</span></aside>
+    {{scene_controls}}
+    <p id="scene-status" class="scene-status" role="status" aria-live="polite">正在加载场景</p>
+  </main>
+  <footer class="scene-footer"><div class="scene-footer-links"><a href="/">↖ 返回主页</a>{{icp_link}}</div><p id="scene-help">拖动旋转 · 滚轮 / 双指缩放<span>聚焦场景后可用方向键、+ / − 和 Home</span></p><span>BUILT WITH CURIOSITY, IN 3D.</span></footer>
+</body>
+</html>

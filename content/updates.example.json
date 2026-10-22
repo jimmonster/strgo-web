@@ -1,0 +1,9 @@
+{
+  "id": "site-guide-preview",
+  "date": null,
+  "type": "改进",
+  "title": "导览与作品介绍的预览记录",
+  "description": "本地预览新增探索路线、作品介绍和更新记录入口。",
+  "link": {"href": "/#spaces", "label": "查看探索导览"},
+  "published": false
+}

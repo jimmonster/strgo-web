@@ -1,0 +1,92 @@
+[
+  {
+    "id": "queen",
+    "triangles": 27596,
+    "meshes": 62,
+    "estimatedDrawCalls": 62
+  },
+  {
+    "id": "breaker",
+    "triangles": 14776,
+    "meshes": 30,
+    "estimatedDrawCalls": 30
+  },
+  {
+    "id": "bulwark",
+    "triangles": 14680,
+    "meshes": 32,
+    "estimatedDrawCalls": 32
+  },
+  {
+    "id": "siege",
+    "triangles": 14032,
+    "meshes": 27,
+    "estimatedDrawCalls": 27
+  },
+  {
+    "id": "razorwing",
+    "triangles": 10456,
+    "meshes": 12,
+    "estimatedDrawCalls": 12
+  },
+  {
+    "id": "mechs",
+    "triangles": 14776,
+    "meshes": 30,
+    "estimatedDrawCalls": 30
+  },
+  {
+    "id": "home",
+    "triangles": 267024,
+    "meshes": 765,
+    "estimatedDrawCalls": 166
+  },
+  {
+    "id": "world",
+    "triangles": 210276,
+    "meshes": 632,
+    "estimatedDrawCalls": 33
+  },
+  {
+    "id": "factions",
+    "triangles": 256920,
+    "meshes": 746,
+    "estimatedDrawCalls": 147
+  },
+  {
+    "id": "fallen-city",
+    "triangles": 203132,
+    "meshes": 626,
+    "estimatedDrawCalls": 27
+  },
+  {
+    "id": "rift-gate",
+    "triangles": 210276,
+    "meshes": 632,
+    "estimatedDrawCalls": 33
+  },
+  {
+    "id": "hive-origin",
+    "triangles": 207124,
+    "meshes": 632,
+    "estimatedDrawCalls": 33
+  },
+  {
+    "id": "swarm",
+    "triangles": 256920,
+    "meshes": 746,
+    "estimatedDrawCalls": 147
+  },
+  {
+    "id": "defenders",
+    "triangles": 209804,
+    "meshes": 640,
+    "estimatedDrawCalls": 41
+  },
+  {
+    "id": "symbiotes",
+    "triangles": 207124,
+    "meshes": 632,
+    "estimatedDrawCalls": 33
+  }
+]

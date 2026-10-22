@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#040407">
+  <title>{{page_title}}</title>
+  <meta name="description" content="{{page_description}}">
+  <meta property="og:type" content="{{page_type}}">
+  <meta property="og:title" content="{{page_title}}">
+  <meta property="og:description" content="{{page_description}}">
+  <meta property="og:url" content="{{page_url}}">
+  <meta property="og:image" content="{{page_image}}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{{page_image_alt}}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="{{page_url}}">
+  <link rel="icon" href="/assets/favicon.svg">
+  <link rel="stylesheet" href="/assets/globals.css?v={{asset_version}}">
+  <link rel="stylesheet" href="/assets/content.css?v={{asset_version}}">
+</head>
+<body class="content-page">
+  <a class="skip-link" href="#main">跳到正文</a>
+  <div class="content-glow" aria-hidden="true"></div>
+  <header class="content-header">
+    <a class="brand" href="/" aria-label="返回 STRGO 主站">STRGO<span class="brand-dot">.</span></a>
+    <nav aria-label="内容导航"><a href="/">返回主站</a><a href="/#projects">返回作品区</a><a href="/updates/">创作记录</a></nav>
+  </header>
+  <main id="main" class="section content-main">{{page_body}}</main>
+  <footer class="section content-footer"><a href="/#contact">联系 {{name}} ↗</a><span class="mono">© {{year}} {{name}} · MADE WITH CURIOSITY.</span>{{icp_link}}</footer>
+</body>
+</html>

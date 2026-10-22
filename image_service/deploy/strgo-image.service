@@ -1,0 +1,31 @@
+[Unit]
+Description=STRGO private image playground API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=strgo-image
+Group=strgo-image
+WorkingDirectory=/opt/strgo-image
+EnvironmentFile=/etc/strgo-image.env
+ExecStart=/opt/strgo-image/.venv/bin/python -m image_service.app
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=240
+StateDirectory=strgo-image
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/strgo-image
+MemoryMax=1536M
+
+[Install]
+WantedBy=multi-user.target

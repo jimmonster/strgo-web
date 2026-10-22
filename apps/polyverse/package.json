@@ -1,0 +1,24 @@
+{
+ "name": "polyverse",
+ "version": "1.0.0",
+ "private": true,
+ "type": "module",
+ "description": "An interactive universe of pure geometry",
+ "scripts": {
+  "dev": "node scripts/build.mjs && node scripts/serve.mjs",
+  "start": "node scripts/serve.mjs",
+  "build": "node scripts/build.mjs",
+  "preview": "node scripts/serve.mjs --dist",
+  "test": "node tests/math.test.mjs && node tests/state.test.mjs && node tests/dom.mjs",
+  "test:browser": "node tests/browser.mjs",
+  "test:deployment": "python3 tests/deployment.py"
+ },
+ "dependencies": {
+  "three": "0.160.1"
+ },
+ "devDependencies": {
+  "@napi-rs/canvas": "0.1.97",
+  "linkedom": "0.18.12",
+  "playwright-core": "1.59.1"
+ }
+}

@@ -1,0 +1,29 @@
+# Dependencies and generated builds
+node_modules/
+**/dist/
+**/target/
+**/.build/
+**/__pycache__/
+**/.pytest_cache/
+**/artifacts/
+!apps/nexus/artifacts/
+apps/nexus/artifacts/*
+!apps/nexus/artifacts/.gitkeep
+!apps/swarmera/artifacts/
+apps/swarmera/artifacts/*
+!apps/swarmera/artifacts/model-statistics.json
+
+# Local runtime data and secrets
+**/.env
+**/.env.*
+!**/.env.example
+**/*.sqlite3
+**/*.sqlite3-*
+**/*.fernet
+**/.image-data/
+**/.image-venv/
+
+# Local archives and logs
+**/*.zip
+**/*.log
+.DS_Store

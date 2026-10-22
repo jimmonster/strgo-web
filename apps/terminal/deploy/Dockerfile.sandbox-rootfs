@@ -1,0 +1,18 @@
+# No remote image or frontend is required; ADD extracts the verified local archive.
+FROM scratch
+ADD alpine-minirootfs.tar.gz /
+# Bootstrap HTTPS trust before installing Alpine's own CA package.
+COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+ARG ALPINE_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/alpine
+RUN printf '%s/v3.21/main\n%s/v3.21/community\n' "$ALPINE_MIRROR" "$ALPINE_MIRROR" > /etc/apk/repositories \
+    && apk upgrade --no-cache \
+    && apk add --no-cache openssh-client ca-certificates \
+    && addgroup -g 10001 terminal \
+    && adduser -D -u 10001 -G terminal -h /home/terminal terminal \
+    && mkdir -p /opt/terminal-key \
+    && chown 10001:10001 /opt/terminal-key
+USER 10001:10001
+WORKDIR /home/terminal
+ENV HOME=/home/terminal TERM=xterm-256color
+ENTRYPOINT ["/usr/bin/ssh"]
+

@@ -1,0 +1,23 @@
+{
+  "name": "nexus-interstellar",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A real-time cinematic interstellar observation deck",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "node server.mjs --dir dist",
+    "test": "node tests/interactions.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "test:shaders": "node tests/export-scene.mjs && python3 tests/render-offscreen.py"
+  },
+  "dependencies": {
+    "three": "0.160.1"
+  },
+  "devDependencies": {
+    "linkedom": "0.18.12",
+    "playwright-core": "1.59.1"
+  }
+}

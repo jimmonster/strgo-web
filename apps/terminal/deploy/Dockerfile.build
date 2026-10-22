@@ -1,0 +1,21 @@
+ARG NODE_IMAGE=docker.io/library/node:22-bookworm-slim
+ARG RUST_IMAGE=docker.io/library/rust:1.88-bullseye
+FROM ${NODE_IMAGE} AS assets
+WORKDIR /work
+COPY package*.json ./
+RUN npm install --ignore-scripts --no-audit --no-fund
+COPY scripts/prepare-assets.mjs ./scripts/prepare-assets.mjs
+RUN node scripts/prepare-assets.mjs
+
+FROM ${RUST_IMAGE} AS builder
+WORKDIR /work
+COPY . .
+COPY --from=assets /work/web/vendor ./web/vendor
+RUN if [ ! -f Cargo.lock ]; then cargo generate-lockfile; fi
+RUN cargo test --locked && cargo build --release --locked
+
+FROM scratch
+COPY --from=builder /work/target/release/strgo-terminal /strgo-terminal
+COPY --from=builder /work/Cargo.lock /Cargo.lock
+COPY --from=assets /work/package-lock.json /package-lock.json
+

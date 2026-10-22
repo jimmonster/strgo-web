@@ -1,0 +1,17 @@
+{
+  "name": "STRGO",
+  "domain": "strgo.com",
+  "BASE_ORIGIN": "https://strgo.com",
+  "TERMINAL_TARGET_URL": "https://strgo.com/terminal/",
+  "tagline": "保持好奇，慢慢把想法变成现实。",
+  "description": "STRGO 的个人宇宙。以代码构建想象，用设计连接未来。探索交互实验、创作项目和无限可能。",
+  "about": "这里是我在互联网的一小块宇宙。喜欢技术的可能性，也珍惜生活的真实感。在这里记录探索、分享想法，把脑海里的画面一点点造出来。保持好奇，持续创造，不给想象力设定边界。",
+  "email": "jim@strgo.com",
+  "github": "",
+  "icp_number": "渝ICP备2026024419号-1",
+  "scheme": "https",
+  "city": "",
+  "timezone": "Asia/Shanghai",
+  "coordinates": "",
+  "contributions": null
+}

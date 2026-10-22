@@ -1,0 +1,23 @@
+{
+  "name": "dreams-nature-and-memory",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "art": "node scripts/generate-art.mjs",
+    "test": "node tests/acceptance.mjs && node tests/reflections.mjs",
+    "test:full": "npm test && DREAMS_RECORD=1 DREAMS_STRESS=1 node tests/browser.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "test:shaders": "node scripts/export-water-shader.mjs && python3 scripts/check-water-shader.py"
+  },
+  "dependencies": {
+    "three": "0.160.1"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "0.1.97",
+    "linkedom": "0.18.12",
+    "playwright-core": "1.59.1"
+  }
+}

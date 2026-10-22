@@ -1,0 +1,4 @@
+node_modules/
+artifacts/render/
+*.log
+.DS_Store

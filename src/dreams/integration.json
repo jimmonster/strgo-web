@@ -1,0 +1,7 @@
+{
+  "route": "/dreams/",
+  "chapters": "/dreams/:id/",
+  "source": "dreams/dist",
+  "contentMode": "design",
+  "entries": 9
+}

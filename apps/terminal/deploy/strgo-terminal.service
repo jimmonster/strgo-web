@@ -1,0 +1,31 @@
+[Unit]
+Description=STRGO mobile SSH terminal web service
+After=strgo-terminal-broker.service network-online.target
+Requires=strgo-terminal-broker.service
+
+[Service]
+Type=simple
+User=strgo-terminal
+Group=strgo-terminal
+EnvironmentFile=/etc/strgo-terminal/web.env
+ExecStart=/usr/local/lib/strgo-terminal/strgo-terminal serve
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+InaccessiblePaths=-/var/run/docker.sock -/run/docker.sock
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+MemoryMax=256M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target
+

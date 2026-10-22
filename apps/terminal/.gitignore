@@ -1,0 +1,9 @@
+/target/
+/node_modules/
+/.build/
+/web/vendor/*
+!/web/vendor/.gitkeep
+/artifacts/
+*.env
+__pycache__/
+

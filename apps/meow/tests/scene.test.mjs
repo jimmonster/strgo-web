@@ -1,0 +1,12 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {SceneHost} from '../modules/scene.js';
+import {cats} from '../modules/catalog.js';
+import {createCat} from '../modules/cat-model.js';
+import {batchModel} from '../modules/batch-model.js';
+globalThis.requestAnimationFrame=()=>1;globalThis.cancelAnimationFrame=()=>{};globalThis.document={hidden:false};
+function host(){const motion={frozen:false};const h=new SceneHost({motion});Object.assign(h,{visible:true,previous:0,action:'idle',actionElapsed:0,manual:false,scenePaused:false,instances:[createCat(cats[0],{quality:'low'})],decor:[],props:[],look:[0,0],container:{dataset:{mode:'live'}},renderer:{render(){},setPixelRatio(){}},scene:{},camera:{}});return h;}
+test('frozen clock permits one manual action, then returns to frozen idle without elapsed background replay',()=>{const h=host();h.motion.frozen=true;h.frame(1000);const frozen=h.time;h.play('paw');for(let i=1;i<=60;i++)h.frame(1000+i*50);assert.equal(h.time,frozen);assert.equal(h.action,'idle');assert.equal(h.manual,false);const rotation=h.instances[0].rig.head.rotation.y;h.frame(6000);assert.equal(h.instances[0].rig.head.rotation.y,rotation);h.instances[0].dispose();});
+test('hidden page performs no model updates; long elapsed intervals are clamped',()=>{const h=host();h.frame(1000);document.hidden=true;h.frame(100000);assert.equal(h.time,0);document.hidden=false;h.frame(200000);assert.ok(h.time<=.05);h.instances[0].dispose();});
+test('rapid actions replace current action rather than accumulating an unbounded queue',()=>{const h=host();for(let i=0;i<100;i++)h.play(i%2?'pet':'paw');assert.equal(h.action,'pet');assert.equal(h.actionElapsed,0);assert.equal(h.queue,undefined);h.instances[0].dispose();});
+test('batched real rig keeps head/eyes/paws separate and stays below home geometry/draw budgets',()=>{let draws=0,triangles=0;for(const id of ['milk','mocha','boba','luna','atlas','milo']){const c=cats.find(c=>c.id===id);const quality=id==='milk'?'high':'low';const m=batchModel(createCat(c,{quality}),quality);m.update(1,'paw',.5);assert.ok(m.rig.armL.rotation.x<0);assert.ok(m.rig.eyeL.children.some(o=>o.isMesh));m.group.traverseVisible(o=>{if(o.isMesh&&o.material.visible){draws++;triangles+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3;}});m.dispose();}assert.ok(draws<130);assert.ok(triangles<240000);});

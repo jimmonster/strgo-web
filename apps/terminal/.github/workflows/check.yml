@@ -1,0 +1,17 @@
+name: terminal-checks
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - run: npm install --ignore-scripts --no-audit && npm run assets
+      - run: cargo generate-lockfile && cargo test --locked
+      - run: node tests/ui.test.mjs
+      - run: python3 tests/check-files.py && python3 -m unittest discover -s tests -p 'test_*.py'
+      - run: bash -n publish.sh deploy.sh allow-ssh.sh scripts/build-native.sh scripts/cleanup.sh tests/sandbox-check.sh
+

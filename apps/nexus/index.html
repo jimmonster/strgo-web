@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#030711"><meta name="description" content="NEXUS INTERSTELLAR — 从这颗蓝色星球出发，探索人类的下一个家园。实时交互星际观景台。">
+  <title>NEXUS INTERSTELLAR · 星际穿越</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+  <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M5 8h14M9 15h10"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6z"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM17 8c3 2 3 6 0 8M20 5c5 4 5 10 0 14"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-cross" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></symbol>
+  </defs></svg>
+  <a class="skip-link" href="#main">跳转到主要内容</a>
+  <div id="universe" aria-hidden="true"><canvas id="scene"></canvas><canvas id="fallback"></canvas><div class="scene-vignette"></div></div>
+  <div class="scene-ui" aria-hidden="true">
+    <div class="observatory-label"><span class="crosshair">+</span><span>GARGANTUA <b>／</b> SINGULARITY</span><small>GRAVITATIONAL FIELD ACTIVE</small></div>
+    <div class="holo holo-left"><span class="holo-kicker">REAL-TIME NAVIGATION <i></i></span><div class="holo-body"><div class="holo-globe"></div><div class="holo-data">SOLAR SYSTEM<br><b>12.4 <small>LY</small></b><span>STATUS <em>READY</em></span></div></div><div class="holo-bottom">NEXUS DEEP SPACE NETWORK <b>···</b></div></div>
+    <div class="holo holo-middle"><span class="holo-kicker">FLIGHT TELEMETRY <i></i></span><svg viewBox="0 0 260 65"><path class="wave" d="M0 46h26l8-10 12 14 14-34 12 38 13-23 10 12h36l9-9 11 12 12-28 14 35 11-19 12 13h45"/><path class="chart-grid" d="M0 16h260M0 32h260M0 48h260M40 0v65M80 0v65M120 0v65M160 0v65M200 0v65M240 0v65"/></svg><div class="telemetry"><span>ETA <b>37 YEARS</b></span><span>FREQ <b id="frequency">1420.406</b></span></div></div>
+    <div class="station-sign">HUMANITY<span>FURTHER / TOGETHER</span></div>
+    <div class="floor-mark">DOCK 07 <span>◁ OBSERVATION DECK</span></div>
+  </div>
+  <div id="app">
+    <header class="site-header">
+      <button class="brand" data-action="home" aria-label="NEXUS 星际穿越首页"><span class="brand-orbit"><i></i><b></b></span><span class="brand-words">NEXUS<small>INTERSTELLAR</small></span></button>
+      <nav class="main-nav" aria-label="主导航">
+        <button class="nav-link active" data-action="home" aria-current="page">首页</button><button class="nav-link" data-panel="explore">探索</button><button class="nav-link" data-panel="destinations">目的地</button><button class="nav-link" data-panel="technology">星舰科技</button><button class="nav-link" data-panel="archives">宇宙档案</button><button class="nav-link" data-panel="about">关于我们</button>
+      </nav>
+      <div class="header-tools"><button class="icon-btn" data-panel="search" aria-label="搜索目的地与宇宙档案"><svg><use href="#i-search"/></svg></button><span class="tool-divider"></span><button class="login-btn" data-panel="account">登录 / 注册 <span>↗</span></button><button class="icon-btn menu-btn" data-panel="menu" aria-label="打开导航与设置菜单"><svg><use href="#i-menu"/></svg></button></div>
+    </header>
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="eyebrow"><span></span> BEYOND BORDERS <small>01 — ∞</small></div>
+        <div class="title-wrap"><svg class="title-orbit" viewBox="0 0 660 200" aria-hidden="true"><ellipse cx="317" cy="100" rx="305" ry="64" transform="rotate(-12 317 100)"/><ellipse class="orbit-light" cx="317" cy="100" rx="305" ry="64" transform="rotate(-12 317 100)"/></svg><h1 id="hero-title">星际穿越<span class="title-star" aria-hidden="true">✧</span></h1></div>
+        <h2>穿越时空的边界，抵达更辽阔的宇宙</h2>
+        <p class="hero-description">从这颗蓝色星球出发，跨越星系与时间，<br>探索未知的世界，寻找人类的下一个家园。</p>
+        <div class="hero-actions"><button class="primary-btn" id="journey-btn"><span>开启星际旅程</span><svg><use href="#i-arrow"/></svg></button><button class="trailer-btn" data-action="trailer"><span class="play-circle"><svg><use href="#i-play"/></svg></span><span>观看概念片<small>WATCH TRAILER</small></span></button></div>
+        <div class="hero-note"><span class="live-dot"></span> 宇宙无垠，探索不止 <span class="note-line"></span><span>EST. 2089</span></div>
+      </section>
+      <div class="discovery"><button data-panel="blackhole" aria-label="观测黑洞：未知的远方"><span class="discovery-play"><svg><use href="#i-play"/></svg><i></i></span><span class="discovery-text"><small>THE GREAT UNKNOWN</small>未知的远方<svg><use href="#i-arrow"/></svg></span></button><p>RA 18h 30m 56s <span>／</span> DEC −23° 02′ 14″</p></div>
+      <nav class="scene-presets" aria-label="观景场景"><span class="preset-label">VIEWPOINT</span><button data-preset="0" class="selected" aria-current="true" aria-label="01 默认观景台">01</button><button data-preset="1" aria-label="02 航线观测">02</button><button data-preset="2" aria-label="03 星舰科技">03</button><button data-preset="3" aria-label="04 家园计划">04</button><span class="preset-line"></span></nav>
+      <section class="destinations" aria-label="探索入口">
+        <div class="section-caption"><span><i></i> YOUR NEXT CHAPTER STARTS HERE</span><span>向未知，前行 <svg><use href="#i-arrow"/></svg></span></div>
+        <div class="card-grid">
+          <button class="portal-card" data-panel="explore"><div class="card-preview"><img src="./assets/galaxies.svg" alt="蔚蓝星球与城市灯光"><span class="card-drift"></span></div><span class="card-index">01 / GALAXIES</span><span class="card-content"><span><strong>100<span class="plus">+</span></strong><small>已发现星系</small></span><span class="card-arrow"><svg><use href="#i-arrow"/></svg></span></span></button>
+          <button class="portal-card" data-panel="destinations"><div class="card-preview"><img src="./assets/destinations.svg" alt="星际空间站与粉紫色星云"><span class="card-drift"></span></div><span class="card-index">02 / DESTINATIONS</span><span class="card-content"><span><strong>50<span class="plus">+</span></strong><small>可抵达目的地</small></span><span class="card-arrow"><svg><use href="#i-arrow"/></svg></span></span></button>
+          <button class="portal-card" data-panel="technology"><div class="card-preview"><img src="./assets/technology.svg" alt="深蓝环形行星的轨道"><span class="card-drift"></span></div><span class="card-index">03 / TECHNOLOGY</span><span class="card-content"><span><strong class="card-title">前沿科技</strong><small>曲率引擎 · 虫洞航行 · 宜居星球计划</small></span><span class="card-arrow"><svg><use href="#i-arrow"/></svg></span></span></button>
+          <button class="portal-card" data-panel="homeworld"><div class="card-preview"><img src="./assets/homeworld.svg" alt="宇航员站在新的家园地表"><span class="card-drift"></span></div><span class="card-index">04 / NEW HORIZONS</span><span class="card-content"><span><strong class="card-title">人类的下一个家园</strong><small>在更远的星辰，延续文明</small></span><span class="card-arrow"><svg><use href="#i-arrow"/></svg></span></span></button>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer"><div class="footer-identity"><div class="footer-motto"><span class="footer-cross">✦</span> EXPLORE A BRIGHTER UNIVERSE <small>探索，让文明延续。</small><a class="site-return" href="/">STRGO 主页 ↗</a></div><a class="icp-link" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" lang="zh-CN">渝ICP备2026024419号-1</a></div><div class="footer-stats"><span><i class="live-dot"></i><b data-count="12.4">12.4</b> LY<small>当前航行距离</small></span><span><b data-count="387">387</b><small>已加入的探索者</small></span><span><b>24/7</b><small>星际指挥中心</small></span><button class="icon-btn language-btn" data-panel="language" aria-label="语言设置：简体中文"><svg><use href="#i-globe"/></svg></button></div></footer>
+  </div>
+  <div class="scene-status"><span class="live-dot"></span><span id="scene-status-text">LIVE OBSERVATION</span><span class="status-quality" id="quality-status">AUTO</span></div>
+  <button id="skip-transition" hidden>跳过跃迁 <span>ESC ↗</span></button>
+  <div id="trailer-hud" hidden><span class="live-dot"></span> SCENE DEMO <span id="trailer-time">00:25</span><button id="end-trailer" aria-label="结束场景演示"><svg><use href="#i-close"/></svg></button><p id="trailer-caption">每一次仰望，都是一次出发。</p></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="main-dialog" aria-labelledby="dialog-title"><div class="dialog-top"><span id="dialog-kicker">NEXUS / EXPLORATION</span><button id="close-dialog" class="icon-btn" aria-label="关闭面板"><svg><use href="#i-close"/></svg></button></div><div class="dialog-inner"><h2 id="dialog-title"></h2><div id="dialog-content"></div></div><div class="dialog-bottom"><span class="live-dot"></span> LOCAL DEMO DATA <span>NEXUS INTERSTELLAR</span></div></dialog>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

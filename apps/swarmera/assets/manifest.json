@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "id": "queen",
+      "triangles": 27596,
+      "meshes": 62,
+      "estimatedDrawCalls": 62
+    },
+    {
+      "id": "breaker",
+      "triangles": 14776,
+      "meshes": 30,
+      "estimatedDrawCalls": 30
+    },
+    {
+      "id": "bulwark",
+      "triangles": 14680,
+      "meshes": 32,
+      "estimatedDrawCalls": 32
+    },
+    {
+      "id": "siege",
+      "triangles": 14032,
+      "meshes": 27,
+      "estimatedDrawCalls": 27
+    },
+    {
+      "id": "razorwing",
+      "triangles": 10456,
+      "meshes": 12,
+      "estimatedDrawCalls": 12
+    },
+    {
+      "id": "mechs",
+      "triangles": 14776,
+      "meshes": 30,
+      "estimatedDrawCalls": 30
+    },
+    {
+      "id": "home",
+      "triangles": 267024,
+      "meshes": 765,
+      "estimatedDrawCalls": 166
+    },
+    {
+      "id": "world",
+      "triangles": 210276,
+      "meshes": 632,
+      "estimatedDrawCalls": 33
+    },
+    {
+      "id": "factions",
+      "triangles": 256920,
+      "meshes": 746,
+      "estimatedDrawCalls": 147
+    },
+    {
+      "id": "fallen-city",
+      "triangles": 203132,
+      "meshes": 626,
+      "estimatedDrawCalls": 27
+    },
+    {
+      "id": "rift-gate",
+      "triangles": 210276,
+      "meshes": 632,
+      "estimatedDrawCalls": 33
+    },
+    {
+      "id": "hive-origin",
+      "triangles": 207124,
+      "meshes": 632,
+      "estimatedDrawCalls": 33
+    },
+    {
+      "id": "swarm",
+      "triangles": 256920,
+      "meshes": 746,
+      "estimatedDrawCalls": 147
+    },
+    {
+      "id": "defenders",
+      "triangles": 209804,
+      "meshes": 640,
+      "estimatedDrawCalls": 41
+    },
+    {
+      "id": "symbiotes",
+      "triangles": 207124,
+      "meshes": 632,
+      "estimatedDrawCalls": 33
+    }
+  ],
+  "assets": [
+    {
+      "path": "src/models.js",
+      "bytes": 15569,
+      "sha256": "feeb93b41fbae718d1dce277f262a4f76bd2b777fb662dc4515065787d367cc7",
+      "source": "Original project procedural geometry / materials / animation",
+      "textureSize": null
+    },
+    {
+      "path": "src/scene.js",
+      "bytes": 30167,
+      "sha256": "98e088e1cf593bf5eab7cf129807883fe3538fbadd3b5ba294bdbfea40ad37e2",
+      "source": "Original project procedural geometry / materials / animation",
+      "textureSize": null
+    },
+    {
+      "path": "src/state.js",
+      "bytes": 4855,
+      "sha256": "2c572cdde4d63f5dd98c3827fbdd7a228905b7fd29ed7feee9ffa0ff6d3e7a16",
+      "source": "Original project procedural geometry / materials / animation",
+      "textureSize": null
+    },
+    {
+      "path": "assets/vendor/three.module.js",
+      "bytes": 1272972,
+      "sha256": "76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495",
+      "source": "Three.js 0.160.1 / MIT",
+      "textureSize": null
+    },
+    {
+      "path": "assets/vendor/OrbitControls.js",
+      "bytes": 30985,
+      "sha256": "1a26c7e8e7ac703a81f1938902eebf45c0ceecf4c6012dda11f90582064e8a4e",
+      "source": "Three.js 0.160.1 / MIT",
+      "textureSize": null
+    },
+    {
+      "path": "assets/vendor/BufferGeometryUtils.js",
+      "bytes": 31918,
+      "sha256": "3a6701d824adfe05dc28c09b6c1d64aeab9a183bc3b944d85f15f596e5c6c2b3",
+      "source": "Three.js 0.160.1 / MIT",
+      "textureSize": null
+    },
+    {
+      "path": "assets/vendor/THREE-LICENSE.txt",
+      "bytes": 1081,
+      "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d",
+      "source": "Three.js 0.160.1 / MIT",
+      "textureSize": null
+    },
+    {
+      "path": "assets/swarm-display.ttf",
+      "bytes": 757076,
+      "sha256": "690243adfefe0ce154b547db6205794bd30ac4277275179517a90994f4980648",
+      "source": "DejaVu Sans / Bitstream Vera license",
+      "textureSize": null
+    },
+    {
+      "path": "assets/FONT-LICENSE.txt",
+      "bytes": 3859,
+      "sha256": "63d3ba759d12804c5b31a9d5940d855c1820d1f5999e6b0872eb1c7ff045fbc9",
+      "source": "DejaVu Sans / Bitstream Vera license",
+      "textureSize": null
+    },
+    {
+      "path": "assets/previews/queen.png",
+      "bytes": 74610,
+      "sha256": "6a1324e37ae9d21cdc4827d161a643d95eb7ba8bb91d4fd39a0f37aceb172819",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x650"
+    },
+    {
+      "path": "assets/previews/breaker.png",
+      "bytes": 38433,
+      "sha256": "a92ecd4340e2a8445599a5d2b35277726fe4c4b22e25bed0f4a95bd0540757d7",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/bulwark.png",
+      "bytes": 29625,
+      "sha256": "cc1b987bb943ba3a51c891acfbaf7acae399e63bb076618c7526115e6970a14b",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/siege.png",
+      "bytes": 30430,
+      "sha256": "b85666f3078941dab749137981dc16565a12b7f58a7c580d81acd83d85bad3e6",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/razorwing.png",
+      "bytes": 18477,
+      "sha256": "e0b919997b003ff02491b80aabda700fe2ebf6a234b6e727d7a1e80b1b15dfac",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/mechs.png",
+      "bytes": 34515,
+      "sha256": "1caba549b1cecb8802dff39df7b33bd7dd252b374c22004e9bcab6417498ba58",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/home.png",
+      "bytes": 349893,
+      "sha256": "8ba43d07fbcaca94cff881490b9231dafbbe74f0293b4e86602e160bcc7be53f",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "1672x941"
+    },
+    {
+      "path": "assets/previews/world.png",
+      "bytes": 84191,
+      "sha256": "b360c460c199bd7747ad48ecb2fdf3c4a202750b213160b48f2bbc0adc55e66d",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/factions.png",
+      "bytes": 123626,
+      "sha256": "78519474ec04863580bf052f31c8f66a12613aa5edf8a44f9151f195daf3e615",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/fallen-city.png",
+      "bytes": 69406,
+      "sha256": "d38532587e87e13bb78a60404519a8423ebdd06aa3f719b8bad0e472a561b4f4",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/rift-gate.png",
+      "bytes": 84191,
+      "sha256": "b360c460c199bd7747ad48ecb2fdf3c4a202750b213160b48f2bbc0adc55e66d",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/hive-origin.png",
+      "bytes": 77386,
+      "sha256": "9a77a41c4e27733c320fb3a02d32c7eafc9faeb866e64026125d8043c474ff84",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/swarm.png",
+      "bytes": 123626,
+      "sha256": "78519474ec04863580bf052f31c8f66a12613aa5edf8a44f9151f195daf3e615",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/defenders.png",
+      "bytes": 76051,
+      "sha256": "55f0bbd00a634d8ad1c50f018f5e6cd118d1411181a401a56745f72bec692fbb",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    },
+    {
+      "path": "assets/previews/symbiotes.png",
+      "bytes": 77386,
+      "sha256": "9a77a41c4e27733c320fb3a02d32c7eafc9faeb866e64026125d8043c474ff84",
+      "source": "Offscreen EGL render of the actual original procedural geometry (approximate lighting; not a browser screenshot)",
+      "textureSize": "800x600"
+    }
+  ],
+  "modelFormat": "ES module procedural geometry; models are constructed in models.js, not billboard image planes.",
+  "textures": "No model texture files. Procedural material grain, chitin scratches and rift shader.",
+  "animation": "Independent joint nodes driven by the shared fixed-step simulation clock.",
+  "compression": "Merged material geometry, instanced insects and pooled effects. PNG deflate for previews. HTTP gzip recommended.",
+  "licenses": [
+    "assets/vendor/THREE-LICENSE.txt",
+    "assets/FONT-LICENSE.txt"
+  ]
+}

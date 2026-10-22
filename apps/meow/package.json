@@ -1,0 +1,25 @@
+{
+  "name": "meow-pink-cat-paradise",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:strgo": "MEOW_BASE=/meow/ node scripts/build.mjs",
+    "deploy:prepare": "npm run build:strgo && node scripts/prepare-deployment.mjs",
+    "deploy": "bash deploy.sh",
+    "dev": "node scripts/serve.mjs",
+    "preview": "node scripts/serve.mjs",
+    "check": "node --check app.js && node --test tests/*.test.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "previews": "node scripts/export-previews.mjs && python3 scripts/render-previews.py"
+  },
+  "dependencies": {
+    "three": "0.160.1"
+  },
+  "devDependencies": {
+    "linkedom": "0.18.12",
+    "playwright-core": "1.59.1"
+  }
+}
