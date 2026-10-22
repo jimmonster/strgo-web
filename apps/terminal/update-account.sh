@@ -33,7 +33,7 @@ python3 -c 'import socket; s=socket.socket(); s.close()' || { printf '当前环�
 for unit in strgo-image strgo-terminal-broker strgo-terminal; do
     systemctl is-active --quiet "$unit" || { printf '服务未运行：%s；请先检查已有服务。\n' "$unit" >&2; exit 1; }
 done
-for module in store security storage cloud; do
+for module in store security storage cloud forum local_studio ai_schema ai_security ai_providers ai_service; do
     cmp -s "$SOURCE_DIR/image_service/$module.py" "$ACCOUNT_DIR/image_service/$module.py" || { printf '生图服务的 %s.py 与仓库版本不一致，请先对齐生图服务版本，避免覆盖不兼容接口。\n' "$module" >&2; exit 1; }
 done
 (

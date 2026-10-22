@@ -67,6 +67,8 @@ class Service:
         self.inflight_lock = threading.Lock()
         self.image_locks = tuple(threading.RLock() for _ in range(64))
         self.backup_due = threading.Event()
+        from .ai_service import AIService
+        self.ai = AIService(self, start_worker=start_worker)
         self.recover()
         self.worker = threading.Thread(target=self._loop, name='image-jobs', daemon=True) if start_worker else None
         if self.worker:
@@ -82,6 +84,7 @@ class Service:
         self.backup_due.set()
 
     def close(self):
+        self.ai.close()
         self.stopping.set()
         self.wake.set()
         if self.worker:
@@ -293,7 +296,7 @@ class Service:
         if not token:
             return None
         with self.store.connect() as db:
-            return db.execute('SELECT users.*,sessions.csrf,sessions.hash AS session_hash,sessions.expires AS session_expires FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.hash=? AND sessions.expires>?', (digest(token), int(time.time()))).fetchone()
+            return db.execute("SELECT users.*,sessions.csrf,sessions.hash AS session_hash,sessions.expires AS session_expires FROM sessions JOIN users ON users.id=sessions.user_id LEFT JOIN ai_members ON ai_members.user_id=users.id WHERE sessions.hash=? AND sessions.expires>? AND COALESCE(ai_members.status,'active')='active'", (digest(token), int(time.time()))).fetchone()
 
     def set_cookie(self, value, age=SESSION_AGE):
         return f'{ACCOUNT_COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={age}' + ('; Secure' if self.secure else '')
@@ -388,6 +391,8 @@ class Service:
             raise Problem(400, '请求内容应为 JSON 对象。')
         url = urlsplit(target)
         path, query = url.path, parse_qs(url.query)
+        if path.startswith('/api/ai/v1/'):
+            return self.ai.dispatch(method, target, payload, headers, ip)
         if not path.startswith(API + '/'):
             raise Problem(404, '接口不存在。')
         if method not in ('GET', 'POST', 'PUT', 'DELETE'):
@@ -748,10 +753,15 @@ class HTTPHandler(BaseHTTPRequestHandler):
     def do_PUT(self):
         self.handle_request('PUT')
 
+    def do_PATCH(self):
+        self.handle_request('PATCH')
+
     def do_DELETE(self):
         self.handle_request('DELETE')
 
     def handle_request(self, method):
+        from .ai_service import EventStream
+        ai_request = self.path.startswith('/api/ai/v1/')
         try:
             payload = None
             if method != 'GET':
@@ -763,7 +773,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
                     length = int(self.headers.get('Content-Length', '-1'))
                 except ValueError:
                     length = -1
-                if not 0 <= length <= 7 * 1024 * 1024:
+                if not 0 <= length <= (1024 * 1024 if ai_request else 7 * 1024 * 1024):
                     raise Problem(413, '请求体无效或超过 7 MiB。')
                 self.connection.settimeout(20)
                 payload = json.loads(self.rfile.read(length) or b'{}')
@@ -771,12 +781,19 @@ class HTTPHandler(BaseHTTPRequestHandler):
             ip = self.headers.get('X-Real-IP', peer) if peer in ('127.0.0.1', '::1') else peer
             status, result, extra = self.server.service.dispatch(method, self.path, payload, dict(self.headers), ip)
         except Problem as error:
+            error_code = getattr(error, 'code', 'REQUEST_FAILED')
             status, result, extra = error.status, {'error': error.message}, {}
         except (ValueError, UnicodeError):
             status, result, extra = 400, {'error': '请求格式不正确。'}, {}
         except Exception:
             LOGGER.error('请求处理失败；敏感请求内容未记录。')
             status, result, extra = 500, {'error': '服务暂时不可用，请稍后重试。'}, {}
+        if isinstance(result, EventStream):
+            result.write(self)
+            return
+        if ai_request and status >= 400 and isinstance(result.get('error') if isinstance(result, dict) else None, str):
+            # Existing application error shape remains compatible with its clients.
+            result = {'error': {'code': locals().get('error_code', 'REQUEST_FAILED'), 'message': result['error']}, 'request_id': uuid.uuid4().hex}
         body = result if isinstance(result, bytes) else json.dumps(result, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header('Content-Type', extra.pop('Content-Type', 'application/json; charset=utf-8'))

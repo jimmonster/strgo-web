@@ -77,6 +77,10 @@ def main():
                 db.execute("UPDATE local_jobs SET status='failed',reference=NULL,error='数据库恢复后停止未完成的本机任务，避免重复生成。' WHERE status IN ('queued','running')")
                 db.execute('DELETE FROM local_chunks')
             db.execute("UPDATE images SET state='pending' WHERE state IN ('staged','uploading')")
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ai_tasks'").fetchone():
+                db.execute('DELETE FROM ai_stepups')
+                db.execute("UPDATE ai_tasks SET state='RECONCILING',lease_until=0,reconcile_after=? WHERE dispatched=1 AND state NOT IN ('SUCCEEDED','FAILED','CANCELLED','INTERRUPTED','SAVING')", (int(time.time()) + 86400,))
+                db.execute("UPDATE ai_tasks SET lease_until=0 WHERE state IN ('QUEUED','SAVING')")
         print('备份恢复到：' + str(destination) + '；登录会话已全部撤销。请先核对，再在停服后切换。')
         return
     if args.command == 'reindex':

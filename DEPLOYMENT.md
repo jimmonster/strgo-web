@@ -64,6 +64,8 @@ npm test
 
 安装脚本保留既有账号、图片、数据库与加密密钥，将图片存储设为本地硬盘。若现有服务使用 OSS，应先按 [生图说明](IMAGE-PLAYGROUND.md) 完成数据迁移。服务启动时自动建立论坛表；论坛入口为 `/forum/`，接口沿用 `/api/image/`，不增加公开端口。
 
+AI 创作空间使用同一账号服务，新增 `/api/ai/v1/` 代理与 `ai_` 表。升级时也需等待 AI 任务完成，备份私有音频、暂存目录与独立删除日志，并安装 `ffmpeg` 供音频校验。音乐模型、在线 API、管理员二次验证和成员授权的完整顺序见 [AI-WORKSPACE.md](AI-WORKSPACE.md)。模型默认全部停用，升级不会自行调用收费 API。
+
 首次申请主站 HTTPS 时，将上述 `bash deploy.sh` 改为 `bash deploy.sh --email 你的真实邮箱`；提供邮箱表示同意 Let's Encrypt 服务条款。已有证书时直接运行 `bash deploy.sh` 即可。
 
 首次部署且没有管理员时，在账号服务安装完成后生成首个管理员邀请码：

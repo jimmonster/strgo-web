@@ -89,6 +89,23 @@ class BuildTests(unittest.TestCase):
             home = (output / 'index.html').read_text()
             for route in ('home', 'dance', 'terminal'): self.assertIn(f'href="/{route}"', home)
 
+    def test_ai_workspace_routes_and_reusable_module_assets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = builder.build(output=directory)
+            for route in ('ai', 'ai/music', 'ai/chat', 'ai/tasks', 'ai/assets', 'ai/settings', 'ai/login', 'admin/ai'):
+                page = (output / route / 'index.html').read_text()
+                self.assertIn('noindex,nofollow', page)
+                for asset in re.findall(r'(?:src|href)="(/ai/static/[^"?]+)', page):
+                    self.assertTrue((output / asset.lstrip('/')).is_file(), asset)
+            integration = (output / 'image-playground/assistant-integration.js').read_text()
+            for imported in re.findall(r"from '(/ai/static/[^']+)'|import '(/ai/static/[^']+)'", integration):
+                self.assertTrue((output / (imported[0] or imported[1]).lstrip('/')).is_file())
+            for asset in (output / 'ai/static').glob('*.svg'):
+                ET.parse(asset)
+            self.assertIn('href="/ai/"', (output / 'index.html').read_text())
+            self.assertFalse(list((output / 'ai').rglob('*.py')))
+            self.assertFalse(list((output / 'ai').rglob('*.sqlite3')))
+
     def test_image_playground_route_keeps_private_frontend_and_invite_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             output = builder.build(output=directory)

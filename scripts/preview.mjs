@@ -16,7 +16,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 // those apps, the production build, Nginx, or any running service.
 export async function servePreview(request, response) {
   try {
-    if (request.url.startsWith('/api/image/')) {
+    if (request.url.startsWith('/api/image/') || request.url.startsWith('/api/ai/v1/')) {
       // Explicit local-only opt-in; no arbitrary external proxy target.
       if (process.env.STRGO_IMAGE_API !== '1') {
         response.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -52,15 +52,18 @@ export async function servePreview(request, response) {
   } catch { response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); response.end('页面不存在。返回主站：/'); }
 }
 
-export async function startPreview(port = 8080) {
+export async function startPreview(port = 8080, host = '127.0.0.1') {
   const server = createServer(servePreview);
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, resolve); });
   return { server, origin: `http://127.0.0.1:${server.address().port}` };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
-    const { origin } = await startPreview(Number(process.env.STRGO_PREVIEW_PORT || 8080));
+    const args = process.argv.slice(2), option = name => args.includes(name) ? args[args.indexOf(name) + 1] : undefined;
+    const host = option('--host') || '127.0.0.1';
+    if (!['127.0.0.1', '0.0.0.0'].includes(host)) throw new Error('预览仅支持明确指定的本机监听地址。');
+    const { origin } = await startPreview(Number(option('--port') || process.env.STRGO_PREVIEW_PORT || 8080), host);
     console.log(`STRGO 本地预览：${origin}\n独立空间复用相邻项目的现有 dist；终端沿用原服务入口。`);
   } catch (error) {
     console.error(`无法启动本地预览：${error.message}\n需要允许本机监听端口的终端环境。未改动线上服务。`);

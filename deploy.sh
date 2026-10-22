@@ -167,7 +167,7 @@ render_content_config() {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'none'; base-uri 'none'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'" always;
+    add_header Content-Security-Policy "default-src 'none'; base-uri 'none'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'" always;
     add_header Cache-Control "no-cache" always;
     gzip on;
     gzip_vary on;
@@ -175,6 +175,7 @@ render_content_config() {
     gzip_types text/css application/javascript application/json image/svg+xml application/xml;
     location = /nexus { return 308 /nexus/\$is_args\$args; }
     location = /image-playground { return 308 /image-playground/\$is_args\$args; }
+    location = /ai { return 308 /ai/\$is_args\$args; }
     location = /dreams { return 308 /dreams/\$is_args\$args; }
     location /dreams/ {
         error_page 404 /dreams/404.html;
@@ -187,6 +188,7 @@ NGINX
         printf '%s\n' '    include /etc/nginx/snippets/strgo-image.conf;'
     else
         printf '%s\n' '    location ^~ /api/image/ { default_type application/json; return 503 '\''{"error":"Image service is not configured"}'\''; }'
+        printf '%s\n' '    location ^~ /api/ai/v1/ { default_type application/json; return 503 '\''{"error":{"code":"SERVICE_NOT_CONFIGURED","message":"AI service is not configured"}}'\''; }'
     fi
     if [[ -f /etc/nginx/snippets/polyverse.conf ]]; then
         printf '%s\n' '    include /etc/nginx/snippets/polyverse.conf;'
@@ -260,7 +262,7 @@ for route in home dance nexus; do
         verify_site "$RELEASE/$route/index.html" "$BACKUP_DIR/$route.html" -H "Host: $DOMAIN" "http://127.0.0.1/$route/"
     fi
 done
-for image_file in index.html app.js icons.js reference-image.js styles.css; do
+for image_file in index.html app.js icons.js reference-image.js styles.css assistant-integration.js; do
     image_url="image-playground/${image_file/index.html/}"
     if [[ "$BUILD_SCHEME" == https ]]; then
         verify_site "$RELEASE/image-playground/$image_file" "$BACKUP_DIR/image-check" --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/$image_url"
@@ -268,9 +270,18 @@ for image_file in index.html app.js icons.js reference-image.js styles.css; do
         verify_site "$RELEASE/image-playground/$image_file" "$BACKUP_DIR/image-check" -H "Host: $DOMAIN" "http://127.0.0.1/$image_url"
     fi
 done
+for ai_file in ai/index.html ai/music/index.html ai/chat/index.html admin/ai/index.html ai/static/app.js ai/static/client.js ai/static/assistant.js ai/static/styles.css ai/static/assistant.css ai/static/music-cover.svg; do
+    ai_url="${ai_file%index.html}"
+    if [[ "$BUILD_SCHEME" == https ]]; then
+        verify_site "$RELEASE/$ai_file" "$BACKUP_DIR/ai-check" --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/$ai_url"
+    else
+        verify_site "$RELEASE/$ai_file" "$BACKUP_DIR/ai-check" -H "Host: $DOMAIN" "http://127.0.0.1/$ai_url"
+    fi
+done
 if [[ -f /etc/nginx/snippets/strgo-image.conf ]]; then
     if [[ "$BUILD_SCHEME" == https ]]; then
         curl --fail --silent --show-error --max-time 10 --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/api/image/session" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("user") is None and "storageReady" in d'
+        curl --fail --silent --show-error --max-time 10 --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/api/ai/v1/session" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["data"]["user"] is None and "request_id" in d'
     else
         fail '图片账号 API 需要 HTTPS。请先为主站配置证书。'
     fi

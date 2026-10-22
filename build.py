@@ -134,6 +134,8 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
         if asset.is_file(): digest.update(asset.read_bytes())
     for asset in sorted((ROOT / 'src/local-studio').rglob('*')):
         if asset.is_file(): digest.update(asset.read_bytes())
+    for asset in sorted((ROOT / 'src/ai-workspace').rglob('*')):
+        if asset.is_file(): digest.update(asset.read_bytes())
     version = digest.hexdigest()[:12]
     origin = config.get('BASE_ORIGIN', '').rstrip('/') or f"{config.get('scheme', 'http')}://{config['domain']}"
     if scheme: origin = re.sub(r'^https?:', scheme + ':', origin)
@@ -223,6 +225,15 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     studio_page = studio_output / 'index.html'
     studio_page.write_text(studio_page.read_text(encoding='utf-8').replace('{{workflow_origin}}', html.escape((config.get('WORKFLOW_ORIGIN') or 'https://workflow.strgo.com').rstrip('/'), quote=True)), encoding='utf-8')
     shutil.copy2(ROOT / 'src/image-playground/reference-image.js', studio_output / 'reference-image.js')
+    ai_output = output / 'ai'
+    if ai_output.exists():
+        shutil.rmtree(ai_output)
+    shutil.copytree(ROOT / 'src/ai-workspace', ai_output / 'static')
+    ai_page = (ROOT / 'src/ai-workspace/index.html').read_text(encoding='utf-8')
+    for route in ('ai', 'ai/music', 'ai/chat', 'ai/assets', 'ai/tasks', 'ai/settings', 'ai/login', 'admin/ai'):
+        destination = output / route
+        destination.mkdir(parents=True, exist_ok=True)
+        (destination / 'index.html').write_text(ai_page, encoding='utf-8')
     if (ROOT / 'legacy/archive').is_dir():
         shutil.copytree(ROOT / 'legacy/archive', output / 'archive', dirs_exist_ok=True)
     content_template = (ROOT / 'src/pages/content.html').read_text(encoding='utf-8')
