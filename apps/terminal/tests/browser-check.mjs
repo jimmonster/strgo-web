@@ -53,7 +53,7 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
     await page.locator('#host').fill('ecs.example.com');
     await page.locator('#connect-button').click();
-    await page.locator('#status[data-state="ready"]').waitFor();
+    await page.locator('#status[data-state="ready"]').waitFor({ state: 'attached' });
     const editor = page.locator('#command-editor');
     await editor.fill('echo 你好');
     await page.locator('#submit-input').click();
@@ -62,6 +62,7 @@ try {
     assert.equal(await page.locator('.sent .chat-bubble').last().textContent(), 'echo 你好');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
     await editor.fill('printf "中文"\nprintf "多行文本"');
+    if (mobile) await page.locator('#mobile-tools-toggle').click();
     await page.locator('#expand-editor').click();
     assert.equal(await editor.inputValue(), 'printf "中文"\nprintf "多行文本"');
     await page.locator('#expand-editor').click();
@@ -77,11 +78,15 @@ try {
     assert.equal(await page.locator('#chat-log').isHidden(), true);
     await page.locator('#edit-mode').click();
     if (mobile) {
+      await page.locator('#mobile-tools-toggle').click();
       await page.setViewportSize({ width: viewport.width, height: 430 });
       await editor.fill('软键盘弹出时仍可编辑');
       await page.waitForTimeout(150);
       const send = await page.locator('#submit-input').boundingBox();
       assert.ok(send.y >= 0 && send.y + send.height <= 431, 'send button remains visible above keyboard');
+      const output = await page.locator('.terminal-stage').boundingBox();
+      assert.ok(output.height >= 300, 'terminal output keeps most of the available height');
+      assert.equal(await page.locator('.terminal-heading').isVisible(), false);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
       await page.screenshot({ path: fileURLToPath(new URL(`${viewport.width}-keyboard.png`, artifacts)) });
     }

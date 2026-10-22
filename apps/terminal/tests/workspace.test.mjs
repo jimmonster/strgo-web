@@ -13,7 +13,7 @@ const script = readFileSync(new URL('../web/workspace.js', import.meta.url), 'ut
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const owner = { id: 'a'.repeat(32), username: 'owner', role: 'member' };
 
-async function application({ loggedIn = true, storageFailure = false, saved = null } = {}) {
+async function application({ loggedIn = true, storageFailure = false, saved = null, mobile = false } = {}) {
   const { document } = parseHTML(html), listeners = {}, requests = [], frames = [];
   const storage = new Map();
   if (saved) storage.set(`strgo-terminal-windows:${owner.id}`, JSON.stringify(saved));
@@ -29,7 +29,8 @@ async function application({ loggedIn = true, storageFailure = false, saved = nu
   for (const id of ['rename-value', 'account-name', 'account-password', 'session-search']) {
     const el = document.getElementById(id); el.select = () => {}; el.focus = () => {}; el.value ||= '';
   }
-  const window = { addEventListener: (type, listener) => (listeners[type] ||= []).push(listener), visualViewport: { height: 840, addEventListener() {} } };
+  const visualListeners = {};
+  const window = { matchMedia: () => ({ matches: mobile }), addEventListener: (type, listener) => (listeners[type] ||= []).push(listener), visualViewport: { height: 840, offsetTop: 0, scale: 1, addEventListener: (type, listener) => (visualListeners[type] ||= []).push(listener) } };
   const context = { window, document, crypto: { randomUUID }, URLSearchParams, AbortController, setTimeout, clearTimeout, location: { origin: 'https://strgo.test' }, innerHeight: 840,
     localStorage: { getItem: key => { if (storageFailure) throw new Error('denied'); return storage.get(key); }, setItem: (key, value) => { if (storageFailure) throw new Error('denied'); storage.set(key, value); } },
     setInterval() {},
@@ -48,6 +49,8 @@ async function application({ loggedIn = true, storageFailure = false, saved = nu
   vm.runInNewContext(script, context); await tick(); await tick();
   const $ = id => document.getElementById(id);
   return { $, document, frames, storage, requests,
+    visual: window.visualViewport,
+    viewport: async type => { for (const fn of visualListeners[type || 'resize'] || []) fn(); await tick(); },
     flush: async () => { await tick(); await tick(); },
     emit: async (type, data) => { for (const fn of listeners[type] || []) fn(data); await tick(); },
     event: async (id, type = 'click') => { $(id).dispatchEvent(new document.defaultView.Event(type, { bubbles: true, cancelable: true })); await tick(); await tick(); },
@@ -138,4 +141,26 @@ test('logout includes CSRF and destroys all windows; failed logout can be retrie
   assert.equal(app.requests.at(-1).headers['X-CSRF-Token'], 'csrf-token');
   const failing = await application(); failing.failLogout(); await failing.event('account-logout');
   assert.equal(failing.$('app-view').hidden, false); assert.match(failing.$('workspace-message').textContent, /退出失败/);
+});
+
+test('iPhone keyboard height and Safari viewport panning are owned by the outer page', async () => {
+  const app = await application({ mobile: true });
+  app.visual.height = 350; app.visual.offsetTop = 92; await app.viewport('resize'); await app.viewport('scroll');
+  assert.equal(app.document.documentElement.style.getPropertyValue('--app-height'), '350px');
+  assert.equal(app.document.documentElement.style.getPropertyValue('--app-top'), '92px');
+  assert.equal(app.document.body.classList.contains('keyboard-open'), true);
+  const packet = app.frames[0].contentWindow.packets.filter(p => p.action === 'viewport').at(-1);
+  assert.equal(packet.viewport.compact, true); assert.equal(packet.viewport.keyboard, true);
+  app.visual.height = 840; app.visual.offsetTop = 0; await app.viewport();
+  assert.equal(app.document.body.classList.contains('keyboard-open'), false);
+});
+
+test('the bottom window control opens the mobile list without losing connections', async () => {
+  const app = await application({ mobile: true }), frame = app.frames[0];
+  await app.emit('message', { origin: 'https://strgo.test', source: frame.contentWindow, data: { source: 'strgo-terminal', type: 'sessions' } });
+  assert.equal(app.document.body.classList.contains('list-open'), true);
+  assert.ok(frame.contentWindow.packets.some(p => p.action === 'dismiss-keyboard'));
+  assert.ok(!frame.contentWindow.packets.some(p => p.action === 'dispose'));
+  await app.event('mobile-connect'); assert.ok(frame.contentWindow.packets.some(p => p.action === 'connect'));
+  assert.equal(app.document.body.classList.contains('list-open'), false);
 });

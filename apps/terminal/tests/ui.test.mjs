@@ -115,7 +115,7 @@ function application({ authenticated = true, storageFailure = false, mobile = fa
     },
   };
   app.context = context; app.document = document;
-  app.message = async action => { for (const fn of events.message || []) fn({ origin: 'https://strgo.com', source: parent, data: { source: 'strgo-workspace', action } }); await tick(); };
+  app.message = async (action, data = {}) => { for (const fn of events.message || []) fn({ origin: 'https://strgo.com', source: parent, data: { source: 'strgo-workspace', action, ...data } }); await tick(); };
   app.parent = parent;
   app.bubbles = side => elements.get('chat-log').children.filter(row => !side || row.className.includes(side)).map(row => row.children[1].children[1]);
   app.output = async bytes => {
@@ -429,4 +429,28 @@ test('character-only output truncation is explicitly disclosed even below the li
     const text = app.bubbles('received').at(-1).textContent;
     assert.ok(text.includes('较早输出已省略')); assert.ok(text.length < 48050);
   } finally { app.terminal.dispose(); }
+});
+
+test('embedded iPhone sessions use iframe height without applying visual keyboard reduction twice', async () => {
+  const app = application({ mobile: true, params: '?embed=1&mode=workspace&auto=0' }); await tick();
+  app.context.window.innerHeight = 330;
+  app.context.window.visualViewport.height = 140;
+  await app.message('viewport', { viewport: { compact: true, keyboard: true } });
+  assert.equal(app.document.documentElement.attributes['--viewport-height'], '330px');
+  assert.equal(app.document.documentElement.attributes['--viewport-top'], '0px');
+  assert.equal(app.document.body.classList.contains('compact-mobile'), true);
+  assert.equal(app.document.body.classList.contains('keyboard-open'), true);
+  const editor = app.elements.get('command-editor'); editor.scrollHeight = 1000;
+  await editor.trigger('input'); assert.ok(parseFloat(editor.style.height) <= 73);
+});
+
+test('mobile direct view retains bottom controls and tools do not send commands', async () => {
+  const app = application({ mobile: true, params: '?embed=1&mode=workspace' }); const socket = await app.connect();
+  await app.elements.get('direct-mode').click(); assert.equal(app.elements.get('composer-body').hidden, false);
+  await app.elements.get('mobile-tools-toggle').click();
+  assert.equal(app.document.body.classList.contains('mobile-tools-open'), true);
+  await app.elements.get('session-list-toggle').click();
+  assert.ok(app.parent.messages.some(m => m.type === 'sessions'));
+  assert.equal(socket.sent.filter(p => p.type === 'input').length, 0);
+  await app.message('dismiss-keyboard'); assert.equal(app.document.body.classList.contains('mobile-tools-open'), false);
 });

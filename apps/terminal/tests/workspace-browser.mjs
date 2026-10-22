@@ -42,7 +42,9 @@ try {
       };
       window.__emit = text => window.__socket.onmessage?.({ data: JSON.stringify({ type: 'output', data: btoa(unescape(encodeURIComponent(text))) }) });
     });
-    const openList = async () => { if (mobile) await page.locator('#show-sessions').click(); };
+    const openList = async () => {
+      if (mobile) await page.frameLocator('.session-frame:not([hidden])').locator('#session-list-toggle').click();
+    };
     await page.goto(`${origin}/terminal/`, { waitUntil: 'load' });
     const first = page.frameLocator('.session-frame').nth(0);
     await first.locator('#status[data-state=ready]').waitFor({ state: 'attached' });
@@ -67,15 +69,34 @@ try {
     assert.equal(await frameA.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
     await page.screenshot({ path: fileURLToPath(new URL(`${viewport.width}-windows.png`, artifacts)) });
     if (mobile) {
+      assert.equal(await page.locator('.conversation-heading').isVisible(), false);
+      assert.equal(await first.locator('.terminal-heading').isVisible(), false);
       await page.setViewportSize({ width: viewport.width, height: 430 });
       await first.locator('#command-editor').fill('软键盘弹出后的草稿'); await page.waitForTimeout(180);
       const button = await first.locator('#submit-input').boundingBox();
       assert.ok(button && button.y >= 0 && button.y + button.height <= 431, 'send button remains above the keyboard');
+      assert.ok((await first.locator('.terminal-stage').boundingBox()).height >= 300, 'output keeps most of the keyboard viewport');
+      // Safari pans its visual viewport without shrinking the layout viewport.
+      // Simulate that behavior at the top level while the iframe inherits size.
+      await page.evaluate(() => {
+        window.__iphoneViewport = { height: 310, offsetTop: 78, scale: 1, addEventListener() {} };
+        Object.defineProperty(window, 'visualViewport', { configurable: true, value: window.__iphoneViewport });
+        window.dispatchEvent(new Event('resize'));
+      });
+      await page.waitForTimeout(180);
+      const frameBox = await page.locator('.session-frame:not([hidden])').boundingBox();
+      const composerBox = await first.locator('#mobile-input-bar').boundingBox();
+      const stageBox = await first.locator('.terminal-stage').boundingBox();
+      assert.ok(frameBox.y >= 77 && frameBox.y + frameBox.height <= 389, 'frame follows panned visible viewport');
+      assert.ok(composerBox.y + composerBox.height <= 389, 'composer stays above the iPhone keyboard');
+      assert.ok(stageBox.height >= 230, 'keyboard leaves room for readable output');
       await page.screenshot({ path: fileURLToPath(new URL(`${viewport.width}-keyboard.png`, artifacts)) });
     }
     await page.reload(); await page.locator('.session-frame').nth(2).waitFor({ state: 'attached' });
     for (const frame of page.frames().filter(f => f.url().includes('/terminal/session'))) assert.equal(await frame.evaluate(() => window.__packets.length), 0, 'restored windows never reconnect or replay automatically');
-    await page.locator('#reconnect-session').click(); await page.frameLocator('.session-frame').nth(0).locator('#status[data-state=ready]').waitFor({ state: 'attached' });
+    if (mobile) await page.frameLocator('.session-frame:not([hidden])').locator('#session-connect').click();
+    else await page.locator('#reconnect-session').click();
+    await page.frameLocator('.session-frame').nth(0).locator('#status[data-state=ready]').waitFor({ state: 'attached' });
     await openList(); await page.locator(mobile ? '#mobile-logout' : '#account-logout').click();
     await page.locator('#account-login').waitFor({ state: 'visible' });
     assert.equal(await page.locator('.session-frame').count(), 0);

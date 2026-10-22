@@ -5,6 +5,8 @@
   const params = new URLSearchParams(location.search || '');
   const workspaceMode = params.get('mode') === 'workspace', embedded = params.get('embed') === '1';
   let visible = true, disposed = false, connectionTimer = null;
+  const compactQuery = '(max-width:700px), (max-width:1000px) and (max-height:500px)';
+  let parentViewport = null, mobileTools = false;
   function notify(type, data = {}) {
     if (embedded) window.parent.postMessage({ source: 'strgo-terminal', type, ...data, ...(type === 'output' ? { text: String(data.text || '').slice(-120) } : {}) }, location.origin);
   }
@@ -42,6 +44,7 @@
     $('command-editor').disabled = !ready;
     $('direct-mode').disabled = !terminal;
     $('expand-editor').disabled = !ready || direct || $('mobile-input').type === 'password';
+    $('session-connect').disabled = socket !== null;
     for (const button of $('keys').querySelectorAll('button')) {
       if (!['font-size', 'more-keys', 'copy-selection'].includes(button.id)) button.disabled = !ready;
     }
@@ -152,7 +155,7 @@
     direct = value; toggleCtrl(false);
     $('edit-mode').setAttribute('aria-pressed', String(!direct));
     $('direct-mode').setAttribute('aria-pressed', String(direct));
-    $('composer-body').hidden = direct;
+    $('composer-body').hidden = direct && !document.body.classList.contains('compact-mobile');
     $('secret-input').hidden = direct;
     $('expand-editor').hidden = direct;
     document.body.classList.toggle('direct-input', direct);
@@ -182,8 +185,12 @@
   }
   function growEditor() {
     const editor = $('command-editor');
+    const compact = document.body.classList.contains('compact-mobile');
+    const height = Math.max(1, window.innerHeight || window.visualViewport?.height || 1);
+    const minimum = compact ? 40 : 44;
+    const maximum = compact ? Math.max(minimum, Math.min(expanded ? 180 : 88, height * (expanded ? .35 : .22))) : expanded ? Math.max(80, height * .36) : 112;
     editor.style.height = 'auto';
-    editor.style.height = `${Math.min(expanded ? Math.max(80, (window.visualViewport?.height || window.innerHeight) * .36) : 112, Math.max(44, editor.scrollHeight))}px`;
+    editor.style.height = `${Math.min(maximum, Math.max(minimum, editor.scrollHeight))}px`;
     scheduleFit();
   }
   function nearBottom() {
@@ -475,6 +482,21 @@
   $('submit-input').addEventListener('click', submitMobile);
   $('expand-editor').addEventListener('pointerdown', event => event.preventDefault());
   $('expand-editor').addEventListener('click', () => setExpanded(!expanded));
+  function setMobileTools(value) {
+    mobileTools = value;
+    document.body.classList.toggle('mobile-tools-open', value);
+    $('mobile-tools-toggle').setAttribute('aria-expanded', String(value));
+    $('mobile-tools-toggle').textContent = value ? '−' : '＋';
+    if (!value && document.body.classList.contains('tools-open')) {
+      document.body.classList.remove('tools-open'); $('extra-keys').hidden = true;
+      $('more-keys').setAttribute('aria-expanded', 'false');
+    }
+    scheduleFit();
+  }
+  for (const id of ['session-list-toggle', 'mobile-tools-toggle', 'session-connect']) $(id).addEventListener('pointerdown', event => event.preventDefault());
+  $('session-list-toggle').addEventListener('click', () => notify('sessions'));
+  $('mobile-tools-toggle').addEventListener('click', () => setMobileTools(!mobileTools));
+  $('session-connect').addEventListener('click', () => { if (!socket) $('connect-form').requestSubmit(); });
   $('edit-mode').addEventListener('click', () => setDirect(false));
   $('direct-mode').addEventListener('click', () => setDirect(true));
   $('focus-mode').addEventListener('click', () => {
@@ -514,18 +536,33 @@
   $('connection-details').addEventListener('toggle', scheduleFit);
   function viewport() {
     const visual = window.visualViewport;
-    document.documentElement.style.setProperty('--viewport-height', `${Math.round(visual?.height || window.innerHeight)}px`);
-    document.documentElement.style.setProperty('--viewport-top', `${Math.round(visual?.offsetTop || 0)}px`);
+    // iOS only adjusts the top-level visual viewport for the keyboard. An
+    // embedded session must use its already-sized iframe, never subtract again.
+    const height = Math.max(1, Math.round(embedded ? window.innerHeight : visual?.height || window.innerHeight));
+    const compact = parentViewport ? parentViewport.compact : params.get('compact') === '1' || window.matchMedia(compactQuery).matches;
+    const keyboard = parentViewport ? parentViewport.keyboard : (visual?.scale || 1) === 1 && Math.max(window.innerHeight, document.documentElement.clientHeight || 0) - (visual?.height || window.innerHeight) > 100;
+    document.body.classList.toggle('compact-mobile', compact);
+    document.body.classList.toggle('keyboard-open', keyboard);
+    $('composer-body').hidden = direct && !compact;
+    document.documentElement.style.setProperty('--viewport-height', `${height}px`);
+    document.documentElement.style.setProperty('--viewport-top', `${embedded ? 0 : Math.max(0, Math.round(visual?.offsetTop || 0))}px`);
     if (nearBottom()) latest(); growEditor(); scheduleFit();
   }
   window.addEventListener('resize', viewport);
   window.visualViewport?.addEventListener('resize', viewport);
   window.visualViewport?.addEventListener('scroll', viewport);
+  window.addEventListener('orientationchange', viewport);
   window.addEventListener('pagehide', () => { socket?.close(); });
   window.addEventListener('message', event => {
     if (!embedded || event.origin !== location.origin || event.source !== window.parent || event.data?.source !== 'strgo-workspace') return;
     const action = event.data.action;
-    if (action === 'activate') { visible = true; viewport(); }
+    if (action === 'viewport') {
+      const state = event.data.viewport;
+      if (state && typeof state.compact === 'boolean' && typeof state.keyboard === 'boolean') {
+        parentViewport = { compact: state.compact, keyboard: state.keyboard }; viewport();
+      }
+    } else if (action === 'dismiss-keyboard') { document.activeElement?.blur(); setMobileTools(false); }
+    else if (action === 'activate') { visible = true; viewport(); }
     else if (action === 'deactivate') {
       visible = false; $('mobile-input').value = '';
       if ($('mobile-input').type === 'password') $('secret-input').click();
@@ -556,6 +593,7 @@
     $('host').required = $('username').required = $('port').required = false;
   }
   restoreTarget(); viewport();
+  notify('viewport-ready');
   api('session').then(() => {
     if (disposed) return;
     updateAuthentication(true); updateControls();

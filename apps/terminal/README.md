@@ -1,5 +1,7 @@
 # STRGO 账号终端
 
+**iPhone 全屏优化：** 手机默认隐藏标题栏与状态说明，仅保留输出和单行输入，工具折叠到「＋」，窗口入口移到底部。键盘可见高度由外层页面统一处理，详见 [iPhone 全屏终端](IPHONE-FULLSCREEN.md)。
+
 **沙箱启动失败修复：** 若登录后出现「SSH 会话已结束，或沙箱暂时不可用」，且代理日志为 `Cannot start sandbox process: Permission denied`，见 [启动目录修复](SANDBOX-STARTUP-FIX.md)。在普通服务器终端执行 `bash /root/strgo-web/apps/terminal/repair-sandbox.sh`，无需重新安装生图服务。
 
 2026-10-22：新版使用 AI 生图同一套账号与 7 天持久登录，首次进入直接打开个人 Linux 工作区。页面采用微信式会话列表，支持最多 8 个窗口独立运行、切换、草稿保留、复制粘贴、聊天导出、重命名与重新连接；SSH 连接保留为高级入口。

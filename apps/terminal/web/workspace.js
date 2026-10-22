@@ -4,6 +4,8 @@
   const windows = new Map();
   let user = null, csrf = '', active = '', epoch = 0, refreshing = false, dialogAction = null;
   const MAX_WINDOWS = 8;
+  const compactQuery = '(max-width:700px), (max-width:1000px) and (max-height:500px)';
+  let viewportState = { compact: false, keyboard: false };
 
   function feedback(message = '') { $('workspace-message').textContent = message; $('workspace-message').hidden = !message; }
   async function account(path, body) {
@@ -23,7 +25,7 @@
       throw error;
     } finally { clearTimeout(deadline); }
   }
-  function post(session, action) { session?.frame?.contentWindow?.postMessage({ source: 'strgo-workspace', action }, location.origin); }
+  function post(session, action) { session?.frame?.contentWindow?.postMessage({ source: 'strgo-workspace', action, ...(action === 'viewport' ? { viewport: viewportState } : {}) }, location.origin); }
   function storageKey() { return `strgo-terminal-windows:${user.id}`; }
   function save() {
     if (!user) return;
@@ -43,6 +45,7 @@
     } catch { return null; }
   }
   function mobileList(show) {
+    if (show) post(windows.get(active), 'dismiss-keyboard');
     document.body.classList.toggle('list-open', show);
     $('sidebar-shade').hidden = !show;
     $('show-sessions').setAttribute('aria-expanded', String(show));
@@ -58,6 +61,8 @@
     $('workspace-boundary').textContent = selected?.mode === 'ssh' ? 'SSH 远端终端 · 登录目标服务器后执行命令' : '离线 Linux 工作区 · 文件保留，进程随连接结束';
     $('window-count').textContent = `${windows.size} / ${MAX_WINDOWS} 个窗口`;
     $('new-terminal').disabled = $('new-ssh').disabled = windows.size >= MAX_WINDOWS;
+    $('mobile-connect').disabled = !selected || selected.state === 'ready' || selected.state === 'connecting';
+    for (const id of ['mobile-rename', 'mobile-export', 'mobile-clear', 'mobile-close']) $(id).disabled = !selected;
   }
   function renderList() {
     const query = $('session-search').value.trim().toLowerCase();
@@ -87,6 +92,7 @@
     active = id;
     for (const s of windows.values()) s.frame.hidden = s.id !== id;
     windows.get(id).unread = false;
+    post(windows.get(id), 'viewport');
     post(windows.get(id), 'activate');
     mobileList(false); $('session-menu').hidden = true; $('session-menu-toggle').setAttribute('aria-expanded', 'false');
     renderList(); save();
@@ -99,10 +105,10 @@
     const session = { id, mode, name: stored?.name || (mode === 'ssh' ? 'SSH 连接' : (windows.size ? `终端 ${windows.size + 1}` : '我的终端')), target: stored?.target || null, state: 'idle', status: autoStart && mode === 'workspace' ? '准备连接…' : '待连接', unread: false, preview: '' };
     const frame = document.createElement('iframe'); session.frame = frame;
     frame.title = session.name; frame.className = 'session-frame'; frame.hidden = true;
-    const params = new URLSearchParams({ embed: '1', mode, auto: autoStart ? '1' : '0' });
+    const params = new URLSearchParams({ embed: '1', mode, auto: autoStart ? '1' : '0', compact: viewportState.compact ? '1' : '0' });
     if (session.target) for (const [key, value] of Object.entries(session.target)) params.set(key, String(value));
     frame.src = `/terminal/session?${params}`;
-    frame.addEventListener('load', () => post(session, session.id === active ? 'activate' : 'deactivate'));
+    frame.addEventListener('load', () => { post(session, 'viewport'); post(session, session.id === active ? 'activate' : 'deactivate'); });
     windows.set(id, session); $('session-frames').append(frame);
     select(id);
     return session;
@@ -114,6 +120,7 @@
     $('action-dialog').close(); dialogAction = null;
     $('session-menu').hidden = true; mobileList(false);
     $('app-view').hidden = true; $('auth-view').hidden = false;
+    document.body.classList.remove('terminal-app');
     $('account-password').value = ''; $('auth-message').textContent = message;
     $('account-submit').disabled = false; $('account-submit').textContent = '登录并进入终端';
   }
@@ -121,6 +128,7 @@
     if (!info.user?.id) throw new Error('账号信息异常，请重新登录。');
     user = info.user; csrf = info.csrf;
     $('auth-view').hidden = true; $('app-view').hidden = false;
+    document.body.classList.add('terminal-app'); viewport();
     $('account-label').textContent = user.username;
     $('account-avatar').textContent = user.username.slice(0, 1).toUpperCase();
     const data = metadata();
@@ -188,6 +196,9 @@
   $('clear-session').addEventListener('click', () => ask('clear'));
   $('reconnect-session').addEventListener('click', () => post(windows.get(active), 'connect'));
   $('export-session').addEventListener('click', () => { post(windows.get(active), 'export'); $('session-menu').hidden = true; });
+  for (const [mobile, target] of [['mobile-connect', 'reconnect-session'], ['mobile-rename', 'rename-session'], ['mobile-export', 'export-session'], ['mobile-clear', 'clear-session'], ['mobile-close', 'close-session']]) {
+    $(mobile).addEventListener('click', () => { mobileList(false); $(target).click(); });
+  }
   $('action-cancel').addEventListener('click', () => { $('action-dialog').close(); dialogAction = null; });
   $('action-dialog').addEventListener('cancel', () => { dialogAction = null; });
   $('action-form').addEventListener('submit', event => {
@@ -208,15 +219,30 @@
     if (event.origin !== location.origin || event.data?.source !== 'strgo-terminal') return;
     const s = [...windows.values()].find(item => item.frame.contentWindow === event.source); if (!s) return;
     const { type, state, text, target } = event.data;
-    if (type === 'status' && ['idle', 'ready', 'connecting', 'error'].includes(state)) { s.state = state; s.status = String(text).slice(0, 80); }
+    if (type === 'status' && ['idle', 'ready', 'connecting', 'error'].includes(state)) {
+      s.state = state; s.status = String(text).slice(0, 80);
+      if (state === 'ready' && $('workspace-message').textContent.startsWith('已恢复窗口配置')) feedback();
+    }
     else if (type === 'output') { if (s.id !== active) s.unread = true; s.preview = String(text || '').replace(/\s+/g, ' ').slice(-80); }
     else if (type === 'target' && s.mode === 'ssh') { s.target = safeTarget(target); save(); }
     else if (type === 'auth-expired') { refresh(); return; }
+    else if (type === 'sessions') { if (s.id === active) mobileList(true); return; }
+    else if (type === 'viewport-ready') { post(s, 'viewport'); return; }
     else return;
     renderList();
   });
-  function viewport() { document.documentElement.style.setProperty('--app-height', `${Math.round(window.visualViewport?.height || innerHeight)}px`); }
-  window.visualViewport?.addEventListener('resize', viewport); window.addEventListener('resize', viewport); viewport();
+  function viewport() {
+    const visual = window.visualViewport;
+    const height = Math.max(1, Math.round(visual?.height || innerHeight));
+    const layoutHeight = Math.max(innerHeight, document.documentElement.clientHeight || 0);
+    viewportState = { compact: window.matchMedia(compactQuery).matches, keyboard: (visual?.scale || 1) === 1 && layoutHeight - height > 100 };
+    document.documentElement.style.setProperty('--app-height', `${height}px`);
+    document.documentElement.style.setProperty('--app-top', `${Math.max(0, Math.round(visual?.offsetTop || 0))}px`);
+    document.body.classList.toggle('keyboard-open', viewportState.keyboard);
+    for (const s of windows.values()) post(s, 'viewport');
+  }
+  window.visualViewport?.addEventListener('resize', viewport); window.visualViewport?.addEventListener('scroll', viewport);
+  window.addEventListener('resize', viewport); window.addEventListener('orientationchange', viewport); viewport();
   window.addEventListener('focus', refresh);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   window.addEventListener('storage', event => { if (user && event.key === 'strgo-account-event') refresh(); });

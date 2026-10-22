@@ -8,3 +8,20 @@ body{margin:0;color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI"
 @media(max-width:700px),(max-width:1000px) and (max-height:500px){.app-view{display:block}.rail{display:none}.conversation{height:100%;padding-bottom:env(safe-area-inset-bottom,0px)}.conversation-heading{height:64px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));min-height:64px}.conversation-title h2{font-size:16px}.conversation-tools{gap:5px}.mobile-only{display:inline-grid}.conversation-sidebar{position:fixed;inset:0 auto 0 0;width:min(320px,85vw);z-index:20;transform:translateX(-100%);visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);transition:transform .18s}.list-open .conversation-sidebar{transform:translateX(0);visibility:visible}.sidebar-shade:not([hidden]){display:block;position:fixed;inset:0;background:#0004;z-index:19}.workspace-footer{font-size:9px;padding:4px 10px}.workspace-footer span:last-child{display:none}.sidebar-heading{height:64px}.sidebar-bottom{padding:16px}.account-summary{padding-right:56px;position:relative}.list-open .rail-logout{display:block}.workspace-message{font-size:11px;padding:7px 12px}.session-menu{right:12px;top:57px}.auth-view{padding:24px 24px 12px}.auth-form{padding:30px 0}.app-icon{width:56px;height:56px}.auth-brand{font-size:14px}}
 @media(max-height:450px){.workspace-footer{display:none}.conversation-heading{height:50px;min-height:50px}.auth-form{padding:16px 0}.auth-form .app-icon{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* One visual viewport owns the mobile layout; frames inherit its exact size. */
+body.terminal-app{height:100%;overflow:hidden;overscroll-behavior:none}
+.mobile-session-actions{display:none}
+@media(max-width:700px),(max-width:1000px) and (max-height:500px){
+  body.terminal-app{position:fixed;inset:0;width:100%}
+  .terminal-app .app-view{position:absolute;left:0;right:0;top:var(--app-top,0px);height:var(--app-height);min-height:0;max-width:none;border:0;margin:0}
+  .conversation{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
+  .conversation-heading,.workspace-footer{display:none}
+  .session-frames{min-height:0}
+  .conversation-sidebar{top:var(--app-top,0px);bottom:auto;height:var(--app-height);max-height:var(--app-height)}
+  .mobile-session-actions{display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;border-top:1px solid var(--line);flex-shrink:0}
+  .mobile-session-actions button{flex:1;min-width:42px;min-height:40px;font-size:12px;border-radius:4px;background:#e9eeeb}
+  .workspace-message{position:absolute;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:4;border-radius:6px;max-height:72px;overflow:auto;box-shadow:0 2px 12px #0001;pointer-events:none}
+  .workspace-empty{inset:0;padding:24px}
+  .keyboard-open .conversation{padding-bottom:0}
+}

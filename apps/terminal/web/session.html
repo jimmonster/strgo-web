@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
   <meta name="color-scheme" content="light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#ededed">
   <meta name="robots" content="noindex,nofollow">
   <title>STRGO · 终端会话</title>
@@ -61,7 +62,7 @@
       </nav>
       <section id="mobile-input-bar" class="mobile-input-bar" aria-label="命令编辑区">
         <div class="composer-heading"><div class="input-modes" role="group" aria-label="显示方式"><button id="edit-mode" type="button" aria-pressed="true">聊天</button><button id="direct-mode" type="button" aria-pressed="false" disabled>终端</button></div><div class="composer-actions"><button id="secret-input" type="button" class="small-button" aria-pressed="false" disabled>密码模式</button><button id="expand-editor" type="button" class="small-button" aria-expanded="false" aria-controls="command-editor" disabled>展开 ↗</button></div></div>
-        <div id="composer-body" class="composer-body"><label class="sr-only" for="mobile-input">密码输入</label><input id="mobile-input" type="text" inputmode="text" enterkeyhint="send" placeholder="密码不会显示在聊天记录中" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" hidden disabled><label class="sr-only" for="command-editor">输入要执行的命令或文本</label><textarea id="command-editor" rows="1" inputmode="text" enterkeyhint="enter" placeholder="输入命令或消息…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" disabled></textarea><button id="submit-input" type="button" class="small-button send-button" disabled>发送</button></div>
+        <div id="composer-body" class="composer-body"><button id="session-list-toggle" class="compact-action" type="button" title="终端窗口" aria-label="切换终端窗口">☰</button><button id="mobile-tools-toggle" class="compact-action" type="button" title="终端工具" aria-label="展开终端工具" aria-expanded="false" aria-controls="keys">＋</button><button id="session-connect" class="compact-action" type="button">连接</button><label class="sr-only" for="mobile-input">密码输入</label><input id="mobile-input" type="text" inputmode="text" enterkeyhint="send" placeholder="密码不会显示在聊天记录中" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" hidden disabled><label class="sr-only" for="command-editor">输入要执行的命令或文本</label><textarea id="command-editor" rows="1" inputmode="text" enterkeyhint="enter" placeholder="输入命令或消息…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" disabled></textarea><button id="submit-input" type="button" class="small-button send-button" disabled>发送</button></div>
         <p id="editor-hint" class="editor-hint">回车换行，点发送执行 · Ctrl+Enter 快速发送</p>
       </section>
       <footer class="terminal-footer"><span id="dimensions">80 × 24</span><span id="session-clock">SESSION —</span><span id="history-note">当前页最近 120 条 · 每条最近约 300 行</span></footer>

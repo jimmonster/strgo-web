@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
   <meta name="theme-color" content="#ededed">
   <meta name="color-scheme" content="light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="终端">
   <meta name="robots" content="noindex,nofollow">
   <title>STRGO · 我的终端</title>
   <link rel="stylesheet" href="/terminal/workspace.css">
@@ -42,6 +45,7 @@
       <div class="search-field"><label class="sr-only" for="session-search">搜索终端</label><input id="session-search" type="search" placeholder="搜索终端" autocomplete="off"></div>
       <div id="conversation-list" class="conversation-list" role="list" aria-label="终端窗口列表"></div>
       <p id="list-empty" class="list-empty" hidden>没有匹配的终端</p>
+      <nav class="mobile-session-actions mobile-only" aria-label="当前终端操作"><button id="mobile-connect" type="button">连接</button><button id="mobile-rename" type="button">改名</button><button id="mobile-export" type="button">导出</button><button id="mobile-clear" type="button">清屏</button><button id="mobile-close" type="button">关闭</button></nav>
       <div class="sidebar-bottom"><button id="new-ssh" type="button">＋ SSH 连接</button><span id="window-count">0 / 8 个窗口</span></div>
       <div class="account-summary"><span id="account-avatar" class="account-avatar" aria-hidden="true">U</span><div><strong id="account-label"></strong><span>个人工作区 · 文件独立保存</span></div><button id="mobile-logout" class="mobile-only icon-button" type="button" title="退出账号" aria-label="退出账号">⇥</button></div>
     </aside>

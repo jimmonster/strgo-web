@@ -185,6 +185,7 @@ noscript { display:block; padding:20px; color:var(--danger); }
 .embedded h1,.embedded h2,.embedded .brand { letter-spacing:0; }
 .workspace-mode #secret-input { display:none!important; }
 .chat-bubble { user-select:text; -webkit-user-select:text; }
+.compact-action { display:none; }
 @media(max-width:700px), (max-width:1000px) and (max-height:500px) {
   .embedded .workspace { flex-direction:column; }
   .embedded .sidebar { flex:0 0 auto; max-height:60%; width:100%; border-right:0; border-bottom:1px solid var(--border); padding:12px; }
@@ -194,3 +195,53 @@ noscript { display:block; padding:20px; color:var(--danger); }
   .embedded .keybar-tools { gap:4px; flex-wrap:wrap; }
   .embedded .keybar-tools button { font-size:10px; padding:4px; }
 }
+
+/* Mobile sessions dedicate the screen to the transcript and one input row. */
+.compact-mobile { min-height:0;height:var(--viewport-height);overflow:hidden;overscroll-behavior:none; }
+.compact-mobile .topbar,.compact-mobile .intro,.compact-mobile .sandbox-note,.compact-mobile .home-link,.compact-mobile .site-legal,
+.compact-mobile .terminal-heading,.compact-mobile .terminal-footer,.compact-mobile .editor-hint { display:none; }
+.compact-mobile .workspace { position:absolute;top:var(--viewport-top);left:0;right:0;display:flex;flex-direction:column;max-width:none;height:var(--viewport-height);padding:0;gap:0;min-height:0; }
+.compact-mobile.embedded .workspace { position:static;height:100%; }
+.compact-mobile .terminal-panel { flex:1;width:100%;height:auto;min-height:0;border:0;border-radius:0;box-shadow:none;padding:0;position:relative; }
+.compact-mobile:not(.embedded) .terminal-panel { padding-top:env(safe-area-inset-top,0px); }
+.compact-mobile .terminal-stage { flex:1 1 0;min-height:0; }
+.compact-mobile #terminal { inset:4px; }
+.compact-mobile .chat-log { padding:10px 8px; }
+.compact-mobile .chat-message { gap:6px;margin-bottom:12px; }
+.compact-mobile .chat-avatar,.compact-mobile .message-label { display:none; }
+.compact-mobile .message-content { max-width:95%; }
+.compact-mobile .chat-bubble { min-height:32px;padding:7px 10px;line-height:1.5; }
+.compact-mobile .message-actions { gap:12px;margin-top:0; }
+.compact-mobile .message-actions button { min-height:24px;padding:2px 0; }
+.compact-mobile .terminal-notice { position:absolute;top:4px;left:8px;right:8px;z-index:3;max-height:64px;font-size:11px;padding:6px 9px;border:0;border-radius:5px;box-shadow:0 2px 8px #0001; }
+.compact-mobile .keybar { display:none;order:2;padding:4px 6px;background:#f6f6f6;max-height:25%;overflow:auto; }
+.compact-mobile.mobile-tools-open .keybar { display:block; }
+.compact-mobile .keybar-tools { flex-wrap:wrap;gap:4px;padding:0; }
+.compact-mobile .keybar-tools button { min-height:34px;font-size:11px;padding:4px 6px; }
+.compact-mobile .keybar-main button,.compact-mobile .keybar-extra button { min-height:32px; }
+.compact-mobile .mobile-input-bar { order:3;padding:5px 6px calc(5px + env(safe-area-inset-bottom,0px));position:relative; }
+.compact-mobile.keyboard-open .mobile-input-bar { padding-bottom:5px; }
+.compact-mobile .composer-heading { display:none;gap:4px;margin-bottom:4px; }
+.compact-mobile.mobile-tools-open .composer-heading { display:flex; }
+.compact-mobile .composer-body { display:flex!important;gap:4px;align-items:flex-end; }
+.compact-mobile .compact-action { display:grid;place-items:center;flex:0 0 34px;min-width:34px;height:40px;padding:0;border:0;border-radius:5px;background:#e7eae8;color:#59665e;font-size:20px; }
+.compact-mobile #session-connect { display:none;font-size:12px;flex-basis:48px; }
+.compact-mobile:not(.connected) #session-connect { display:grid; }
+.compact-mobile:not(.embedded) #session-list-toggle { display:none; }
+.compact-mobile .composer-body textarea,.compact-mobile .composer-body input { flex:1 1 0;width:0;min-width:0;min-height:40px;padding:8px;font-size:16px;line-height:1.5; }
+.compact-mobile .send-button { flex:0 0 48px;min-width:48px;min-height:40px;padding:7px;font-size:13px; }
+.compact-mobile .composer-actions { gap:2px; }
+.compact-mobile .composer-actions button { padding:3px 5px;font-size:10px; }
+.compact-mobile .input-modes button { padding:3px 8px; }
+.compact-mobile .composer-body textarea { max-height:88px; }
+.compact-mobile .expanded .composer-body textarea { min-height:40px;max-height:180px; }
+.compact-mobile.direct-input #composer-body { display:flex!important; }
+.compact-mobile.direct-input #command-editor,.compact-mobile.direct-input #mobile-input,.compact-mobile.direct-input #submit-input { display:none!important; }
+.compact-mobile.direct-input #mobile-tools-toggle { margin-left:auto; }
+.compact-mobile .extra-keys { max-height:100px; }
+.compact-mobile .sidebar { flex:0 1 auto;min-height:0;max-height:55%;overflow:auto; }
+.compact-mobile.connected .sidebar,.compact-mobile.workspace-mode .sidebar { display:none; }
+.compact-mobile.keyboard-open .chat-welcome { padding:8px; }
+.compact-mobile.keyboard-open .welcome-icon,.compact-mobile.keyboard-open .chat-welcome>span:last-child { display:none; }
+.compact-mobile.keyboard-open .chat-welcome h2 { font-size:15px; }
+.compact-mobile.keyboard-open .chat-welcome p { margin:4px 0;font-size:12px; }
