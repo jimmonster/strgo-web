@@ -131,11 +131,8 @@ class Store:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(name, self.spool / (image_id + '.enc'))
-            directory_fd = os.open(self.spool, os.O_RDONLY | os.O_DIRECTORY)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+            from .durability import sync_directory
+            sync_directory(self.spool)
         finally:
             if os.path.exists(name):
                 os.unlink(name)
