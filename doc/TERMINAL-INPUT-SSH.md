@@ -68,12 +68,13 @@ python3 /root/strgo-web/apps/terminal/scripts/setup-local-ssh.py --host strgo.co
     ../../image_service/app.py tests/*.mjs tests/*.py scripts/*.py \
     deploy/*.service deploy/*.conf update-account.sh update-mobile.sh repair-sandbox.sh \
     > .build/account-release/SHA256SUMS
+  export ACCOUNT_TEST_PYTHON=/opt/strgo-image/.venv/bin/python
   bash update-account.sh --check
   bash update-account.sh
 )
 ```
 
-原生构建脚本在当前项目 `.build/` 准备 Rust 1.88.0、锁定依赖和前端资源，并构建 SSH 沙箱镜像；需要已安装 Docker、Node.js/npm、Python 3、systemd 与可用网络。若更新提示账号服务模块版本不一致，先按 [统一部署第 3 节](../DEPLOYMENT.md#3-升级账号生图与论坛) 备份并对齐账号服务，再重跑终端更新，不绕过脚本检查。
+原生构建脚本在当前项目 `.build/` 准备 Rust 1.88.0、锁定依赖和前端资源，并构建 SSH 沙箱镜像；需要已安装 Docker、Node.js/npm、Python 3、systemd 与可用网络。账号回归使用已部署服务的 Python 虚拟环境，避免依赖只安装在虚拟环境时被系统 Python 漏读。若更新提示账号服务模块版本不一致，先按 [统一部署第 3 节](../DEPLOYMENT.md#3-升级账号生图与论坛) 备份并对齐账号服务，再重跑终端更新，不绕过脚本检查。
 
 更新成功后执行上文的一次性免密配置，再核查服务并刷新页面：
 
