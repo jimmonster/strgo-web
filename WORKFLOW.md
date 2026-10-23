@@ -39,6 +39,8 @@ LOCAL_STUDIO_WORKER_TOKEN=在此填写与服务器相同的专用随机密钥
 
 以下为 Ubuntu/Debian 上的部署步骤；SSH 地址与用户名由实际环境决定。
 
+现有主站和账号服务已发布时，在服务器运行 `bash scripts/deploy-workflow.sh` 可启用默认 Workflow 子域名。脚本检查创作台静态文件与登录接口，复用服务器已有 ACME 账号申请独立证书，安装 Nginx 站点并校验实际返回的页面和资源；失败时恢复原 Nginx 配置。域名须事先解析到该服务器。可通过 `WORKFLOW_DOMAIN`、`STRGO_SITE_ROOT`、`IMAGE_PORT` 覆盖域名、主站发布目录与 API 端口；服务器与本机的连接密钥仍按本文配置。
+
 1. 将所选域名的 DNS 指向服务器。在 `site.json` 中设置 `"WORKFLOW_ORIGIN": "https://你的域名"`（默认 `https://workflow.strgo.com`），运行项目生产构建与现有主站发布。`dist/local-studio/` 随现有 release 一起发布。
 2. 更新 API 模块，沿用现有 `/opt/strgo-image`、`strgo-image` systemd 服务和数据目录。可运行现有 `image_service/deploy/install.sh`，保留原 `IMAGE_ENCRYPTION_KEY`。在 `/etc/strgo-image.env` 添加下列两项，然后重启 `strgo-image`：
 
@@ -97,3 +99,5 @@ npm run test:workflow:browser
 后端测试使用真实临时 SQLite 和 HTTP 服务、模拟 ComfyUI/存储，覆盖管理员角色、既有账号复用、跨站请求/CSRF、独立 Cookie、任务幂等、单任务领取、断线和重启、加密参考图、分片重传、磁盘失败和视频 Range。浏览器测试覆盖手机/桌面布局、会员拒绝、管理员登录、工作流切换、参考图压缩、离线限制、提交与退出。测试不调用收费模型，也不执行真实 GPU 推理。截图与报告在 `artifacts/local-studio/`。
 
 2026-10-22 验证：19 项本次专项测试（含独立构建检查）、浏览器交互与 320/390/768/1440 宽度检查通过；生产构建和 ComfyUI 内嵌 Python 下的 5 个工作流配置校验通过。整仓回归未全绿：既有场景测试的 CRLF 导入匹配失败，部分 Python 测试在 Windows 遇到 UTF-8 默认编码、Bash 缺失、路径分隔符和未关闭 SQLite 连接的清理问题。未运行服务器 `nginx -t`，未发布域名，未执行真实 GPU 推理。
+
+2026-10-22 生产发布补充：服务器已启用 `workflow.strgo.com` 独立 Nginx 站点和对应 HTTPS 证书，修复了子域名落到主站且证书域名不匹配的问题。真实浏览器验证 390/1440 宽度的登录页、登录状态接口、未登录任务访问拒绝和其他图片 API 隔离通过，主站仍返回主页；报告与截图位于 `artifacts/workflow-deploy/`。Linux 下 18 项后端及连接程序专项测试通过，包含真实本机 HTTP 往返。此验证未使用生产管理员密码、未连接用户电脑或执行 GPU 推理；服务器尚需按本文配置本机连接密钥。
