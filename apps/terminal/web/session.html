@@ -35,7 +35,7 @@
             <input id="host" name="host" type="text" inputmode="url" placeholder="公网 IP 或域名" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="253">
             <div class="form-row"><div><label for="username">用户名</label><input id="username" name="username" type="text" value="root" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="64"></div><div class="port-field"><label for="port">端口</label><input id="port" name="port" type="number" inputmode="numeric" value="22" min="1" max="65535" required></div></div>
             <label class="check-label"><input id="remember-target" type="checkbox"> 记住服务器地址与用户名</label>
-            <p class="help-text">SSH 密码在连接后输入。首次连接，请核对终端显示的主机指纹再输入 yes。</p>
+            <p class="help-text">勾选后，下次可复用地址与用户名。管理员配置 SSH 密钥后无需输入服务器密码；首次连接请核对主机指纹再输入 yes。</p>
             <button id="connect-button" class="primary-button" type="submit">新建 SSH 会话 <span aria-hidden="true">→</span></button>
           </fieldset>
           <p id="connect-message" class="form-message" role="status" aria-live="polite"></p>

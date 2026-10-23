@@ -374,14 +374,52 @@ test('disconnect retains unsent ordinary drafts and does not replay them on reco
   assert.equal(next.sent.filter(p => p.type === 'input').length, 0);
 });
 
-test('native paste in terminal mode is captured into the composer without sending bytes', async () => {
+test('native paste in terminal mode keeps the terminal visible and waits for explicit send', async () => {
   const app = application(); const socket = await app.connect();
   await app.elements.get('direct-mode').click();
   let prevented = false;
   await app.elements.get('terminal').trigger('paste', { clipboardData: { getData: () => 'echo first\necho second' }, preventDefault: () => { prevented = true; } });
   assert.equal(prevented, true); assert.equal(app.elements.get('command-editor').value, 'echo first\necho second');
   assert.equal(socket.sent.filter(p => p.type === 'input').length, 0);
-  assert.equal(app.document.body.classList.contains('direct-input'), false);
+  assert.equal(app.document.body.classList.contains('direct-input'), true);
+  await app.elements.get('submit-input').click();
+  assert.equal(socket.sent.filter(p => p.type === 'input').map(p => p.data).join(''), 'echo first\necho second\r');
+  assert.equal(app.document.body.classList.contains('direct-input'), true);
+});
+
+test('Codex-style alternate screen accepts composed Chinese once without hiding its screen', async () => {
+  const app = application({ realTerminal: true }); const socket = await app.connect();
+  try {
+    await app.output('\x1b[?1049h\x1b[?2004h\x1b[2JCodex');
+    const editor = app.elements.get('command-editor');
+    assert.equal(app.document.body.classList.contains('direct-input'), true);
+    assert.equal(app.elements.get('composer-body').hidden, false);
+    assert.equal(app.elements.get('expand-editor').disabled, false);
+    await editor.trigger('compositionstart'); editor.value = '请用中文解释这段代码“你好”🐉\n第二行';
+    await editor.trigger('keydown', { key: 'Enter', isComposing: true, ctrlKey: true });
+    await app.elements.get('submit-input').click();
+    assert.equal(socket.sent.filter(p => p.type === 'input').length, 0);
+    await editor.trigger('compositionend');
+    await editor.trigger('keydown', { key: 'Enter', keyCode: 229, ctrlKey: true });
+    assert.equal(socket.sent.filter(p => p.type === 'input').length, 0);
+    await editor.trigger('keydown', { key: 'Enter', ctrlKey: true });
+    assert.equal(socket.sent.filter(p => p.type === 'input').map(p => p.data).join(''), '\x1b[200~请用中文解释这段代码“你好”🐉\r第二行\x1b[201~\r');
+    assert.equal(editor.value, '');
+    assert.equal(app.document.body.classList.contains('direct-input'), true);
+    assert.equal(app.elements.get('chat-log').hidden, true);
+    assert.equal(app.focus, 'command-editor');
+  } finally { app.terminal.dispose(); }
+});
+
+test('terminal mode keeps a Chinese draft when sending is blocked', async () => {
+  const app = application(); const socket = await app.connect();
+  await app.elements.get('direct-mode').click();
+  socket.bufferedAmount = 300 * 1024;
+  const editor = app.elements.get('command-editor'); editor.value = '不要丢失这段中文';
+  await app.elements.get('submit-input').click();
+  assert.equal(editor.value, '不要丢失这段中文');
+  assert.equal(socket.sent.filter(p => p.type === 'input').length, 0);
+  assert.equal(app.document.body.classList.contains('direct-input'), true);
 });
 
 test('copying a terminal selection never emits interrupt bytes', async () => {

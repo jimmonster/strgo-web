@@ -112,6 +112,22 @@ test('restore is disconnected, never replays commands, and uses only the current
   assert.equal(app.$('conversation-name').textContent, '我的终端');
 });
 
+test('new SSH windows reuse only a remembered target from the current account', async () => {
+  const app = await application(); await app.event('new-ssh');
+  const first = app.frames.at(-1);
+  assert.equal(new URL(first.src, 'https://strgo.test').searchParams.has('host'), false);
+  await app.emit('message', { origin: 'https://strgo.test', source: first.contentWindow, data: { source: 'strgo-terminal', type: 'target', target: { host: 'strgo.com', username: 'root', port: 22, password: 'never-save' } } });
+  await app.event('new-ssh');
+  const next = new URL(app.frames.at(-1).src, 'https://strgo.test');
+  assert.equal(next.searchParams.get('host'), 'strgo.com');
+  assert.equal(next.searchParams.get('username'), 'root');
+  assert.equal(next.searchParams.has('password'), false);
+  assert.ok(!JSON.stringify([...app.storage.values()]).includes('never-save'));
+  app.switchAccount({ id: 'b'.repeat(32), username: 'other', role: 'member' });
+  await app.emit('focus'); await app.flush(); await app.event('new-ssh');
+  assert.equal(new URL(app.frames.at(-1).src, 'https://strgo.test').searchParams.has('host'), false);
+});
+
 test('rename and close target only the selected window and closing asks for confirmation', async () => {
   const app = await application(); await app.event('new-terminal');
   await app.event('rename-session'); assert.equal(app.$('action-dialog').hasAttribute('open'), true);
