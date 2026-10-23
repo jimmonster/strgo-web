@@ -20,7 +20,7 @@ npm run preview
 
 `dist/` 是可直接部署的静态产物。也可以用任意本地 HTTP 服务运行项目根目录；所有运行素材已放入 `assets/`，无需 CDN、远程字体、API 密钥或服务端账号。直接双击 `index.html` 可能被浏览器的 ES Module 跨源限制阻止，请通过 HTTP 打开。
 
-正式挂载路径为 `https://strgo.com/nexus/`。已将自包含源码集成到主站工程的 `src/nexus/`，由主站构建生成 `dist/nexus/`；主页导航、移动菜单及空间卡片提供入口，NEXUS 页脚提供返回主页链接。主站发布脚本处理 `/nexus` 至 `/nexus/` 的跳转。当前受限环境尚未完成线上切换；主站集成与部署记录见相邻 `strgo-homepage` 工程的 `NEXUS-DEPLOYMENT.md`。
+正式挂载路径为 `https://strgo.com/nexus/`。源码集成到本仓库 `src/nexus/`，主站构建生成 `dist/nexus/`。在应用目录执行 `npm run sync:strgo` 同步，执行 `npm run check:integration` 只读校验；失效资源或依赖会停止同步并保留原集成副本。主站导航与返回入口保持原路径；当前部署边界见 [统一部署](../../DEPLOYMENT.md)，历史集成记录见 [NEXUS部署](../../NEXUS-DEPLOYMENT.md)。
 
 ## 入口与模块
 
@@ -125,3 +125,7 @@ python3 tests/render-offscreen.py --animate
 ## 素材与依赖
 
 见 `ASSETS.md`。所有网站资源均使用相对路径。运行时总文件体积约 1MB；不包含测试产物和开发依赖。Three.js 以固定版本在 `package-lock.json` 锁定，随项目提供本地压缩模块及 MIT 许可。
+
+## 2026-10-23 本机浏览器补验
+
+本机Chrome155（SwiftShader）已通过六种尺寸、搜索、设置暂停、旅程退出、观景/语言及交互脚本检查。搜索输入现在一次Escape即可关闭面板。6张截图见 `artifacts/browser/`；本轮未录屏，未执行180秒硬件性能测试。源码同步及主站构建另行通过。

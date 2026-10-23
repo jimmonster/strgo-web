@@ -117,7 +117,7 @@ assistant.addEventListener('strgo:draft-applied', event => {
 | `/admin/audit` | GET | 不含正文与密钥的元数据日志 |
 | `/admin/reconciliation`, `/admin/reconciliation/{id}` | GET / PUT | 暂记成本与供应商实际账单核对 |
 
-首版列表最多返回最近 100 条；大规模长期作品检索与游标分页属于后续扩展项。需要更长记录时应先增加游标分页，不应提高响应大小上限或开放全员查询。
+`/tasks`、`/music/jobs`、`/assets`、`/conversations`支持 `?limit=20&cursor=...`，返回 `{items,next_cursor}`，每页1–100条，末页游标为null。游标按时间与ID稳定排序，仍强制所有者范围；音乐分类在分页前过滤。对话列表还支持scope与最长80字的q查询。新前端使用20条游标加载并按ID去重；失败保留游标便于重试，旧搜索响应不覆盖新结果。已有未传分页参数的客户端继续获得最多100条数组。
 
 音乐报价请求：
 
@@ -151,6 +151,6 @@ assistant.addEventListener('strgo:draft-applied', event => {
 - 若同一硬件需要多个调度系统共享，先增加节点代理、fencing token 验证和 GPU 就绪/卸载协议，再开放多方调度。当前中央锁不能管理站外的直接调用。
 - ACE-Step 的轮询按官方 `release_task/query_result` 及 `result` JSON 字符串兼容处理，只接受同一节点的 `/v1/audio?path=` 结果。
 - DeepSeek 使用 Chat Completions SSE；其他兼容供应商必须真实验证 usage、终止标记、输出上限和价格上界，不能只凭接口名称标为已验收。
-- 当前先提供四个可配置连接槽；多连接 CRUD、更多 scope、游标分页和跨供应商计价规则应按新需求逐步扩展。
+- 当前先提供四个可配置连接槽；多连接CRUD、更多scope和跨供应商计价规则应按新需求逐步扩展。
 
-现有 `WORKFLOW.md` 所述 ComfyUI 创作台使用独立任务队列。若与 AI 节点共用同一 GPU，当前版本必须错峰运行或使用不同硬件；开通共用硬件前应将该队列接入统一资源锁/节点代理。不要仅设置两个界面的资源组名称就假定已有跨队列互斥。
+现有ComfyUI队列已接入统一 `ai_leases`。服务器资源组由 `LOCAL_STUDIO_RESOURCE_GROUP` 指定，连接程序在结果保存或失败后验证队列空闲与模型卸载，再使用原claim释放自己的锁。未知执行、断线和重启不会自动抢锁；旧版本升级、排空与人工释放见 [GPU调度与恢复](../GPU-SCHEDULING.md)。这不是站外多调度器的节点代理，部署前仍须禁止绕过本系统提交，核实ACE-Step空闲释放与真实GPU效果。

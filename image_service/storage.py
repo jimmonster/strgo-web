@@ -6,6 +6,7 @@ import shutil
 import tempfile
 
 from .security import Problem
+from .durability import sync_directory
 
 
 class DiskStorage:
@@ -59,11 +60,7 @@ class DiskStorage:
             self._path(key)
             os.replace(name, path)
             name = None
-            directory_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+            sync_directory(path.parent)
             if path.stat().st_size != len(data) or hashlib.sha256(path.read_bytes()).digest() != hashlib.sha256(data).digest():
                 raise Problem(502, 'ECS 硬盘写入校验失败，图片保留在待保存队列。')
         except Problem:
@@ -95,11 +92,7 @@ class DiskStorage:
         try:
             path.unlink(missing_ok=True)
             if path.parent.exists():
-                directory_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
-                try:
-                    os.fsync(directory_fd)
-                finally:
-                    os.close(directory_fd)
+                sync_directory(path.parent)
         except OSError as error:
             raise Problem(503, 'ECS 硬盘文件删除失败，将自动重试清理。') from error
 

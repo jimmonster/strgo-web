@@ -56,7 +56,7 @@ class ComfyWorkerTests(unittest.TestCase):
         target.write_bytes(b'\x89PNG\r\n\x1a\nresult')
         state = {'job': self.job, 'output': target.name}
         atomic_json(self.worker.pending, state)
-        with patch.object(self.worker, 'local') as local, patch.object(self.worker, 'remote', return_value={'ok': True}) as remote:
+        with patch.object(self.worker, 'release_gpu'), patch.object(self.worker, 'local') as local, patch.object(self.worker, 'remote', return_value={'ok': True}) as remote:
             self.worker.step()
         local.assert_not_called()
         self.assertTrue(any(call.args[0].endswith('/complete') for call in remote.call_args_list))
@@ -64,7 +64,7 @@ class ComfyWorkerTests(unittest.TestCase):
 
     def test_saved_failure_is_reported_without_executing_again(self):
         atomic_json(self.worker.pending, {'job': self.job, 'failure': 'ComfyUI failed'})
-        with patch.object(self.worker, 'local') as local, patch.object(self.worker, 'remote', return_value={'ok': True}) as remote:
+        with patch.object(self.worker, 'release_gpu'), patch.object(self.worker, 'local') as local, patch.object(self.worker, 'remote', return_value={'ok': True}) as remote:
             self.worker.step()
         local.assert_not_called()
         self.assertTrue(any(call.args[0].endswith('/fail') for call in remote.call_args_list))
@@ -72,13 +72,41 @@ class ComfyWorkerTests(unittest.TestCase):
 
     def test_server_ack_lost_and_untrusted_job_paths(self):
         atomic_json(self.worker.pending, {'job': self.job})
-        with patch.object(self.worker, 'local') as local, patch.object(self.worker, 'remote', return_value={'complete': True}):
+        with patch.object(self.worker, 'release_gpu'), patch.object(self.worker, 'local') as local, patch.object(self.worker, 'remote', return_value={'complete': True}):
             self.worker.step()
         local.assert_not_called()
         self.assertFalse(self.worker.pending.exists())
         for changes in ({'id': '../../outside'}, {'workflow': {}}, {'reference': 'not-base64'}):
             with self.subTest(changes=changes), self.assertRaises(ExecutionError):
                 self.worker.validate_job({**self.job, 'claim': 'x' * 40, **changes})
+
+    def test_gpu_release_waits_for_idle_queue_and_verified_torch_unload(self):
+        state = {'job': self.job}
+        stats = iter([{'devices': [{'type': 'cuda', 'torch_vram_total': 1024, 'torch_vram_free': 0}]},
+                      {'devices': [{'type': 'cuda', 'torch_vram_total': 0, 'torch_vram_free': 0}]}])
+        def local(path, body=None):
+            if path == '/queue':
+                return {'queue_running': [], 'queue_pending': []}
+            if path == '/system_stats':
+                return next(stats)
+            self.assertEqual((path, body), ('/free', {'unload_models': True, 'free_memory': True}))
+            return {}
+        with patch.object(self.worker, 'local', side_effect=local), patch.object(self.worker, 'remote') as remote, patch('image_service.comfy_worker.time.sleep'):
+            self.worker.release_gpu(state)
+        self.assertTrue(remote.call_args.args[0].endswith('/release'))
+        self.assertTrue(remote.call_args.args[1]['gpuIdle'])
+
+    def test_unknown_or_busy_gpu_keeps_claim_and_does_not_release(self):
+        state = {'job': self.job, 'output': 'output.result'}
+        atomic_json(self.worker.pending, state)
+        for queue in ({}, {'queue_running': [[0, 'still-running']], 'queue_pending': []}):
+            with patch.object(self.worker, 'local', return_value=queue), patch.object(self.worker, 'remote') as remote, self.assertRaises(OSError):
+                self.worker.release_gpu(state)
+            remote.assert_not_called()
+        with patch.object(self.worker, 'local', side_effect=lambda path, body=None: {'queue_running': [], 'queue_pending': []} if path == '/queue' else {}), patch.object(self.worker, 'remote') as remote, patch('image_service.comfy_worker.time.sleep'), self.assertRaises(OSError):
+            self.worker.release_gpu(state)
+        remote.assert_not_called()
+        self.assertTrue(self.worker.pending.exists())
 
     def test_custom_deployment_domain_and_injection_rejection(self):
         spec = importlib.util.spec_from_file_location('configure_workflow', ROOT / 'scripts/configure-workflow.py')

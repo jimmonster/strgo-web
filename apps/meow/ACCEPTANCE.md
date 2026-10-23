@@ -48,3 +48,7 @@ Linux 受限工作区，Node.js 22.22.2，Three.js 0.160.1，Python 3.10。JavaS
 ## strgo.com/meow/ 发布准备
 
 2026-10-16 按 `/meow/` 构建 40 个页面与 90 个文件，加入独立 Nginx 配置、版本指纹、逐文件 HTTP 校验和失败回滚。当前沙箱禁止网络 socket，实际发布在预检阶段停止，状态 `blocked-before-mutation`；线上未切换。完整记录见 `DEPLOYMENT.md`、`artifacts/deployment-attempt.log` 与 `artifacts/deployment/receipt.json`。
+
+## 2026-10-23 本机浏览器补验
+
+本机Chrome155（SwiftShader）真实HTTP浏览器报告为passed，覆盖26个详情直接访问/刷新、单渲染循环、收藏、暂停/单次动作、商品SKU、1440/1024/390宽度及减少动效。4张截图见 `artifacts/browser/`。这些补齐原表的本机浏览器缺口；真实触屏、硬件显存/FPS和最终艺术质量仍需对应验收。

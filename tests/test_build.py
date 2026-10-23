@@ -3,6 +3,7 @@ import json
 from html.parser import HTMLParser
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -23,6 +24,17 @@ class Markup(HTMLParser):
         self.tags.append((tag, dict(attrs)))
 
 class BuildTests(unittest.TestCase):
+    def test_site_admin_keeps_shared_login_static_assets_and_ai_admin(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = builder.build(output=directory)
+            page = (output / 'admin/index.html').read_text(encoding='utf-8')
+            self.assertIn('noindex,nofollow', page)
+            self.assertIn('全站管理', page)
+            for asset in ('app.js', 'boot.js', 'styles.css'):
+                self.assertTrue((output / 'admin' / asset).is_file())
+            self.assertTrue((output / 'admin/ai/index.html').is_file())
+            self.assertFalse(list((output / 'admin').rglob('*.py')))
+
     def test_local_studio_is_independent_and_ships_reference_compression(self):
         with tempfile.TemporaryDirectory() as directory:
             output = builder.build(output=directory)
@@ -173,6 +185,7 @@ class BuildTests(unittest.TestCase):
             for route in ('home', 'dance', 'terminal'):
                 self.assertIn('href="/nexus/"', (output / route / 'index.html').read_text())
 
+    @unittest.skipUnless(shutil.which('bash'), 'Nginx config generation requires Bash; Linux CI runs this check.')
     def test_deployed_nginx_redirect_preserves_nexus_query_and_strict_csp(self):
         script = (ROOT / 'deploy.sh').read_text()
         function = re.search(r'^render_content_config\(\) \{.*?^\}', script, re.M | re.S).group()
@@ -213,7 +226,7 @@ class BuildTests(unittest.TestCase):
             for number, page in enumerate(pages):
                 markup = Markup(page.read_text()).tags
                 canonical = [a['href'] for tag, a in markup if tag == 'link' and a.get('rel') == 'canonical']
-                route = '/dreams/' + str(page.relative_to(root)).removesuffix('index.html')
+                route = '/dreams/' + page.relative_to(root).as_posix().removesuffix('index.html')
                 self.assertEqual(canonical, [self.config['BASE_ORIGIN'].rstrip('/') + route])
                 self.assertIn(canonical[0], locations)
                 if number:
@@ -242,11 +255,13 @@ class BuildTests(unittest.TestCase):
             self.assertIn("chapterPath: ''", (root / 'src/config.js').read_text())
             self.assertFalse((root / 'dreams').exists(), 'Published chapters must avoid /dreams/dreams/ nesting')
             self.assertFalse((output / 'dream').exists(), 'The latest requested public route is /dreams/')
-            script = (ROOT / 'deploy.sh').read_text()
-            function = re.search(r'^render_content_config\(\) \{.*?^\}', script, re.M | re.S).group()
-            result = subprocess.run(['bash', '-e'], input='SITE_ROOT=/var/www/strgo\nTERMINAL_REUSE_PROXY=0\n' + function + '\nrender_content_config\n', capture_output=True, text=True, check=True)
-            self.assertIn('location = /dreams { return 308 /dreams/$is_args$args; }', result.stdout)
-            self.assertIn('error_page 404 /dreams/404.html;', result.stdout)
-            self.assertNotIn('unsafe-inline', result.stdout)
+    @unittest.skipUnless(shutil.which('bash'), 'DREAMS Nginx config generation requires Bash; Linux CI runs this check.')
+    def test_dream_nginx_route_keeps_query_error_page_and_csp(self):
+        script = (ROOT / 'deploy.sh').read_text()
+        function = re.search(r'^render_content_config\(\) \{.*?^\}', script, re.M | re.S).group()
+        result = subprocess.run(['bash', '-e'], input='SITE_ROOT=/var/www/strgo\nTERMINAL_REUSE_PROXY=0\n' + function + '\nrender_content_config\n', capture_output=True, text=True, check=True)
+        self.assertIn('location = /dreams { return 308 /dreams/$is_args$args; }', result.stdout)
+        self.assertIn('error_page 404 /dreams/404.html;', result.stdout)
+        self.assertNotIn('unsafe-inline', result.stdout)
 
 if __name__ == '__main__': unittest.main()

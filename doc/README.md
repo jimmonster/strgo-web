@@ -8,6 +8,9 @@
 | --- | --- |
 | [架构与模块](ARCHITECTURE.md) | 主站、六个应用、共享后端、数据与发布边界 |
 | [开发指南](DEVELOPMENT.md) | 环境、构建、集成、测试与跨平台注意事项 |
+| [功能缺口与执行清单](FEATURE-BACKLOG.md) | 优先级、外部依赖、实施顺序及完成证据 |
+| [全站后台需求](ADMIN-SYSTEM.md) | 统一管理入口、账号治理、审计与验收 |
+| [GPU调度与恢复](GPU-SCHEDULING.md) | AI / Workflow中央互斥、卸载确认与人工恢复 |
 | [整仓 review：2026-10-23](PROJECT-REVIEW.md) | 已修复问题、验证结果与待完成项目 |
 | [Codex 技能](../codex/README.md) | 后续开发和 review 的可复用流程 |
 

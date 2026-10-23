@@ -76,6 +76,8 @@ certbot certonly --webroot \
 
 ## 任务、结果与恢复
 
+Workflow与AI本地模型共用SQLite中央资源组锁。`LOCAL_STUDIO_RESOURCE_GROUP` 默认 `local-studio-gpu`，同一物理GPU的AI节点必须使用相同 `resourceGroup`。任务超时或结果保存不会自行释放资源；连接程序确认ComfyUI队列为空、请求卸载模型并确认显存状态后才释放。卸载失败或状态未知时保留本机日志与锁，重启只继续清理，不重新生成。配置、暂停领取及人工恢复步骤见 [GPU调度与恢复](doc/GPU-SCHEDULING.md)；真实设备卸载策略须另外验收。
+
 每次执行一个任务，最多排队 5 个。电脑离线后禁止新提交；已排队任务最多等待 10 分钟。执行任务租期为 180 秒，超时标记失败，不自动再次派发。图片与视频按 1 MiB 分片加密暂存于 SQLite，完成后校验 SHA-256、写入私有存储，再开放管理员预览/下载。单个结果上限 200 MiB；视频支持 Range 请求。参考图先在浏览器压缩至 2 MB，服务端加密暂存，完成或失败后清除。
 
 连接程序的 `state/pending.json` 记录领取凭据、ComfyUI prompt ID 和结果位置。提交前先落盘，网络中断后查询原 prompt 的队列与历史，不再次 POST 相同工作流；已生成文件只重传分片。ComfyUI 接受请求但回包丢失、执行失败、进程重启等情形不会触发自动重生成。若 ComfyUI 自身重启导致历史丢失，任务会失败，需人工核对本机输出后决定是否新建任务。启动程序要求 ComfyUI 支持客户端提供 UUID prompt ID。

@@ -62,3 +62,31 @@ test('invalid DREAMS configuration leaves the current integration intact',async 
  assert.equal(await readFile(join(root,'src/dreams/previous.txt'),'utf8'),'previous integration');
  assert.deepEqual(await readdir(join(root,'src')),['dreams']);
 });
+
+async function nexusFixture(t) {
+ const data = await fixture(t), { put } = data;
+ await put('apps/nexus/scripts/sync-strgo.mjs', await readFile(new URL('../apps/nexus/scripts/sync-strgo.mjs',import.meta.url)));
+ for(const [name, content] of Object.entries({'index.html':'<script src="./src/app.js"></script>','src/app.js':"import './shaders.js';",'src/shaders.js':'export {};','styles/main.css':'body{}','assets/three.module.js':'export {};'})) await put('apps/nexus/'+name,content);
+ await put('src/nexus/previous.txt','previous integration');
+ return data;
+}
+
+test('NEXUS sync is atomic and detects drift from authoritative application sources',async t=>{
+ const { root, put } = await nexusFixture(t), script=join(root,'apps/nexus/scripts/sync-strgo.mjs');
+ await execute(process.execPath,[script],{cwd:root});
+ await execute(process.execPath,[script,'--check'],{cwd:root});
+ await put('apps/nexus/src/shaders.js','export const revised=true;');
+ await assert.rejects(execute(process.execPath,[script,'--check'],{cwd:root}),/integration is stale/);
+ assert.equal(await readFile(join(root,'src/nexus/src/shaders.js'),'utf8'),'export {};');
+ await execute(process.execPath,[script],{cwd:root});
+ await execute(process.execPath,[script,'--check'],{cwd:root});
+ assert.equal(await readFile(join(root,'src/nexus/src/shaders.js'),'utf8'),'export const revised=true;');
+});
+
+test('NEXUS invalid or missing dependency preserves the previous integration',async t=>{
+ const { root, put } = await nexusFixture(t), script=join(root,'apps/nexus/scripts/sync-strgo.mjs');
+ await put('apps/nexus/src/app.js',"import './missing.js';");
+ await assert.rejects(execute(process.execPath,[script],{cwd:root}),/Missing NEXUS dependency/);
+ assert.equal(await readFile(join(root,'src/nexus/previous.txt'),'utf8'),'previous integration');
+ assert.deepEqual(await readdir(join(root,'src')),['nexus']);
+});

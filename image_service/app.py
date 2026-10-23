@@ -22,6 +22,7 @@ from .storage import create_storage
 from .store import Store
 from . import forum
 from . import local_studio
+from . import admin
 
 API = '/api/image'
 COOKIE = 'strgo_image_session'
@@ -296,7 +297,7 @@ class Service:
         if not token:
             return None
         with self.store.connect() as db:
-            return db.execute("SELECT users.*,sessions.csrf,sessions.hash AS session_hash,sessions.expires AS session_expires FROM sessions JOIN users ON users.id=sessions.user_id LEFT JOIN ai_members ON ai_members.user_id=users.id WHERE sessions.hash=? AND sessions.expires>? AND COALESCE(ai_members.status,'active')='active'", (digest(token), int(time.time()))).fetchone()
+            return db.execute("SELECT users.*,sessions.csrf,sessions.hash AS session_hash,sessions.expires AS session_expires FROM sessions JOIN users ON users.id=sessions.user_id LEFT JOIN ai_members ON ai_members.user_id=users.id LEFT JOIN account_controls c ON c.user_id=users.id WHERE sessions.hash=? AND sessions.expires>? AND COALESCE(ai_members.status,'active')='active' AND COALESCE(c.status,'active')='active'", (digest(token), int(time.time()))).fetchone()
 
     def set_cookie(self, value, age=SESSION_AGE):
         return f'{ACCOUNT_COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={age}' + ('; Secure' if self.secure else '')
@@ -316,17 +317,27 @@ class Service:
         if not isinstance(username, str) or not re.fullmatch(r'[A-Za-z0-9_-]{3,32}', username):
             raise Problem(400, '用户名需为 3–32 位字母、数字、下划线或连字符。')
         with self.store.connect() as db:
-            user = db.execute('SELECT * FROM users WHERE username=?', (username.lower(),)).fetchone()
+            user = db.execute("SELECT u.*,COALESCE(c.status,'active') AS account_status,COALESCE(m.status,'active') AS ai_status FROM users u LEFT JOIN account_controls c ON c.user_id=u.id LEFT JOIN ai_members m ON m.user_id=u.id WHERE username=?", (username.lower(),)).fetchone()
         matched = password_matches(password, user['password'] if user else self.dummy_hash)
-        if not user or not matched:
+        if not user or not matched or user['account_status'] != 'active' or user['ai_status'] != 'active':
             raise Problem(401, '用户名或密码错误。')
         return user
 
-    def create_session(self, user_id, cookie_factory=None):
-        token, csrf = secrets.token_urlsafe(40), secrets.token_urlsafe(32)
+    def create_session(self, user_id, cookie_factory=None, expected_version=None):
         with self.store.connect() as db:
-            db.execute('DELETE FROM sessions WHERE expires<?', (int(time.time()),))
-            db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (digest(token), user_id, csrf, int(time.time()) + SESSION_AGE))
+            db.execute('BEGIN IMMEDIATE')
+            return self._create_session(db, user_id, cookie_factory, expected_version)
+
+    def _create_session(self, db, user_id, cookie_factory=None, expected_version=None):
+        # Called only while holding the account mutation's write transaction.
+        current = db.execute('SELECT updated FROM users WHERE id=?', (user_id,)).fetchone()
+        if not current or (expected_version is not None and current['updated'] != expected_version):
+            raise Problem(401, '账号已变更，请重新登录。')
+        if db.execute("SELECT 1 FROM account_controls WHERE user_id=? AND status<>'active' UNION SELECT 1 FROM ai_members WHERE user_id=? AND status<>'active'", (user_id, user_id)).fetchone():
+            raise Problem(401, '账号已停用，请联系管理员。')
+        token, csrf = secrets.token_urlsafe(40), secrets.token_urlsafe(32)
+        db.execute('DELETE FROM sessions WHERE expires<?', (int(time.time()),))
+        db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (digest(token), user_id, csrf, int(time.time()) + SESSION_AGE))
         return csrf, {'Set-Cookie': (cookie_factory or self.set_cookie)(token)}
 
     def invite(self, creator, role='member'):
@@ -339,6 +350,12 @@ class Service:
 
     def persist_user(self, user):
         record = {key: user[key] for key in ('id', 'username', 'password', 'role', 'created', 'updated')}
+        if 'account_status' in user.keys():
+            record['account_status'] = user['account_status']
+        else:
+            with self.store.connect() as db:
+                control = db.execute('SELECT status FROM account_controls WHERE user_id=?', (user['id'],)).fetchone()
+            record['account_status'] = control['status'] if control else 'active'
         encrypted = self.store.cipher.encrypt(json.dumps(record).encode())
         self.storage.put(self.storage.key(f'system/users/{user["id"]}.fernet'), encrypted, 'application/octet-stream')
 
@@ -443,13 +460,15 @@ class Service:
                     self.persist_user(user)
             else:
                 user = self.authenticate(username, password)
-            csrf, cookie = self.create_session(user['id'])
+            csrf, cookie = self.create_session(user['id'], expected_version=user['updated'])
             self.dirty()
             return 200, {'user': self.user_info(user), 'csrf': csrf}, cookie
         if not user:
             raise Problem(401, '请先登录。')
         if method != 'GET' and not secrets.compare_digest(headers.get('x-csrf-token', ''), user['csrf']):
             raise Problem(403, '登录校验失效，请刷新页面后重试。')
+        if path.startswith(admin.PREFIX + '/'):
+            return admin.dispatch(self, method, path, query, payload, user)
         if path.startswith(API + '/forum/'):
             return forum.dispatch(self, method, path, query, payload, user)
         if path.startswith(API + '/hub/'):
@@ -475,14 +494,21 @@ class Service:
             if not password_matches(payload.get('oldPassword'), user['password']):
                 raise Problem(400, '当前密码不正确。')
             hashed = password_hash(payload.get('newPassword'))
-            updated = dict(user)
-            updated['password'] = hashed
-            updated['updated'] = max(int(time.time()), int(user['updated']) + 1)
-            self.persist_user(updated)
             with self.store.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                current = db.execute("""SELECT u.*,COALESCE(c.status,'active') AS account_status
+                    FROM users u JOIN sessions s ON s.user_id=u.id LEFT JOIN account_controls c ON c.user_id=u.id
+                    LEFT JOIN ai_members m ON m.user_id=u.id WHERE u.id=? AND s.hash=? AND s.expires>?
+                    AND COALESCE(c.status,'active')='active' AND COALESCE(m.status,'active')='active'""",
+                    (user['id'], user['session_hash'], int(time.time()))).fetchone()
+                if not current or current['updated'] != user['updated']:
+                    raise Problem(401, '账号或会话已变更，请重新登录后修改密码。')
+                updated = {**dict(current), 'password': hashed,
+                           'updated': max(int(time.time()), current['updated'] + 1)}
+                self.persist_user(updated)
                 db.execute('UPDATE users SET password=?,updated=? WHERE id=?', (hashed, updated['updated'], user['id']))
                 db.execute('DELETE FROM sessions WHERE user_id=?', (user['id'],))
-            csrf, cookie = self.create_session(user['id'])
+                csrf, cookie = self._create_session(db, user['id'], expected_version=updated['updated'])
             self.dirty()
             return 200, {'ok': True, 'csrf': csrf}, cookie
         if path == API + '/config' and method == 'PUT':

@@ -48,10 +48,10 @@ function selectWorkflow() {
   clearReference(); requestId = null; updateButton();
 }
 function renderStatus(info) {
-  online = info.online;
+  online = info.online && !info.draining;
   $('#connection-dot').classList.toggle('online', online);
-  $('#connection-label').textContent = online ? '本机已连接' : '本机未连接';
-  $('#connection-detail').textContent = online ? 'ComfyUI 就绪，可提交任务' : info.enabled ? '请启动本机 ComfyUI 和连接程序' : '请先配置服务器连接密钥';
+  $('#connection-label').textContent = info.draining ? '本机队列维护中' : online ? '本机已连接' : '本机未连接';
+  $('#connection-detail').textContent = info.draining ? '暂不接收新任务，请等待管理员恢复' : online ? info.resourceHeld ? 'GPU 使用中或等待清理，新任务将排队' : 'ComfyUI 就绪，可提交任务' : info.enabled ? '请启动本机 ComfyUI 和连接程序' : '请先配置服务器连接密钥';
   if (JSON.stringify(workflows) !== JSON.stringify(info.workflows)) {
     const previous = $('#workflow').value; workflows = info.workflows;
     $('#workflow').replaceChildren(...(workflows.length ? workflows.map(item => { const option = node('option', '', item.label); option.value = item.id; return option; }) : [node('option', '', '等待本机工作流')]));

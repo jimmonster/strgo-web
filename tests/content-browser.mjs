@@ -57,6 +57,11 @@ try {
       await page.reload(); assert.equal(await page.locator('h1').textContent(), project.name);
       assert.equal(await page.locator('.story-lead').textContent(), project.description);
       await page.locator('.content-header a[href="/#projects"]').click();
+      // The story link can resolve before the homepage modules mount. Wait
+      // for its actual interaction readiness before the next click or mock.
+      await page.waitForLoadState('load');
+      await page.waitForFunction(() => window.StrgoApp);
+      assert.deepEqual(await page.evaluate(() => window.StrgoApp.diagnostics.failed), []);
     }
     assert.equal(await page.locator('.author-contact a[href="mailto:jim@strgo.com"]').count(), 1);
     await page.evaluate(() => {
@@ -83,6 +88,7 @@ try {
   // Keep one normal-motion check for the existing pinned gallery after filtering.
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage(); await page.goto(origin + '/');
+  await page.waitForFunction(() => window.StrgoApp);
   await page.locator('[data-space-filter="tools"]').click(); await page.locator('[data-space-filter="all"]').click();
   await page.waitForTimeout(350);
   assert.deepEqual(await page.evaluate(() => window.StrgoApp.diagnostics.failed), []);
@@ -90,7 +96,15 @@ try {
   await context.close(); report.status = 'passed';
 } catch (error) {
   report.status = /EPERM|EACCES|Operation not permitted|browserType.launch/.test(String(error)) ? 'blocked' : 'failed';
-  report.error = String(error);
+  report.error = error.stack || String(error);
+  const page = browser?.contexts().at(-1)?.pages().at(-1);
+  if (page && !page.isClosed()) {
+    report.failedUrl = page.url();
+    report.failureState = await page.evaluate(() => ({ ready: Boolean(window.StrgoApp),
+      failures: window.StrgoApp?.diagnostics.failed, toast: document.querySelector('[data-toast-text]')?.textContent,
+      scrollY, contactTop: document.querySelector('.supernova-cta')?.getBoundingClientRect().top })).catch(() => null);
+    await page.screenshot({ path: directory + 'failure.png', animations: 'disabled' }).catch(() => {});
+  }
   process.exitCode = 1;
 } finally {
   await browser?.close();

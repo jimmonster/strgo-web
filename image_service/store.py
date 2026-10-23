@@ -69,7 +69,8 @@ class Store:
         self.cipher = cipher
         self._backup_lock = threading.Lock()
         with self.connect() as db:
-            db.executescript(SCHEMA + LOCAL_STUDIO_SCHEMA)
+            from .admin import SCHEMA as ADMIN_SCHEMA
+            db.executescript(SCHEMA + LOCAL_STUDIO_SCHEMA + ADMIN_SCHEMA)
             db.execute('BEGIN IMMEDIATE')
             columns = {row['name'] for row in db.execute('PRAGMA table_info(users)')}
             if 'updated' not in columns:
@@ -131,11 +132,8 @@ class Store:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(name, self.spool / (image_id + '.enc'))
-            directory_fd = os.open(self.spool, os.O_RDONLY | os.O_DIRECTORY)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+            from .durability import sync_directory
+            sync_directory(self.spool)
         finally:
             if os.path.exists(name):
                 os.unlink(name)

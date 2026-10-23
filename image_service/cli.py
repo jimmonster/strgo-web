@@ -98,7 +98,7 @@ def main():
                         or not re.fullmatch(r'[a-f0-9]{32}', record['id'])
                         or not re.fullmatch(r'[a-z0-9_-]{3,32}', record['username'])
                         or not re.fullmatch(r'scrypt\$[a-f0-9]{32}\$[a-f0-9]{128}', record['password'])
-                        or record['role'] not in ('member', 'admin') or type(record['created']) is not int
+                        or record['role'] not in ('member', 'admin') or record.get('account_status', 'active') not in ('active', 'disabled') or type(record['created']) is not int
                         or type(record['updated']) is not int or record['updated'] < record['created']):
                     raise ValueError()
             except Exception:
@@ -113,6 +113,8 @@ def main():
                     db.execute('DELETE FROM sessions WHERE user_id=?', (record['id'],))
                 elif not existing and not username_owner:
                     db.execute('INSERT INTO users VALUES(?,?,?,?,?,?)', (record['id'], record['username'], record['password'], record['role'], record['created'], record['updated']))
+                if (existing and record['updated'] > existing['updated']) or (not existing and not username_owner):
+                    db.execute('INSERT INTO account_controls VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET status=excluded.status', (record['id'], record.get('account_status', 'active')))
         for object_key in storage.iter_keys(storage.key('system/configs/')):
             if not object_key.endswith('.fernet'):
                 continue
@@ -208,15 +210,17 @@ def main():
             raise SystemExit('两次密码不一致。')
         hashed = password_hash(password)
         with store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             user = db.execute('SELECT id FROM users WHERE username=?', (args.username.lower(),)).fetchone()
             if not user:
                 raise SystemExit('账号不存在。')
             record = db.execute('SELECT * FROM users WHERE id=?', (user['id'],)).fetchone()
             snapshot = dict(record)
             snapshot['password'] = hashed
+            control = db.execute('SELECT status FROM account_controls WHERE user_id=?', (user['id'],)).fetchone()
+            snapshot['account_status'] = control['status'] if control else 'active'
             snapshot['updated'] = max(int(time.time()), int(record['updated']) + 1)
-        storage.put(storage.key(f'system/users/{snapshot["id"]}.fernet'), cipher.encrypt(json.dumps(snapshot).encode()), 'application/octet-stream')
-        with store.connect() as db:
+            storage.put(storage.key(f'system/users/{snapshot["id"]}.fernet'), cipher.encrypt(json.dumps(snapshot).encode()), 'application/octet-stream')
             db.execute('UPDATE users SET password=?,updated=? WHERE id=?', (hashed, snapshot['updated'], user['id']))
             db.execute('DELETE FROM sessions WHERE user_id=?', (user['id'],))
         print('密码已重置，所有会话已撤销。')

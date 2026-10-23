@@ -1,18 +1,18 @@
 # STRGO 内容维护
 
-本轮沿用 HTML / CSS / JavaScript 与 Python 静态构建。日常只编辑 `content/site-content.json` 和 `site.json`，然后运行 `npm run build:production`。无需数据库或后台。
+作者、作品与更新内容沿用 HTML / CSS / JavaScript 和 Python 静态构建，编辑 `content/site-content.json` 和 `site.json` 后运行 `npm run build:production`。账号、邀请码、社区与额度另由 [统一后台](doc/ADMIN-SYSTEM.md) 管理，后台不编辑本文的作者作品资料。
 
 ## 预览与验证
 
 ```bash
-cd /root/strgo-homepage
+# 在当前仓库根目录执行
 npm run build:production
 npm run dev
 ```
 
-浏览器访问 `http://127.0.0.1:8080/`。本地服务还会将 `/polyverse/`、`/meow/`、`/swarmera/` 映射到相邻原项目的 `dist`，以保持八个空间的完整浏览流程。缺少相邻构建时对应地址返回 404；这不会影响主站作品介绍页。终端保留原有访问条件，本地入口只引导至 `site.json` 中已存在的服务地址。
+浏览器访问 `http://127.0.0.1:8080/`。本地服务将 `/polyverse/`、`/meow/`、`/swarmera/` 映射到当前仓库的 `apps/<应用名>/dist`。缺少对应构建时返回404；这不会影响主站作品介绍页。终端保留原有访问条件，本地入口只引导至 `site.json` 中已存在的服务地址。
 
-通过 `STRGO_PREVIEW_PORT=8081 npm run dev` 更换端口。当前受限执行环境禁止监听 socket 和 Chrome 启动，需要在允许本机监听的终端预览。
+通过 `node scripts/preview.mjs --port 8081` 更换端口。浏览器检查需要允许回环端口监听及可启动的Chrome，可通过 `STRGO_CHROME` 指定可执行文件。2026-10-23的Windows环境已实际运行通过，历史容器的socket阻断不适用于当前环境。
 
 ```bash
 npm test                       # 现有回归 + 内容、路由与交互检查
@@ -51,7 +51,7 @@ npm run test:browser            # 原有主页浏览器回归
 {"id": "origin", "body": "作者确认后的真实内容。", "confirmed": true}
 ```
 
-当前作品沿用 `src/partials/*-cover.html` 中的原站视觉预览，标明为插画、示意或光效预览；它们不是浏览器截图，终端示意不代表真实连接成功。没有用生成图或离屏诊断图替代截图。真实作品截图尚未收到，也受当前浏览器环境限制而无法新采集。
+当前作品沿用 `src/partials/*-cover.html` 中的原站视觉预览，标明为插画、示意或光效预览；终端示意不代表真实连接成功。2026-10-23已采集各应用浏览器验收截图，保存在本机忽略的 `artifacts/` 目录；未擅自选为公开作品封面。实际终端连接及公开截图选择仍需相应环境与作者确认。
 
 收到真实截图后，放入 `src/assets/projects/`，在对应作品中添加：
 
@@ -86,3 +86,7 @@ npm run test:browser            # 原有主页浏览器回归
 `author.collaboration` 默认为 `null`，收到作者认可的合作说明后再填写。`author.now` 默认为 `null`；只有 `{ "text": "已确认的当前事项", "confirmed": true }` 才显示“正在创作”，可选 `href` 关联实际内容。不要把未来设想写成正在进行。
 
 复制邮箱失败时原按钮会提示手动保存的真实邮箱，页面同时保留 `mailto:` 链接。
+
+## 2026-10-23 补验
+
+`node tests/content-browser.mjs` 在Chrome155通过375/768/1440宽度、筛选路线、作品直达/刷新、复制失败反馈、原空间入口与横向溢出检查，每轮18张截图。早期两次在复制提示检查超时，补齐返回首页后的交互就绪等待及失败诊断后连续两轮完整通过；未据此宣称真实设备性能或线上已发布。当前结果见 `artifacts/requirements-v1/browser/results.json`。

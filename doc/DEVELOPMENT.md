@@ -44,7 +44,7 @@ npm run build:production
 
 DREAMS 同步目标固定为当前仓库的 `src/dreams/`。同步会替换该集成副本，先提交或保存对它的手工修改。同步失败时保留原集成目录；异常中断若遗留 `src/.dreams-sync-*-previous`，先核对内容再清理。
 
-NEXUS 目前存在两份源码；独立应用测试通过不代表 `src/nexus/` 已更新。修改后对照两份源码，并验证主站产物。
+NEXUS独立构建使用源码原样复制。修改后在根运行 `node apps/nexus/scripts/sync-strgo.mjs`，再运行 `node apps/nexus/scripts/sync-strgo.mjs --check` 和主站构建。同步先检查资源与相对依赖、暂存完整副本并校验，再替换 `src/nexus/`；失败保留旧副本。`--check` 只读比较独立应用源码与主站集成目录，发现缺失、多余或不同文件即失败。
 
 POLYVERSE 生产构建使用 `BASE_PATH=/polyverse/`，MEOW 使用 `MEOW_BASE=/meow/`；Windows 请用 PowerShell 环境变量语法。独立应用构建完成后，根预览服务会从 `apps/polyverse/dist`、`apps/meow/dist`、`apps/swarmera/dist` 读取对应空间。
 
@@ -56,6 +56,7 @@ POLYVERSE 生产构建使用 `BASE_PATH=/polyverse/`，MEOW 使用 `MEOW_BASE=/m
 | 路由、作品内容 | 根目录 `npm run test:content:browser`；结合内容维护文档 |
 | 生图 | 根目录 `npm run test:image`、`npm run test:image:browser` |
 | 论坛与共享账号 | 根目录 `python3 -m unittest tests.test_forum_service tests.test_terminal_account -v` |
+| 全站后台 | 根目录 `python3 -m unittest tests.test_admin -v`、`node --test tests/admin.test.mjs`；构建后 `node tests/admin-browser.mjs`；要求见 [后台说明](ADMIN-SYSTEM.md) |
 | 本地工作流 | 根目录 `python3 -m unittest tests.test_local_studio tests.test_comfy_worker tests.test_workflow_http -v`、`npm run test:workflow:browser` |
 | AI 音乐、对话和权限 | 根目录 `npm run test:ai`；接入、权限初始化与真实模型验收见 [AI-WORKSPACE.md](../AI-WORKSPACE.md) |
 | DREAMS | 应用目录 `npm run build`、`npm test`；渲染变更再运行浏览器或 shader 检查 |
@@ -81,3 +82,11 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 修改会话、权限、用户数据、任务重试或工作流执行时，验证实际行为：普通成员不能越权、旧会话按预期失效、数据可恢复、同一任务不会重复生成。真实收费模型、GPU、Docker 或生产服务的验证结果必须与离线模拟测试分别记录。
 
 新增开发说明放入 `doc/` 并更新索引；可重复使用的项目操作经验放入 `codex/skills/`。
+
+## 统一验证和 CI
+
+安装根及各应用的锁定依赖后运行 `npm run verify`，或使用 `node scripts/verify.mjs --root`、`--apps`、`--terminal` 选择范围。脚本先构建根主站，再按依赖关系构建和测试应用；不发布或调用真实模型。Python不在PATH时设置 `STRGO_PYTHON` 为可执行文件。`--browser` 额外执行需要Chrome及空闲回环8092端口的浏览器验收。
+
+`.github/workflows/verify.yml` 在push、pull_request和手动触发时运行Linux检查：Node22、Python3.12、各应用构建/回归、Bash部署辅助回归，以及Rust1.88终端测试。Actions只读仓库权限，不部署生产。实际Linux结果以对应提交的CI运行记录为准。
+
+Windows明确跳过Bash配置生成、创建符号链接与POSIX0600文件权限检查；这些在Linux CI执行。文件内容、持久化恢复、路径边界及业务断言仍在Windows运行。不能将跳过项记为通过。2026-10-23最终本机根Node91项通过，根Python204项中200项通过、4项平台跳过；终端Python31项中30项通过、1项平台跳过。Linux CI已实际跑通两个job，含终端Rust20项；提交与结果见 [审查记录](PROJECT-REVIEW.md)。

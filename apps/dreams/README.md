@@ -129,3 +129,7 @@ npm run test:shaders        # 真实水面 GLSL（含 ACES/sRGB chunks）离屏�
 4. https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/globalCompositeOperation
 5. https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
 6. https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion
+
+## 2026-10-23 本机浏览器补验
+
+本机Chrome155（SwiftShader）已通过六种尺寸、八章直接访问/刷新、搜索/设置/旅程与反射捕获检查；修复了桌面备案页脚挤出首屏和搜索输入Escape问题。14张截图见 `artifacts/browser/`，状态以该目录report.json为准。本轮未启用180秒压力、上下文丢失恢复或录屏验收，软件渲染不能代表真实GPU性能。

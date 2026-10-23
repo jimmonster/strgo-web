@@ -1,7 +1,7 @@
 {
   "route": "/dreams/",
   "chapters": "/dreams/:id/",
-  "source": "dreams/dist",
+  "source": "apps/dreams/dist",
   "contentMode": "design",
   "entries": 9
 }

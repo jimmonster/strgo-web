@@ -117,7 +117,7 @@ listen(dialog,'click',e=>{if(e.target===dialog){const r=dialog.getBoundingClient
 // Native modal dialogs provide inert background; explicitly wrap keyboard focus too.
 listen(dialog,'keydown',e=>{if(e.key!=='Tab')return;const nodes=[...dialog.querySelectorAll('button:not(:disabled),input,select,[tabindex="0"]')].filter(x=>x.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
 listen($('#journey-btn'),'click',startJourney);listen($('#skip-transition'),'click',()=>finishJourney());listen($('#end-trailer'),'click',endTrailer);
-listen(window,'keydown',e=>{if(e.key==='Escape'){if(transition){e.preventDefault();cancelJourney();}else if(trailer){e.preventDefault();endTrailer();}else if(focusView){e.preventDefault();action('return');}}});
+listen(window,'keydown',e=>{if(e.key==='Escape'){if(dialog.open){e.preventDefault();closePanel();return;}if(transition){e.preventDefault();cancelJourney();}else if(trailer){e.preventDefault();endTrailer();}else if(focusView){e.preventDefault();action('return');}}});
 function appFrame(now){
  const dt=lastApp?Math.min((now-lastApp)/1000,.05):0;lastApp=now;
  if(!document.hidden){

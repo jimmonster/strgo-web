@@ -11,6 +11,7 @@
 | 会员社区 | `src/forum/` | 随主站发布；共享账号 API |
 | 管理员创作台 | `src/local-studio/` | 随主站构建；独立 Workflow 域名与 Cookie |
 | AI 音乐、对话、助手与管理后台 | `src/ai-workspace/`、`image_service/ai_*.py` | 根构建生成 `/ai/`、`/admin/ai/`，共享后端提供 `/api/ai/v1/` |
+| 全站后台 | `src/admin/`、`image_service/admin.py` | `/admin/`、共享账号管理员、账号/内容/运行摘要及审计 |
 | 账号、生图、社区、工作流 API | `image_service/` | Python、SQLite、加密存储，默认回环端口 8092 |
 | DREAMS | `apps/dreams/` | 独立构建，再同步到 `src/dreams/`，由主站发布 |
 | NEXUS | `apps/nexus/`、主站副本 `src/nexus/` | 独立工程和集成副本同时存在；主站构建读取集成副本 |
@@ -45,12 +46,12 @@ flowchart LR
 
 账号、配置和结果恢复依赖数据库、持久化文件与原加密密钥。静态 `dist/`、运行数据和密钥不应当作为源码提交。备份和恢复细节见 [生图说明](../IMAGE-PLAYGROUND.md) 与 [Workflow](../WORKFLOW.md)。
 
-AI 空间另有模块/模型授权、TOTP 管理验证、额度与预算预占、任务结算、SSE 和私有音频。管理员身份不自动获得 AI 使用权。AI 本地模型之间以资源组锁共享 GPU；ComfyUI Workflow 是独立队列，目前不能与 AI 任务同时使用同一 GPU，部署时需隔离硬件或暂停另一条队列。参见 [AI 接入](../AI-WORKSPACE.md) 与 [实现契约](ai/implementation.md)。
+AI 空间另有模块/模型授权、TOTP 管理验证、额度与预算预占、任务结算、SSE 和私有音频。管理员身份不自动获得 AI 使用权。AI本地模型与ComfyUI Workflow共用中央资源组锁；Workflow结果保存后仍需连接程序确认队列空闲和模型卸载才能释放。真实硬件共享前须验证各模型卸载策略，未验收时保持硬件隔离或错峰；参见 [GPU调度](GPU-SCHEDULING.md)、[AI接入](../AI-WORKSPACE.md)与[实现契约](ai/implementation.md)。
 
 ## 构建和发布边界
 
 - 根构建复制 `src/dreams/`、`src/nexus/`，不会自动构建全部 `apps/`。
 - DREAMS 修改后运行其构建和 `scripts/sync-strgo.mjs`，再构建主站；同步脚本先准备完整内容，校验成功后替换集成目录。
-- NEXUS 修改时明确操作独立工程还是主站副本；当前没有统一的自动同步入口，发布前检查两处差异。
+- NEXUS修改独立工程后运行 `node apps/nexus/scripts/sync-strgo.mjs`，通过 `--check` 确认集成副本一致，再构建主站；同步失败保留原目录。
 - 根预览服务将三条独立应用路由挂载到 `apps/<应用名>/dist`，缺少该应用构建时返回 404。
 - 生产发布按 [统一部署](../DEPLOYMENT.md) 执行，保留已有服务的配置片段、数据目录及版本回滚机制。GitHub 提交本身不代表网站已经发布。

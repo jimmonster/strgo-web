@@ -9,11 +9,11 @@ description: 在 STRGO Web 仓库开发主站、独立应用或共享后端，�
 
 ## 选择正确源码
 
-- 主站、卧室、舞台、论坛、生图与管理员创作台在根 `src/`；共享账号及任务后端在 `image_service/`。
+- 主站、卧室、舞台、论坛、生图与管理员创作台在根 `src/`；共享账号及任务后端在 `image_service/`。统一后台在 `src/admin/`、`image_service/admin.py`，要求见 [后台说明](../../../doc/ADMIN-SYSTEM.md)。
 - AI 音乐、对话、助手和管理后台在 `src/ai-workspace/`、`image_service/ai_*.py`；先读 [AI 接入](../../../AI-WORKSPACE.md) 与 [接口契约](../../../doc/ai/implementation.md)，区分共享账号身份和单独的模块/模型授权。
 - 独立应用在 `apps/<应用名>/`，各自保留锁文件和发布流程。根构建不会自动构建全部应用。
 - DREAMS 修改后在 `apps/dreams/` 构建、测试并运行 `node scripts/sync-strgo.mjs`，再构建根主站。同步目标为根 `src/dreams/`，同步前检查集成副本有无未保存的手工修改。
-- NEXUS 独立工程与 `src/nexus/` 副本同时存在；明确此次要影响的版本，核对主站实际读取的副本。
+- NEXUS以 `apps/nexus/` 为源，修改后构建并运行 `node scripts/sync-strgo.mjs`，用 `--check` 验证 `src/nexus/` 副本，再构建主站；同步前核对集成副本有无手工修改。
 - 日常内容优先编辑 `content/site-content.json`、`site.json`。不要把 `dist/` 的手工改动当作源文件修复。
 
 ## 排错与验证
@@ -24,6 +24,6 @@ Windows 路径从文件 URL 转换时使用 `fileURLToPath`，不要将 URL 的 
 
 涉及共享账号时检查 Cookie、Origin、CSRF、成员/管理员边界与账号切换。涉及任务时保留请求幂等标识，区分上传重试和模型重生成，不能将中断后的自动重生成作为通用重试修复。修改 Workflow 恢复逻辑前读 [WORKFLOW.md](../../../WORKFLOW.md)。
 
-AI 的本地模型共享资源组锁，ComfyUI Workflow 使用另一条队列；不可假定两者已经共享 GPU 互斥。涉及预算、额度、SSE 或助手补丁时运行 `npm run test:ai`，验证重复提交、结算、权限变化及表单版本冲突。
+AI本地模型与ComfyUI Workflow共用中央资源组锁；修改领取、超时和清理前读 [GPU调度](../../../doc/GPU-SCHEDULING.md)。Workflow成功/失败均需确认空闲卸载后释放，不能凭租期过期抢锁。涉及预算、额度、SSE或助手补丁时运行 `npm run test:ai`，验证重复提交、结算、权限变化及表单版本冲突。
 
 完成后更新相关 `doc/` 文档；说明执行的验证和仍需 Linux、真实浏览器、Docker 或 GPU 的检查。用户要求上传 GitHub 时，只提交本次任务文件，保留其他未提交工作；网站发布按 [DEPLOYMENT.md](../../../DEPLOYMENT.md) 和本次授权范围执行。

@@ -33,8 +33,9 @@ class DiskStorageTests(unittest.TestCase):
         self.storage.put(key, PNG, 'image/png')
         path = self.storage.directory / key
         self.assertEqual(self.storage.get(key), PNG)
-        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
-        self.assertEqual(stat.S_IMODE(self.storage.directory.stat().st_mode), 0o700)
+        if os.name != 'nt':
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+            self.assertEqual(stat.S_IMODE(self.storage.directory.stat().st_mode), 0o700)
         restarted = DiskStorage(self.storage.directory)
         self.assertEqual(restarted.get(key), PNG)
         self.assertEqual(list(restarted.iter_keys('image-playground/images/')), [key])
@@ -48,11 +49,13 @@ class DiskStorageTests(unittest.TestCase):
         self.assertEqual(self.storage.get(key), PNG)
         self.assertFalse(list(self.storage.directory.rglob('.pending-*')))
 
-    def test_traversal_absolute_paths_and_symlink_escape_rejected(self):
+    def test_traversal_absolute_paths_rejected(self):
         invalid = ['/etc/passwd', '../outside', 'image-playground/../../outside', 'image-playground/a//b', 'image-playground/a\\b', 'image-playground/./b', 'other/picture.png']
         for key in invalid:
             with self.subTest(key=key), self.assertRaises(Problem):
                 self.storage.put(key, PNG, 'image/png')
+    @unittest.skipIf(os.name == 'nt', 'Creating Windows symlinks requires host privileges; Linux CI checks escape rejection.')
+    def test_symlink_escape_rejected(self):
         outside = self.root / 'outside'
         outside.mkdir()
         link = self.storage.directory / 'image-playground'
@@ -79,6 +82,11 @@ class DiskStorageTests(unittest.TestCase):
         for invalid in ('../outside.png', str(outside), 'image-playground/../../outside.png'):
             with self.assertRaises(Problem):
                 self.storage.delete(invalid)
+    @unittest.skipIf(os.name == 'nt', 'Creating Windows symlinks requires host privileges; Linux CI checks deletion safety.')
+    def test_delete_symlink_escape_rejected(self):
+        outside = self.root / 'outside.png'
+        outside.write_bytes(PNG)
+        (self.storage.directory / 'image-playground').mkdir()
         (self.storage.directory / 'image-playground/link').symlink_to(outside)
         with self.assertRaises(Problem):
             self.storage.delete('image-playground/link')
