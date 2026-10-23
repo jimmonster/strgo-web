@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parent
 VENDORS = ('gsap.min.js', 'ScrollTrigger.min.js', 'lenis.min.js', 'confetti.min.js')
 
 def validate(config):
+    if config.get('HOME_VARIANT', 'classic') not in ('classic', 'hub'):
+        raise ValueError('HOME_VARIANT must be classic or hub')
     for name in ('name', 'domain', 'description', 'about'):
         if not isinstance(config.get(name), str) or not config[name].strip():
             raise ValueError(f'{name} must be a nonempty string')
@@ -103,9 +105,11 @@ def bundle(entry):
     visit(entry)
     return '/* STRGO offline module bundle. Three.js MIT license: assets/vendor/THREE-LICENSE.txt */\n(() => {\n"use strict";\n' + '\n'.join(definitions) + '\n})();\n'
 
-def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, require_vendor=False, content_path=ROOT / 'content/site-content.json'):
+def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, require_vendor=False, content_path=ROOT / 'content/site-content.json', home_variant=None):
     config = json.loads(Path(config_path).read_text(encoding='utf-8'))
     if scheme: config['scheme'] = scheme
+    if home_variant: config['HOME_VARIANT'] = home_variant
+    config.setdefault('HOME_VARIANT', 'classic')
     validate(config)
     content = load_content(content_path)
     # Only the dialog's public fields are shipped to the browser. Draft story
@@ -121,6 +125,10 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     compiled = bundle(ROOT / 'src/main.js')
     digest = hashlib.sha256(compiled.encode())
     digest.update(Path(content_path).read_bytes())
+    digest.update((ROOT / 'content/app-registry.json').read_bytes())
+    for directory in ('hub', 'shared'):
+        for asset in sorted((ROOT / 'src' / directory).rglob('*')):
+            if asset.is_file(): digest.update(asset.read_bytes())
     digest.update(json.dumps(config, ensure_ascii=False, sort_keys=True).encode())
     for template_path in sorted((ROOT / 'src').rglob('*.html')):
         digest.update(template_path.read_bytes())
@@ -162,6 +170,11 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     shutil.copytree(ROOT / 'src/assets', output / 'assets', dirs_exist_ok=True)
     (output / 'assets/main.js').write_text(compiled, encoding='utf-8')
     (output / 'index.html').write_text(page, encoding='utf-8')
+    classic = output / 'classic'
+    classic.mkdir(exist_ok=True)
+    classic_page = page.replace('="./assets/', '="/assets/')
+    classic_page = classic_page.replace(f'rel="canonical" href="{origin}/"', f'rel="canonical" href="{origin}/classic/"')
+    (classic / 'index.html').write_text(classic_page, encoding='utf-8')
     # Real directory indexes work with the existing Nginx try_files and simple
     # static hosts, including direct visits, reloads and browser history.
     scene_template = (ROOT / 'src/pages/scene.html').read_text(encoding='utf-8')
@@ -259,9 +272,12 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     (output / 'updates').mkdir(exist_ok=True)
     (output / 'updates/index.html').write_text(re.sub(r'\{\{([a-z_]+)\}\}', replace, content_template), encoding='utf-8')
     content_paths.append('/updates/')
+    # The registry supplies both the portal and the shared application switcher.
+    from hub_build import build_hub
+    build_hub(ROOT, output, config, context, replace)
     (output / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nSitemap: {origin}/sitemap.xml\n', encoding='utf-8')
-    (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ''.join(f'<url><loc>{html.escape(origin + path)}</loc></url>' for path in ['/', '/home/', '/dance/', '/nexus/', '/terminal', *dream_paths, *content_paths]) + '</urlset>\n', encoding='utf-8')
-    manifest = {'version': version, 'mode': 'production' if not missing else 'offline-preview', 'vendors': enabled, 'missingVendors': missing}
+    (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ''.join(f'<url><loc>{html.escape(origin + path)}</loc></url>' for path in ['/', '/hub/', '/classic/', '/home/', '/dance/', '/nexus/', '/terminal', *dream_paths, *content_paths]) + '</urlset>\n', encoding='utf-8')
+    manifest = {'version': version, 'homeVariant': config['HOME_VARIANT'], 'mode': 'production' if not missing else 'offline-preview', 'vendors': enabled, 'missingVendors': missing}
     (output / 'build-manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     print(f'Built {output} for {origin} ({manifest["mode"]})')
     if missing: print('Offline preview uses local motion fallbacks. Production build requires npm run build:production.')
@@ -274,5 +290,6 @@ if __name__ == '__main__':
     parser.add_argument('--scheme', choices=('http', 'https'))
     parser.add_argument('--require-vendor', action='store_true')
     parser.add_argument('--content', type=Path, default=ROOT / 'content/site-content.json')
+    parser.add_argument('--home-variant', choices=('classic', 'hub'))
     args = parser.parse_args()
-    build(args.config, args.output, args.scheme, args.require_vendor, args.content)
+    build(args.config, args.output, args.scheme, args.require_vendor, args.content, args.home_variant)

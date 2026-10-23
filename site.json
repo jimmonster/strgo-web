@@ -13,5 +13,6 @@
   "city": "",
   "timezone": "Asia/Shanghai",
   "coordinates": "",
-  "contributions": null
+  "contributions": null,
+  "HOME_VARIANT": "classic"
 }

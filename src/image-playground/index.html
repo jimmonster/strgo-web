@@ -12,13 +12,13 @@
   <script src="./app.js" type="module"></script>
   <script src="./assistant-integration.js" type="module"></script>
   <title>AI 生图工作台 · STRGO</title>
-</head>
+<link rel="stylesheet" href="/hub/tokens.css"><link rel="stylesheet" href="/image-playground/hub-theme.css"></head>
 <body>
   <a class="skip" href="#main">跳到工作区</a>
   <header class="topbar">
     <a href="/" class="brand" aria-label="返回 STRGO 首页">STRGO<span>.</span></a>
     <span class="header-rule"></span><span class="product-name">生图工作台</span>
-    <div class="account-tools"><span id="account-name"></span><button id="image-assistant" class="quiet" type="button">✳ 创作助手</button><button id="logout" class="quiet" hidden>退出登录</button><a class="home-link" href="/ai/">AI 空间</a><a class="home-link" href="/forum/">交流社区</a><a class="home-link" href="/">返回主站 <span aria-hidden="true">↗</span></a></div>
+    <div class="account-tools"><strgo-navigation></strgo-navigation><span id="account-name"></span><button id="image-assistant" class="quiet" type="button">✳ 创作助手</button><button id="logout" class="quiet" hidden>退出登录</button><a class="home-link" href="/ai/">AI 空间</a><a class="home-link" href="/forum/">交流社区</a><a class="home-link" href="/">返回主站 <span aria-hidden="true">↗</span></a></div>
   </header>
   <main id="main">
     <section id="auth-view" class="auth-layout">

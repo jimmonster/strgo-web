@@ -1,0 +1,355 @@
+{
+  "version": "3.0",
+  "date": "2026-10-23",
+  "baseline": "e1f0f5cef1c6389f9633bb6270ccd6ff509660e5",
+  "groups": [
+    "全部",
+    "创作工具",
+    "沉浸空间",
+    "社区内容",
+    "我的工作区",
+    "管理"
+  ],
+  "entries": [
+    {
+      "id": "C01",
+      "name": "AI 生图",
+      "en": "IMAGE STUDIO",
+      "group": "创作工具",
+      "route": "/image-playground/",
+      "description": "提示词、参考图、灵感库与私人作品。",
+      "type": "image",
+      "access": "需登录",
+      "symbol": "◈"
+    },
+    {
+      "id": "C02",
+      "name": "AI 对话",
+      "en": "CREATIVE CHAT",
+      "group": "创作工具",
+      "route": "/ai/chat/",
+      "description": "整理想法，将选中的文字带入创作。",
+      "type": "chat",
+      "access": "按授权使用",
+      "symbol": "✳"
+    },
+    {
+      "id": "C03",
+      "name": "AI 音乐",
+      "en": "MUSIC STUDIO",
+      "group": "创作工具",
+      "route": "/ai/music/",
+      "description": "歌词、风格、时长与音乐任务。",
+      "type": "music",
+      "access": "按授权使用",
+      "symbol": "≋"
+    },
+    {
+      "id": "C04",
+      "name": "终端",
+      "en": "TERMINAL",
+      "group": "创作工具",
+      "route": "/terminal/",
+      "description": "个人工作区、多会话与 SSH 连接。",
+      "type": "terminal",
+      "access": "需登录",
+      "symbol": "⌘"
+    },
+    {
+      "id": "C05",
+      "name": "Workflow",
+      "en": "LOCAL WORKFLOW",
+      "group": "管理",
+      "route": "https://workflow.strgo.com/",
+      "description": "本机 ComfyUI 图像与视频工作流。",
+      "type": "workflow",
+      "access": "管理员 · 独立登录",
+      "symbol": "⌁"
+    },
+    {
+      "id": "C06",
+      "name": "创作概览",
+      "en": "AI WORKSPACE",
+      "group": "创作工具",
+      "route": "/ai/",
+      "description": "现有 AI 空间的概览与用量入口。",
+      "type": "overview",
+      "access": "已有页面",
+      "symbol": "↗"
+    },
+    {
+      "id": "S01",
+      "name": "阳光卧室",
+      "en": "SUNLIT ROOM",
+      "group": "沉浸空间",
+      "route": "/home",
+      "description": "日光、木香和窗外的花园。",
+      "type": "room",
+      "access": "公开体验",
+      "symbol": "☀"
+    },
+    {
+      "id": "S02",
+      "name": "舞蹈舞台",
+      "en": "AFTER HOURS",
+      "group": "沉浸空间",
+      "route": "/dance",
+      "description": "八位舞者、四段编舞、48 秒循环。",
+      "type": "dance",
+      "access": "公开体验",
+      "symbol": "♬"
+    },
+    {
+      "id": "S03",
+      "name": "星际穿越",
+      "en": "NEXUS",
+      "group": "沉浸空间",
+      "route": "/nexus/",
+      "description": "穿过引力边界，进入星际空间。",
+      "type": "nexus",
+      "access": "公开体验",
+      "symbol": "◉"
+    },
+    {
+      "id": "S04",
+      "name": "梦境花园",
+      "en": "DREAMS",
+      "group": "沉浸空间",
+      "route": "/dreams/",
+      "description": "八个梦境，各有独立入口。",
+      "type": "dreams",
+      "access": "公开体验",
+      "symbol": "✿"
+    },
+    {
+      "id": "S05",
+      "name": "多维几何宇宙",
+      "en": "POLYVERSE",
+      "group": "沉浸空间",
+      "route": "/polyverse/",
+      "description": "高维投影、轨道、分形与物理实验。",
+      "type": "polyverse",
+      "access": "公开体验",
+      "symbol": "◇"
+    },
+    {
+      "id": "S06",
+      "name": "粉色猫咪天堂",
+      "en": "MEOW",
+      "group": "沉浸空间",
+      "route": "/meow/",
+      "description": "猫咪角色、画廊与本地互动。",
+      "type": "meow",
+      "access": "本地体验",
+      "symbol": "♧"
+    },
+    {
+      "id": "S07",
+      "name": "虫族狂潮",
+      "en": "SWARMERA",
+      "group": "沉浸空间",
+      "route": "/swarmera/",
+      "description": "女皇、机甲与实时三维世界。",
+      "type": "swarmera",
+      "access": "本地体验",
+      "symbol": "⋈"
+    },
+    {
+      "id": "S08",
+      "name": "银河归档",
+      "en": "GALACTIC ARCHIVE",
+      "group": "沉浸空间",
+      "route": "/archive/",
+      "description": "保留原版银河与舰队交互。",
+      "type": "archive",
+      "access": "公开体验",
+      "symbol": "✧"
+    },
+    {
+      "id": "N01",
+      "name": "交流社区",
+      "en": "COMMUNITY",
+      "group": "社区内容",
+      "route": "/forum/",
+      "description": "会员广场、分类、发帖与我的帖子。",
+      "type": "forum",
+      "access": "需登录",
+      "symbol": "☷"
+    },
+    {
+      "id": "N02",
+      "name": "精选作品",
+      "en": "SELECTED WORK",
+      "group": "社区内容",
+      "route": "/#projects",
+      "description": "银河舰队、随身终端、数字宇宙。",
+      "type": "projects",
+      "access": "公开浏览",
+      "symbol": "▱"
+    },
+    {
+      "id": "N03",
+      "name": "创作记录",
+      "en": "UPDATES",
+      "group": "社区内容",
+      "route": "/updates/",
+      "description": "真实更新记录；没有内容时保留空态。",
+      "type": "updates",
+      "access": "内容待补",
+      "symbol": "↻"
+    },
+    {
+      "id": "N04",
+      "name": "关于 STRGO",
+      "en": "ABOUT",
+      "group": "社区内容",
+      "route": "/#stack",
+      "description": "个人介绍、工具箱与作者信息。",
+      "type": "about",
+      "access": "公开浏览",
+      "symbol": "◌"
+    },
+    {
+      "id": "N05",
+      "name": "交互实验",
+      "en": "LAB",
+      "group": "社区内容",
+      "route": "/#lab",
+      "description": "释放能量，切换光谱。",
+      "type": "lab",
+      "access": "公开体验",
+      "symbol": "↯"
+    },
+    {
+      "id": "N06",
+      "name": "联系作者",
+      "en": "CONTACT",
+      "group": "社区内容",
+      "route": "/#contact",
+      "description": "邮件联系与复制地址。",
+      "type": "contact",
+      "access": "公开浏览",
+      "symbol": "↗"
+    },
+    {
+      "id": "U01",
+      "name": "我的作品",
+      "en": "ASSETS",
+      "group": "我的工作区",
+      "route": "/ai/assets/",
+      "description": "图像与音乐作品的统一视图，继续使用原模块权限。",
+      "type": "assets",
+      "access": "需登录",
+      "symbol": "▧"
+    },
+    {
+      "id": "U02",
+      "name": "任务中心",
+      "en": "TASKS",
+      "group": "我的工作区",
+      "route": "/ai/tasks/",
+      "description": "图像、音乐与对话任务的统一状态入口。",
+      "type": "tasks",
+      "access": "需登录",
+      "symbol": "◷"
+    },
+    {
+      "id": "U03",
+      "name": "账号与权限",
+      "en": "ACCOUNT",
+      "group": "我的工作区",
+      "route": "/ai/settings/",
+      "description": "共享账号、模块授权与额度。",
+      "type": "settings",
+      "access": "需登录",
+      "symbol": "⚙"
+    },
+    {
+      "id": "U04",
+      "name": "账号登录",
+      "en": "SIGN IN",
+      "group": "我的工作区",
+      "route": "/ai/login/",
+      "description": "沿用共享账号与邀请码注册。",
+      "type": "login",
+      "access": "已有入口",
+      "symbol": "↪"
+    },
+    {
+      "id": "A01",
+      "name": "管理控制台",
+      "en": "ADMIN",
+      "group": "管理",
+      "route": "/admin/ai/",
+      "description": "模型连接、成员授权、节点与预算。",
+      "type": "admin",
+      "access": "管理员",
+      "symbol": "⊞"
+    },
+    {
+      "id": "N07",
+      "name": "经典主页",
+      "en": "CLASSIC HOME",
+      "group": "社区内容",
+      "route": "/",
+      "description": "保留当前数字宇宙主页与原锚点。",
+      "type": "classic",
+      "access": "保留原入口",
+      "symbol": "⌂"
+    }
+  ],
+  "screens": [
+    [
+      "P01",
+      "统一主页",
+      "hub"
+    ],
+    [
+      "P02",
+      "全部功能",
+      "catalog"
+    ],
+    [
+      "P03",
+      "创作工作台",
+      "studio"
+    ],
+    [
+      "P04",
+      "任务中心",
+      "tasks"
+    ],
+    [
+      "P05",
+      "我的作品",
+      "assets"
+    ],
+    [
+      "P06",
+      "账号与偏好",
+      "settings"
+    ],
+    [
+      "P07",
+      "管理控制台",
+      "admin"
+    ],
+    [
+      "P08",
+      "空间详情",
+      "space"
+    ]
+  ],
+  "tokens": {
+    "bg": "#070b10",
+    "surface": "#0e151c",
+    "border": "#27333b",
+    "text": "#f1f7f7",
+    "muted": "#9aaab4",
+    "accent": "#79f8cb",
+    "violet": "#a59bff",
+    "warning": "#f4c576",
+    "radius": 18,
+    "spacing": 8
+  }
+}

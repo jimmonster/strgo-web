@@ -2,6 +2,8 @@
 
 实现入口：`/ai/`。音乐：`/ai/music/`；对话：`/ai/chat/`；作品：`/ai/assets/`；任务：`/ai/tasks/`；权限：`/ai/settings/`；管理：`/admin/ai/`。
 
+统一入口为 `/hub/`。任务与作品页面已接入图像/AI 的本人记录聚合，详见 [门户设计与实现](doc/hub/design-v3.1.md)；原模块接口和生成流程保持。
+
 本次实现依据 [设计文档 v1.0](doc/ai/design-v1.0.md) 与本次会话中的音乐、对话、管理三张设计稿。开发接口与后续模块接入方式见 [实现与接口](doc/ai/implementation.md)，上线前检查见 [验收记录](doc/ai/acceptance.md)。
 
 ## 1. 与现有项目的关系

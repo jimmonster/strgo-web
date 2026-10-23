@@ -1,0 +1,12 @@
+/* P03 uses the portal palette while retaining every existing editor control. */
+:root{color-scheme:dark;color:var(--strgo-text);background:var(--strgo-bg);--accent:var(--strgo-accent);--line:var(--strgo-border);--muted:var(--strgo-muted)}
+.topbar,.composer,.image-card,.pending-box,.inspiration-card,.preset-card,.reference-preview,#image-dialog{background:var(--strgo-surface);color:var(--strgo-text)}
+input,select,textarea,.composer textarea{background:#121e25;color:var(--strgo-text)}
+.output-panel,.reference-picker,.preset-inspirations{background:#0b1218}
+.primary{color:#08261d}.primary:hover{background:#a9ffdf}
+.secondary,.sizes button{background:#142129}.secondary:hover,.icon-button:hover,.preset-card:hover{background:#20352f}
+.tabs button[aria-pressed=true],.sizes button[aria-pressed=true],.library-tools button[aria-pressed=true],#invite-result{background:#183b2e}
+.auth-art,.image-open,.reference-preview img,#preview-image{background:#182b29}
+.empty-state,.empty-state p,.job-heading,.message,.auth-footnote,.preset-card strong{color:var(--strgo-muted)}
+.empty-icon{background:#183b2e;color:var(--strgo-accent)}.message.error,.delete-job,.delete-preset,.image-toolbar .delete-image{color:#ff9c94}.status-label.failed,.retry{color:var(--strgo-warning)}.image-toolbar .delete-image:hover,.delete-job:hover{background:#3b2426}.skip{background:var(--strgo-accent);color:#08261d}
+@media(max-width:760px){.topbar{gap:10px;padding-inline:16px}.account-tools{gap:10px}.account-tools .home-link{display:none}}

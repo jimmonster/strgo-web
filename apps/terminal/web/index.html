@@ -36,6 +36,7 @@
   <main id="app-view" class="app-view" hidden>
     <nav class="rail" aria-label="站点导航">
       <a class="rail-brand" href="/" title="STRGO 首页" aria-label="STRGO 首页">&gt;_</a>
+      <a class="rail-image" href="/hub/" title="统一主页" aria-label="统一主页">⊞</a>
       <span class="rail-active" title="我的终端" aria-label="我的终端">▤</span>
       <a class="rail-image" href="/image-playground/" title="AI 生图" aria-label="AI 生图">▧</a>
       <a class="rail-image" href="/forum/" title="交流社区" aria-label="交流社区">☏</a>
@@ -48,7 +49,7 @@
       <p id="list-empty" class="list-empty" hidden>没有匹配的终端</p>
       <nav class="mobile-session-actions mobile-only" aria-label="当前终端操作"><button id="mobile-connect" type="button">连接</button><button id="mobile-rename" type="button">改名</button><button id="mobile-export" type="button">导出</button><button id="mobile-clear" type="button">清屏</button><button id="mobile-close" type="button">关闭</button></nav>
       <div class="sidebar-bottom"><button id="new-ssh" type="button">＋ SSH 连接</button><span id="window-count">0 / 8 个窗口</span></div>
-      <div class="account-summary"><span id="account-avatar" class="account-avatar" aria-hidden="true">U</span><div><strong id="account-label"></strong><span>个人工作区 · 文件独立保存</span></div><button id="mobile-logout" class="mobile-only icon-button" type="button" title="退出账号" aria-label="退出账号">⇥</button></div>
+      <div class="account-summary"><a class="mobile-only icon-button" href="/hub/" aria-label="统一主页" title="统一主页">⊞</a><span id="account-avatar" class="account-avatar" aria-hidden="true">U</span><div><strong id="account-label"></strong><span>个人工作区 · 文件独立保存</span></div><button id="mobile-logout" class="mobile-only icon-button" type="button" title="退出账号" aria-label="退出账号">⇥</button></div>
     </aside>
     <section class="conversation" aria-label="当前终端">
       <header class="conversation-heading">

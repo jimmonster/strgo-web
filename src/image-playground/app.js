@@ -1,3 +1,4 @@
+import { requestedJob } from './hub-links.js';
 import { icons } from './icons.js';
 import { compressReferenceImage } from './reference-image.js';
 
@@ -62,7 +63,7 @@ async function api(path, { method = 'GET', body, timeout = 30000 } = {}) {
 }
 function lock() {
   state.epoch++;
-  state.user = null; state.csrf = ''; state.config = null;
+  state.user = null; state.csrf = ''; state.config = null; submittedComposer = '';
   generationQuota = null; quotaRequest++; clearTimeout(quotaTimer);
   $('#quota-admin-section').hidden = true; $('#library-scope').hidden = true; $('#library-scope').value = 'mine';
   $('#favorite-filter').hidden = false; state.favoriteOnly = false; $('#favorite-filter').setAttribute('aria-pressed', 'false');
@@ -161,6 +162,25 @@ async function unlock() {
   setStorage(info.storageReady, info.backup, info.storage); setConfig(info.config);
   showView(['create', 'library', 'inspirations', 'settings'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'create');
   await refreshCurrent();
+  await openHubJob();
+}
+async function openHubJob() {
+  const requested = requestedJob(location.search);
+  if (!requested || !state.user) return;
+  const owner = state.user.id, epoch = state.epoch;
+  try {
+    const job = await api('/jobs/' + requested.id);
+    if (state.user?.id !== owner || state.epoch !== epoch) return;
+    state.jobs.set(job.id, job); state.current = job.id; showView('create'); renderCurrent();
+    if (requested.reuse) {
+      $('#prompt').value = job.prompt; $('#prompt').dispatchEvent(new Event('input'));
+      selectSize(job.size); $('#quality').value = job.quality; $('#count').value = String(job.count);
+      $('#prompt').focus();
+      toast(job.hasReference ? '已复用文字和参数；参考图需重新选择，确认后再生成。' : '已复用参数，请确认后再生成。');
+    }
+    const params = new URLSearchParams(location.search); params.delete('job'); params.delete('reuse');
+    history.replaceState(null, '', location.pathname + (params.size ? '?' + params : '') + location.hash);
+  } catch (error) { if (state.user?.id === owner && state.epoch === epoch) toast(error.message); }
 }
 function showView(view) {
   if (!state.user) return;
@@ -560,6 +580,11 @@ $('#reference-image').addEventListener('change', async () => {
   }
 });
 $('#remove-reference').addEventListener('click', clearReference);
+let submittedComposer = '';
+const composerSnapshot = () => JSON.stringify([$('#prompt').value, state.size, $('#quality').value, $('#count').value, state.reference?.data || '']);
+window.addEventListener('beforeunload', event => {
+  if (state.user && ($('#prompt').value.trim() || state.reference) && composerSnapshot() !== submittedComposer) { event.preventDefault(); event.returnValue = ''; }
+});
 $('#generation-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (state.referenceProcessing || state.referenceError) { message('#generation-message', state.referenceProcessing ? '请等待参考图压缩完成。' : '请重新选择或移除无法处理的参考图。', 'error'); return; }
@@ -576,8 +601,10 @@ $('#generation-form').addEventListener('submit', async event => {
       state.requestId = null;
       message('#generation-message', '今日剩余额度不足，请减少图片数量或等待北京时间零点重置。', 'error'); return;
     }
+    const submitted = composerSnapshot();
     const job = await api('/jobs', { method: 'POST', body: { prompt: $('#prompt').value, size: state.size, quality: $('#quality').value, count: Number($('#count').value), requestId: state.requestId, ...(state.reference ? { referenceImage: state.reference } : {}) } });
     if (!state.user || epoch !== state.epoch) return;
+    submittedComposer = submitted;
     if (job.generationQuota) { quotaRequest++; setQuota(job.generationQuota); }
     else refreshQuota().catch(error => toast(error.message));
     state.jobs.set(job.id, job); state.current = job.id; state.requestId = null;

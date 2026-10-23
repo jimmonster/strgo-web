@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#070b10">
+  <meta name="description" content="STRGO 的统一入口：AI 创作、终端、八个沉浸空间与个人工作区。">
+  <title>STRGO · 你的个人数字宇宙</title>
+  <link rel="stylesheet" href="/hub/tokens.css?v={{asset_version}}">
+  <link rel="canonical" href="{{hub_canonical}}">
+  <link rel="stylesheet" href="/hub/styles.css?v={{asset_version}}">
+</head>
+<body>
+  <a class="skip" href="#main">跳到内容</a>
+  <aside class="rail"><a href="#hub" class="mark" aria-label="STRGO 主页">✳</a><nav id="railNav" aria-label="全站导航"></nav><a class="rail-bottom" href="/hub/#settings" aria-label="账号与偏好">⚙</a></aside>
+  <div class="shell">
+    <header><a class="wordmark" href="#hub">strgo<span> / DIGITAL UNIVERSE</span></a><nav class="topnav"><a href="#hub">主页</a><a href="#catalog">全部功能</a><a href="#spaces">探索空间</a></nav><button class="search-trigger" id="searchOpen">⌕ <span>搜索功能与空间</span><kbd>⌘ K</kbd></button><button class="avatar" id="profile" aria-label="账号与偏好">S</button></header>
+    <div class="account-strip"><a href="/hub/#catalog">YOUR PERSONAL DIGITAL UNIVERSE</a><span id="accountStatus" role="status">正在确认账号…</span></div>
+    <main id="main" tabindex="-1"></main>
+    <footer><span>STRGO <b>✳</b> KEEP BUILDING. KEEP EXPLORING.</span><span>{{icp_link}}</span><a id="classicLink" href="/classic/">经典主页 ↗</a></footer>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="modal" aria-label="全站搜索与确认"><button class="close" aria-label="关闭弹窗">×</button><div id="modalBody"></div></dialog>
+  <nav class="mobile-nav" aria-label="移动导航"><a href="#hub">⌂<span>主页</span></a><a href="#catalog">⊞<span>功能</span></a><a href="#spaces">◉<span>空间</span></a><a href="#settings">◌<span>我的</span></a></nav>
+  <noscript><p>请启用 JavaScript 使用目录搜索与个性化主页。<a href="/classic/">进入经典主页</a> · <a href="/ai/">AI 创作</a> · <a href="/terminal/">终端</a></p></noscript>
+  <script src="/hub/registry.js?v={{asset_version}}"></script>
+  <script type="module" src="/hub/app.js?v={{asset_version}}"></script>
+</body>
+</html>

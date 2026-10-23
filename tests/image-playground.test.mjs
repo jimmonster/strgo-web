@@ -5,10 +5,12 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { parseHTML } from 'linkedom';
 import { icons } from '../src/image-playground/icons.js';
+import { requestedJob } from '../src/image-playground/hub-links.js';
 import { servePreview } from '../scripts/preview.mjs';
 
 const html = readFileSync(new URL('../dist/image-playground/index.html', import.meta.url), 'utf8');
 const source = readFileSync(new URL('../src/image-playground/app.js', import.meta.url), 'utf8')
+  .replace("import { requestedJob } from './hub-links.js';", '')
   .replace("import { icons } from './icons.js';", '')
   .replace("import { compressReferenceImage } from './reference-image.js';", '');
 const tick = async () => { for (let i = 0; i < 6; i++) await new Promise(resolve => setImmediate(resolve)); };
@@ -17,7 +19,7 @@ const presetFixtures = [
   { id: 'e'.repeat(32), title: '身形与姿态优化', description: '自然微调比例与体态', prompt: '保留真实体型特征，不要让背景线条变形。', sortOrder: 20, created: 1700000000, updated: 1700000000 },
 ];
 
-async function environment({ loggedIn = false, role = 'admin', storageReady = true, error = null, initialJobs = [], initialPresets = presetFixtures, presetLoadFailure = false, presetWriteError = null, confirmResult = true, deleteError = null, dailyImageLimit = null, imagesUsed = 0, compress = async () => ({ blob: { type: 'image/webp', size: 600000 }, width: 4096, height: 3072 }) } = {}) {
+async function environment({ search = '', loggedIn = false, role = 'admin', storageReady = true, error = null, initialJobs = [], initialPresets = presetFixtures, presetLoadFailure = false, presetWriteError = null, confirmResult = true, deleteError = null, dailyImageLimit = null, imagesUsed = 0, compress = async () => ({ blob: { type: 'image/webp', size: 600000 }, width: 4096, height: 3072 }) } = {}) {
   const { window: dom, document } = parseHTML(html);
   const window = new dom.EventTarget();
   window.document = document;
@@ -32,12 +34,12 @@ async function environment({ loggedIn = false, role = 'admin', storageReady = tr
   document.querySelectorAll('select').forEach(select => Object.defineProperty(select, 'value', { configurable: true, writable: true, value: select.querySelector('option').value }));
   document.querySelectorAll('form').forEach(form => { form.reset = () => { form.querySelectorAll('input').forEach(input => { input.value = ''; }); }; });
   document.querySelector('#old-password').value = '';
-  const location = { hash: '' };
+  const location = { hash: '', search, pathname: '/image-playground/' };
   class TestFileReader {
     readAsDataURL(file) { this.result = `data:${file.type};base64,UE5HLXRlc3Q=`; this.onload(); }
   }
   const sandbox = {
-    window, document, icons, URLSearchParams, AbortController, Event: dom.Event, FileReader: TestFileReader, crypto: { randomUUID }, location, compressReferenceImage: compress,
+    window, document, icons, requestedJob, URLSearchParams, AbortController, Event: dom.Event, FileReader: TestFileReader, crypto: { randomUUID }, location, compressReferenceImage: compress,
     history: { replaceState(_, __, hash) { location.hash = hash; } },
     navigator: { clipboard: { async writeText(value) { writes.push(value); } } },
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; }, clearTimeout(id) { timers.delete(id); },
@@ -81,6 +83,7 @@ async function environment({ loggedIn = false, role = 'admin', storageReady = tr
         const job = { id: 'a'.repeat(32), userId: session.user.id, username: session.user.username, prompt: body.prompt, model: session.config.model, size: body.size, count: body.count, quality: body.quality, hasReference: Boolean(body.referenceImage), status: 'queued', error: '', created: 1700000000, images: [], generationQuota: quota() };
         jobs.unshift(job); result = job;
       } else if (path === '/jobs' || path.startsWith('/jobs?')) result = { jobs, hasMore: false };
+      else if (/^\/jobs\/[a-f0-9]{32}$/.test(path)) result = jobs.find(job => job.id === path.split('/').pop());
       else if (path === '/inspirations' && options.method === 'POST') result = { id: 'c'.repeat(32), created: 1700000000, ...body };
       else if (path.startsWith('/inspirations?')) result = { inspirations: [], hasMore: false };
       else if (path === '/invites') result = { code: 'TEST-ONLY-INVITE' };
@@ -480,5 +483,18 @@ test('An unavailable API produces an explicit error and keeps the private worksp
   assert.equal(env.document.querySelector('#workspace').hidden, true);
   assert.match(env.document.querySelector('#auth-message').textContent, /无法连接服务器/);
   assert.equal(env.document.querySelector('#auth-submit').disabled, false);
+  env.close();
+});
+
+
+test('Portal image deep links reopen the requested job and reuse parameters without generating', async () => {
+  const id = 'b'.repeat(32);
+  const job = { id, userId:'owner', username:'creator', prompt:'Old lake prompt', size:'1024x1536', quality:'high', count:2, model:'configured-model', status:'complete', created:1700000000, error:'', images:[], hasReference:true };
+  const env = await environment({ loggedIn:true, search:'?reuse=' + id, initialJobs:[job] });
+  assert.equal(env.document.querySelector('#prompt').value, job.prompt);
+  assert.equal(env.document.querySelector('#count').value, '2');
+  assert.equal(env.document.querySelector('#quality').value, 'high');
+  assert.ok(env.requests.some(r => r.url === '/api/image/jobs/' + id && r.method === 'GET'));
+  assert.equal(env.requests.filter(r => r.method === 'POST' && r.url === '/api/image/jobs').length, 0);
   env.close();
 });

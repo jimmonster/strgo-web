@@ -18,6 +18,7 @@
 | 主题 | 文档 |
 | --- | --- |
 | 仓库和主站 | [README](../README.md)、[主站历史说明](../HOMEPAGE-README.md) |
+| 统一门户与主页切换 | [设计规格 v3.1](hub/design-v3.1.md)、[功能与视觉清单](hub/registry.md)、[实现与接口](hub/implementation.md)、[验收](hub/acceptance.md) |
 | 部署和运维 | [统一部署](../DEPLOYMENT.md)、[NEXUS 集成部署](../NEXUS-DEPLOYMENT.md) |
 | 生图与共享账号 | [生图工作台](../IMAGE-PLAYGROUND.md) |
 | 管理员本地工作流 | [Workflow / ComfyUI](../WORKFLOW.md) |
