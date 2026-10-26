@@ -8,7 +8,7 @@ export async function syncTerminalTheme(check = false) {
   const block = '/* strgo-tokens:start */\n:root{' + Object.entries(tokens).map(([name, value]) => `--strgo-${name}:${typeof value === 'number' ? value + 'px' : value}`).join(';') + '}\n/* strgo-tokens:end */\n';
   for (const name of ['workspace.css', 'style.css']) {
     const file = new URL('apps/terminal/web/' + name, root);
-    const source = await readFile(file, 'utf8');
+    const source = (await readFile(file, 'utf8')).replace(/\r\n/g, '\n');
     const expected = block + source.replace(/\/\* strgo-tokens:start \*\/[\s\S]*?\/\* strgo-tokens:end \*\/\n?/, '');
     if (check && expected !== source) throw new Error('Terminal theme is stale. Run node scripts/sync-terminal-theme.mjs');
     if (!check) await writeFile(file, expected);

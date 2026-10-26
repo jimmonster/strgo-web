@@ -86,3 +86,28 @@ AI 空间还单独执行 `tests.test_ai_workspace`：49 项，39 通过、5 断�
 以上有重叠用例，不累加为全仓独立测试数量。原始结果位于本机忽略的 `artifacts/` 及各应用 `artifacts/`；截图是实际浏览器输出，软件渲染和模拟协议的范围已在各模块验收记录注明。
 
 仍待外部验收：供应商密钥/价格/许可证、真实GPU模型装卸与推理、Linux Docker/SSH和生产备份回滚演练、实体手机/Safari/触屏性能、真实作者材料与首页新设计选择。仓库内检查不能证明这些外部链路已就绪；详细处理条件见清单E01–E08。
+
+## 2026-10-26 PR #2 合并前复核
+
+范围：[PR #2](https://github.com/jimmonster/strgo-web/pull/2)，main 基准 `2e365ed7b66914d294eba4e1b51c8b98525c34f0`，待审业务提交 `856a049086195615c36fdb43adffd78848083baa`。用户确认仅合入该 PR；旧功能分支的两个终端中文输入/SSH 提交不在本次范围。
+
+审查覆盖本 PR 的社区后端、增量表结构、帖子编辑版本冲突、评论幂等与删除权限、收件人通知隔离、前端私有数据清理、共享导航及各应用构建集成；视觉改动结合实际浏览器抽查。未发现未解决的阻断合并问题。此次审查不代表全仓逐行审计或生产验收。
+
+| 发现 | 触发与影响 | 修复和证据 |
+| --- | --- | --- |
+| P3：终端主题检查把 CRLF 误判为 token 过期 | Windows 使用 `core.autocrlf=true` 检出正确的终端 CSS 后，`node scripts/sync-terminal-theme.mjs --check` 比较 LF 生成块与 CRLF 源码而失败。 | [主题脚本](../scripts/sync-terminal-theme.mjs) 比较前统一换行。[隔离回归](../tests/monorepo.test.mjs) 在修复前实际失败，修复后覆盖 LF/CRLF 无写入检查、真正过期 token 拒绝和同步后通过。 |
+
+本轮实际验证环境：Windows、Node.js 24.22.1、Python 3.12.14、实际 Chrome。使用既有依赖，未修改依赖锁文件。原始日志和截图保存于本地忽略目录 `artifacts/review/`。
+
+| 验证 | 结果与边界 |
+| --- | --- |
+| 统一验证 | `node scripts/verify.mjs` 所有执行项通过：正式根构建、五个独立应用构建及对应回归、NEXUS 源码一致性、终端资源/UI/工作区/Python检查。 |
+| 最终根 Node | 修复后重新执行 `node --test tests/*.test.mjs`，107/107 通过。 |
+| 根 Python | 226 项：222 通过、4 项 Windows 平台跳过；含讨论权限、并发、幂等、分页、迁移与备份回归。 |
+| 终端 Python | 31 项：30 通过、1 项 POSIX 权限检查跳过；本机未运行 Linux Rust 服务。 |
+| AI 浏览器 | 实际 Chrome + 临时 HTTP/SQLite，完整历史分页、搜索、流式响应及 5 种宽度 × 7 路由通过。 |
+| 社区浏览器 | 两个隔离账号、实际 HTTP/SQLite：评论纯文本显示、回复通知、作者编辑后保留评论、会员隐藏管理导航、账号隔离收藏、单次 Esc 关闭及 375px 无横向溢出通过。 |
+| 主题与差异 | 修复后终端 token `--check` 和 `git diff --check` 通过；构建生成的资源变更不纳入审查提交。 |
+| Linux CI | 业务提交 `856a049` 的 [PR CI](https://github.com/jimmonster/strgo-web/actions/runs/40305325531) web/terminal 两个 job 成功；覆盖 Linux 部署辅助与终端锁定 Rust 测试。补充修复提交的最终 CI 需以 PR 当前 head 的检查记录为准。 |
+
+Windows 跳过的 Bash 部署、符号链接与 POSIX 权限、Rust 项不记作本机通过。此次未发布生产，未调用真实模型/GPU，未操作真实 SSH/Docker 或实体手机。生产更新仍须同步静态文件与账号 API，并重建终端资源；发布边界沿用原部署文档。
