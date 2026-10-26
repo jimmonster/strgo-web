@@ -32,12 +32,21 @@ try {
   await page.fill('[name=username]', 'admin-demo'); await page.fill('[name=password]', 'admin-demo-only-2026');
   await page.click('#login button'); await page.locator('.cards').waitFor();
   await page.screenshot({ path: directory + 'overview-1440.png', fullPage: true });
-  await page.click('[data-view=users]'); await page.locator('[data-user="' + 'b'.repeat(32) + '"]').first().waitFor();
+  await page.click('[data-view=users]');
+  // Updates can reorder accounts; keep both state transitions scoped to the member.
+  const memberStatus = page.locator(`[data-user="${'b'.repeat(32)}"][data-action="status"]`);
+  const ownStatus = page.locator(`[data-user="${'a'.repeat(32)}"][data-action="status"]`);
+  await memberStatus.filter({ hasText: /^停用账号$/ }).waitFor();
+  assert.equal(await memberStatus.isEnabled(), true);
+  assert.equal(await ownStatus.isDisabled(), true);
   page.on('dialog', dialog => dialog.accept());
-  await page.locator('[data-user="' + 'b'.repeat(32) + '"][data-action=status]').click();
-  await page.getByRole('button', { name: '恢复账号', exact: true }).waitFor();
-  await page.getByRole('button', { name: '恢复账号', exact: true }).click();
-  await page.getByRole('button', { name: '停用账号', exact: true }).waitFor();
+  await memberStatus.click();
+  await memberStatus.filter({ hasText: /^恢复账号$/ }).waitFor();
+  assert.equal(await ownStatus.isDisabled(), true);
+  await memberStatus.click();
+  await memberStatus.filter({ hasText: /^停用账号$/ }).waitFor();
+  assert.equal(await memberStatus.isEnabled(), true);
+  assert.equal(await ownStatus.isDisabled(), true);
   await page.click('[data-view=invites]'); await page.click('#create-invite'); await page.locator('.invite-code').waitFor();
   assert.match(await page.inputValue('.invite-code'), /^STRGO-/);
   await page.locator('[data-invite]').click();

@@ -111,3 +111,17 @@ AI 空间还单独执行 `tests.test_ai_workspace`：49 项，39 通过、5 断�
 | Linux CI | 业务提交 `856a049` 的 [PR CI](https://github.com/jimmonster/strgo-web/actions/runs/40305325531) web/terminal 两个 job 成功；覆盖 Linux 部署辅助与终端锁定 Rust 测试。补充修复提交的最终 CI 需以 PR 当前 head 的检查记录为准。 |
 
 Windows 跳过的 Bash 部署、符号链接与 POSIX 权限、Rust 项不记作本机通过。此次未发布生产，未调用真实模型/GPU，未操作真实 SSH/Docker 或实体手机。生产更新仍须同步静态文件与账号 API，并重建终端资源；发布边界沿用原部署文档。
+
+## 2026-10-26 合并后 CI 收尾
+
+基准：`577106346a907a52516b5b6b697ce045082fbe40`（PR #2 合并提交）。[合并后 CI](https://github.com/jimmonster/strgo-web/actions/runs/40335147966) 的生产构建、根回归、独立应用和终端检查通过，后台浏览器步骤失败：恢复成员账号后，全页 `getByRole('button', { name: '停用账号', exact: true })` 同时匹配成员按钮与管理员自身的禁用按钮，触发 Playwright strict mode violation。
+
+修复 `tests/admin-browser.mjs`：停用、恢复及恢复后的等待均以目标成员的稳定 `data-user` 和 `data-action="status"` 定位，再等待对应的精确文案；账号列表更新或重排后仍检查同一成员。补充检查成员可操作，以及管理员自身的停用按钮在整个状态切换过程中始终禁用。
+
+本机 Linux、Node.js 24.22.1、Python 3.12.14，Python 使用隔离环境安装项目要求的依赖，实际验证：
+
+- `npm run build:production` 通过。
+- `npm test`：根 Node 107 项、Python 226 项全部通过，无跳过；包括后台前端 8 项、后端 16 项，子集不重复累计。
+- `node --check tests/admin-browser.mjs`、`git diff --check` 通过。
+
+本机 Chrome 下载包无法解压，未将本机浏览器验收记为通过。修复提交的真实 HTTP/SQLite 浏览器、独立应用及终端完整结果以该提交关联的 [GitHub Actions](https://github.com/jimmonster/strgo-web/actions/workflows/verify.yml) 为准；原始本机回归日志位于忽略目录 `artifacts/review/ci-followup-root.log`。生产及外部链路继续按清单 E01–E08 验收。
