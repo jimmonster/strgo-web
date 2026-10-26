@@ -79,6 +79,8 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 
 发布步骤以 [DEPLOYMENT.md](../DEPLOYMENT.md) 为准。主站、独立应用和账号服务有各自的发布边界，修改根主站不会自动升级终端二进制或全部独立应用。
 
+已有 ECS 可按部署文档安装 `strgo` 命令，以 `strgo deploy` 拉取 main 并依次更新各模块；`strgo check` 只读检查环境和任务。实现位于 `scripts/strgo`、`scripts/deploy_ecs.py`，离线回归为 `tests/test_ecs_command.py` 与 `tests/test_deploy_ecs.py`。真实发布仍在用户服务器执行，不能把离线检查记为生产验收。
+
 修改会话、权限、用户数据、任务重试或工作流执行时，验证实际行为：普通成员不能越权、旧会话按预期失效、数据可恢复、同一任务不会重复生成。真实收费模型、GPU、Docker 或生产服务的验证结果必须与离线模拟测试分别记录。
 
 新增开发说明放入 `doc/` 并更新索引；可重复使用的项目操作经验放入 `codex/skills/`。

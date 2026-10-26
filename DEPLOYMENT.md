@@ -2,6 +2,34 @@
 
 更新日期：2026-10-22。以下操作在 Ubuntu / Debian 服务器的普通 SSH 或阿里云 Workbench 终端中以 root 执行。需要可用的网络、systemd、Nginx、Node.js 22、npm、Python 3、`python3-venv` 和 `python3-pip`；终端另需 Docker。受限开发会话无法创建 socket 时，应在普通服务器终端运行。
 
+## 现有 ECS 的一键更新
+
+2026-10-26 新增统一命令。适用于已有 `https://strgo.com`、本地硬盘账号服务、受本项目管理的 Nginx 配置和 HTTPS 证书的 Ubuntu / Debian ECS。安装入口只创建命令链接；首次安装空服务器仍按下文逐项准备。Node.js 需要 22 或更新版本，AI 音频校验需要 `ffmpeg`。
+
+首次安装命令，在现有仓库执行一次：
+
+```bash
+cd /root/strgo-web
+git pull --ff-only origin main
+bash scripts/install-ecs-command.sh
+```
+
+之后可以在任意目录更新：
+
+```bash
+strgo deploy
+```
+
+此命令拉取 `origin/main`，先准备主站、POLYVERSE、MEOW、SWARMERA 及已安装终端的全部构建，再备份配置、原加密密钥、账号源码和加密数据库，依次升级账号 API、主站、三个独立空间及终端，最后检查服务与本机 HTTPS 路由。DREAMS、NEXUS、Workflow 与其他主站页面随主站集成副本发布。不会自动创建管理员或启用模型。
+
+运行前停止提交新的生图、AI 和 Workflow 任务；检查到未完成或待核对任务会停止。构建完成后还会复查一次任务状态。更新账号服务会短暂中断请求，更新终端会结束已有网页终端连接。首次终端原生构建需要下载工具链和依赖，时间取决于服务器网络。
+
+配置、密钥与账号源码备份位于 `/var/backups/strgo/`，目录权限为 0700。加密数据库备份键记录在其中的 `database-backup.txt`，实际文件由原存储配置保存；图片、音频、暂存和删除日志仍保留在原数据目录，需按原备份策略另行备份。各模块继续使用自己的发布与回滚机制，整轮更新不是跨服务的整体事务。
+
+只读检查使用 `strgo check`；仅更新网页和账号 API、保留终端版本时使用 `strgo deploy --skip-terminal`。未安装终端时不会自动安装终端；首次安装仍见第 4 节。工作区有未提交改动、本地 main 与 origin/main 分叉或配置不符时停止，不自动丢弃本地工作。
+
+统一命令源码为 `scripts/strgo` 与 `scripts/deploy_ecs.py`；安装路径默认为 `/usr/local/bin/strgo`，已有同名的其他程序时停止。脚本和离线回归验证不代表已经在用户 ECS 上执行了发布。
+
 ## 1. 获取代码
 
 统一仓库为 `git@github.com:jimmonster/strgo-web.git`，主分支为 `main`。首次拉取前，在服务器配置能够访问该 GitHub 仓库的 SSH 密钥：

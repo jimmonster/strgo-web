@@ -125,3 +125,11 @@ Windows 跳过的 Bash 部署、符号链接与 POSIX 权限、Rust 项不记作
 - `node --check tests/admin-browser.mjs`、`git diff --check` 通过。
 
 本机 Chrome 下载包无法解压，未将本机浏览器验收记为通过。修复提交的真实 HTTP/SQLite 浏览器、独立应用及终端完整结果以该提交关联的 [GitHub Actions](https://github.com/jimmonster/strgo-web/actions/workflows/verify.yml) 为准；原始本机回归日志位于忽略目录 `artifacts/review/ci-followup-root.log`。生产及外部链路继续按清单 E01–E08 验收。
+
+## 2026-10-26：ECS 统一命令
+
+基准 `61cd68f`。按用户要求提供简单好记的 `strgo deploy`：一次安装命令链接后，可从任意目录拉取 main，再准备主站、三个独立空间与已安装终端的构建，备份账号配置、密钥、源码和加密数据库，复用原发布脚本逐模块更新。环境、更新范围、任务维护窗口、数据备份边界及短暂中断见根 [部署说明](../DEPLOYMENT.md)。`strgo check` 不拉取代码、构建或发布；`--skip-terminal` 明确保留终端版本。
+
+新增离线回归 11 项通过，覆盖环境文件不执行 shell、存储/来源配置边界、三类队列未完成任务阻断、只读旧数据库及缺失数据库不被创建、终端清单与真实 sha256sum 校验/篡改拒绝、命令安装幂等及同名程序保留、任意目录执行、先拉取后启动新版程序、本地修改/拉取失败/未推送提交阻断与只读检查。Bash 语法与差异检查通过。完整 Linux CI 以本提交关联运行记录为准。
+
+未连接用户 ECS，未执行生产发布或真实终端构建。这里的验证覆盖发布入口和离线边界；既有模块发布回滚及 Docker/SSH 探针由用户在 ECS 运行命令时执行，整轮更新不是跨模块的整体事务。

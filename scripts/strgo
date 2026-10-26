@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Stable ECS command; resolve the installed symlink back to this checkout.
+set -Eeuo pipefail
+SCRIPT="$(readlink -f -- "${BASH_SOURCE[0]}")"
+PROJECT_DIR="$(cd -- "$(dirname -- "$SCRIPT")/.." && pwd)"
+usage() {
+    printf '%s\n' '用法：' \
+        '  strgo deploy                  拉取 main 并升级现有 ECS 网站' \
+        '  strgo check                   只读检查部署环境与任务状态' \
+        '  strgo deploy --skip-terminal  更新网页和 API，保留终端版本'
+}
+case "${1:---help}" in
+    deploy)
+        shift
+        for argument in "$@"; do
+            [[ "$argument" == --skip-terminal ]] || { usage >&2; exit 2; }
+        done
+        cd -- "$PROJECT_DIR"
+        [[ "$(git branch --show-current)" == main ]] || { printf '请先将源码切换到 main。\n' >&2; exit 1; }
+        [[ -z "$(git status --porcelain --untracked-files=no)" ]] || { printf '源码有未提交改动，请先保存并合并后重试。\n' >&2; exit 1; }
+        git pull --ff-only origin main
+        [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || { printf '本地 main 与 origin/main 不一致，请先处理本地提交。\n' >&2; exit 1; }
+        exec python3 "$PROJECT_DIR/scripts/deploy_ecs.py" "$@"
+        ;;
+    check)
+        shift
+        for argument in "$@"; do
+            [[ "$argument" == --skip-terminal ]] || { usage >&2; exit 2; }
+        done
+        exec python3 "$PROJECT_DIR/scripts/deploy_ecs.py" --check "$@"
+        ;;
+    -h|--help|help) usage ;;
+    *) usage >&2; exit 2 ;;
+esac
