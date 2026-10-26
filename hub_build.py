@@ -72,12 +72,15 @@ def build_hub(root, output, config, context, replace):
         tool = route.startswith(('ai/', 'admin/', 'forum/', 'image-playground/', 'local-studio/'))
         experience = route.startswith(('home/', 'dance/', 'dreams/', 'nexus/', 'archive/'))
         surface = 'tool' if tool else 'experience' if experience else 'hub' if route.startswith('hub/') or variant == 'hub' and route == 'index.html' else 'classic'
-        source = source.replace('<html ', '<html data-strgo-ui="' + surface + '" ', 1)
-        styles = '<link rel="stylesheet" href="/shared/design-system.css?v=' + context['asset_version'] + '">'
-        if '/hub/tokens.css' not in source:
+        if re.search(r'\bdata-strgo-ui="[^"]*"', source):
+            source = re.sub(r'\bdata-strgo-ui="[^"]*"', 'data-strgo-ui="' + surface + '"', source, count=1)
+        else:
+            source = source.replace('<html ', '<html data-strgo-ui="' + surface + '" ', 1)
+        styles = '' if re.search(r'(?:/shared/|/_strgo/)design-system\.css', source) else '<link rel="stylesheet" href="/shared/design-system.css?v=' + context['asset_version'] + '">'
+        if not re.search(r'(?:/hub/|/_strgo/)tokens\.css', source):
             styles = '<link rel="stylesheet" href="/hub/tokens.css?v=' + context['asset_version'] + '">' + styles
         source = source.replace('</head>', styles + '\n</head>')
-        if experience and '<strgo-navigation' not in source:
+        if experience and '<strgo-navigation' not in source and 'experience-navigation.js' not in source:
             source = source.replace('</body>', '<script type="module" src="/shared/experience-navigation.js"></script>\n</body>')
         if route == 'admin/index.html' and '<strgo-navigation' not in source:
             source = source.replace('<span id="account">', '<strgo-navigation></strgo-navigation><span id="account">')
