@@ -1,3 +1,4 @@
+import { icon } from '../src/shared/icons.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -9,10 +10,10 @@ import { escapeHTML as esc } from '../src/hub/core.js';
 
 const registry = JSON.parse(await readFile(new URL('../content/app-registry.json', import.meta.url)));
 test('public catalogue hides administrative routes and searches Chinese, English and paths', () => {
-  assert.equal(registry.entries.length, 26);
+  assert.equal(registry.entries.length, 27);
   assert.equal(registry.entries.filter(e => e.group === '沉浸空间').length, 8);
   assert.equal(filterEntries(registry.entries, { role: 'guest' }).length, 24);
-  assert.equal(filterEntries(registry.entries, { role: 'admin' }).length, 26);
+  assert.equal(filterEntries(registry.entries, { role: 'admin' }).length, 27);
   assert.equal(filterEntries(registry.entries, { query: '/home' })[0].id, 'S01');
   assert.equal(filterEntries(registry.entries, { query: '  音乐  ' })[0].id, 'C03');
   assert.deepEqual(filterEntries(registry.entries, { group: '我的收藏', favorites: ['A01'] }), []);
@@ -73,7 +74,7 @@ test('account revalidation clears private UI and discards an old account respons
   const modal = document.querySelector('#modal'); modal.close = () => { modal.open = false; }; modal.showModal = () => { modal.open = true; };
   let currentUser = 'owner-one'; const requests = [];
   const source = (await readFile(new URL('../src/hub/app.js', import.meta.url), 'utf8')).replace(/^import .*$/gm, '');
-  const context = vm.createContext({ window, document, esc, readPreferences, writePreferences, filterEntries, allowedAction,
+  const context = vm.createContext({ window, document, esc, icon, readPreferences, writePreferences, filterEntries, allowedAction,
     startOrbit:()=>()=>{}, art:()=>'', URLSearchParams, AbortController, Date, setTimeout, clearTimeout,
     location:{pathname:'/hub/',hash:'#tasks'}, matchMedia:()=>({matches:false,addEventListener(){}}),
     requestJSON: async (path) => path.endsWith('/session') ? {user:{id:currentUser,username:currentUser,role:'member'},csrf:'token'} : await new Promise(resolve=>requests.push(resolve)) });

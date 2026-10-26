@@ -26,6 +26,14 @@ class HubBuildTests(unittest.TestCase):
             self.assertEqual(registry['classicRoute'], '/classic/')
             self.assertEqual(next(e for e in registry['entries'] if e['id'] == 'N02')['route'], '/classic/#projects')
             self.assertNotIn('PRIVATE', (output / 'hub/registry.js').read_text())
+            self.assertEqual(json.loads((output / 'shared/registry.json').read_text()), registry)
+            self.assertEqual('/admin/', next(e for e in registry['entries'] if e['id'] == 'A01')['route'])
+            workflow = (output / 'local-studio/index.html').read_text()
+            self.assertIn('./_strgo/design-system.css', workflow)
+            self.assertIn('data-session="none"', workflow)
+            workflow_catalog = json.loads((output / 'local-studio/_strgo/registry.json').read_text())
+            self.assertTrue(all(e['route'].startswith('https://') for e in workflow_catalog['entries']))
+            self.assertTrue((output / 'dreams/_strgo/fonts/space-grotesk-latin.woff2').is_file())
             build.build(output=output, home_variant='hub')
             self.assertIn('/hub/app.js', (output / 'index.html').read_text())
             self.assertIn('floating-navbar', (output / 'classic/index.html').read_text())
@@ -48,7 +56,7 @@ class HubBuildTests(unittest.TestCase):
             content = (build.ROOT / file).read_text()
             self.assertNotIn('<style>', content)
             self.assertNotIn(' style=', content)
-        self.assertIn('/shared/site-navigation.css', (build.ROOT / 'src/shared/site-navigation.js').read_text())
+        self.assertIn("new URL('site-navigation.css', assets)", (build.ROOT / 'src/shared/site-navigation.js').read_text())
         self.assertIn('/hub/core.js', (build.ROOT / 'src/ai-workspace/app.js').read_text())
 
     def test_registry_and_design_documentation_are_in_sync(self):

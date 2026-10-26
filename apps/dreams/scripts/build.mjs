@@ -1,3 +1,4 @@
+import { integrateStrgo } from '../../../scripts/integrate-strgo.mjs';
 import {mkdir,copyFile,cp,readFile,writeFile,rm} from 'node:fs/promises';
 import {resolve} from 'node:path';
 const root=resolve('.');
@@ -12,3 +13,5 @@ const {makePages}=await import('./pages.mjs');await makePages();
 await rm('dist',{recursive:true,force:true});await mkdir('dist',{recursive:true});
 for(const file of ['index.html','404.html','dreams','src','styles','assets'])await cp(root+'/'+file,root+'/dist/'+file,{recursive:true});
 console.log('Built homepage and 8 independent dream pages → dist/');
+
+await integrateStrgo(new URL('../dist/',import.meta.url),'/');

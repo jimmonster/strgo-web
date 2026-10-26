@@ -51,6 +51,7 @@ def build_hub(root, output, config, context, replace):
     serialized = json.dumps(registry, ensure_ascii=False).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
     (output / 'hub/registry.js').write_text('window.STRGO = ' + serialized + ';\n', encoding='utf-8')
     (output / 'hub/registry.json').write_text(serialized + '\n', encoding='utf-8')
+    (output / 'shared/registry.json').write_text(serialized + '\n', encoding='utf-8')
     tokens = ';'.join('--strgo-' + key + ':' + (str(value) + 'px' if isinstance(value, int) else value)
                       for key, value in registry['tokens'].items())
     (output / 'hub/tokens.css').write_text(':root{' + tokens + '}\n', encoding='utf-8')
@@ -61,10 +62,42 @@ def build_hub(root, output, config, context, replace):
         if route.startswith('ai/'):
             page = page.replace('</head>', '<meta name="robots" content="noindex,nofollow">\n</head>')
         (output / route / 'index.html').write_text(page, encoding='utf-8')
-    # Existing experiences keep their layout and runtime. The switcher mounts
-    # only where a source template explicitly provides its inline slot.
     script = '<script type="module" src="/shared/site-navigation.js?v=' + context['asset_version'] + '"></script>'
-    for page in output.rglob('*.html'):
+    for name in ('dreams', 'nexus'):
+        shutil.copytree(output / 'shared', output / name / '_strgo', dirs_exist_ok=True)
+        shutil.copy2(output / 'hub/tokens.css', output / name / '_strgo/tokens.css')
+    for page in list(output.rglob('*.html')):
         source = page.read_text(encoding='utf-8')
+        route = page.relative_to(output).as_posix()
+        tool = route.startswith(('ai/', 'admin/', 'forum/', 'image-playground/', 'local-studio/'))
+        experience = route.startswith(('home/', 'dance/', 'dreams/', 'nexus/', 'archive/'))
+        surface = 'tool' if tool else 'experience' if experience else 'hub' if route.startswith('hub/') or variant == 'hub' and route == 'index.html' else 'classic'
+        source = source.replace('<html ', '<html data-strgo-ui="' + surface + '" ', 1)
+        styles = '<link rel="stylesheet" href="/shared/design-system.css?v=' + context['asset_version'] + '">'
+        if '/hub/tokens.css' not in source:
+            styles = '<link rel="stylesheet" href="/hub/tokens.css?v=' + context['asset_version'] + '">' + styles
+        source = source.replace('</head>', styles + '\n</head>')
+        if experience and '<strgo-navigation' not in source:
+            source = source.replace('</body>', '<script type="module" src="/shared/experience-navigation.js"></script>\n</body>')
+        if route == 'admin/index.html' and '<strgo-navigation' not in source:
+            source = source.replace('<span id="account">', '<strgo-navigation></strgo-navigation><span id="account">')
         if '<strgo-navigation' in source and '/shared/site-navigation.js' not in source:
-            page.write_text(source.replace('</body>', script + '\n</body>'), encoding='utf-8')
+            source = source.replace('</body>', script + '\n</body>')
+        if route.startswith(('dreams/', 'nexus/')):
+            prefix = '/' + route.split('/')[0] + '/_strgo/'
+            source = source.replace('/hub/tokens.css', prefix + 'tokens.css').replace('/shared/', prefix)
+        # Workflow is also deployed as a standalone origin with an independent
+        # account cookie. Bundle its chrome and keep navigation session-free.
+        if route == 'local-studio/index.html':
+            shared = output / 'local-studio/_strgo'
+            shutil.copytree(output / 'shared', shared, dirs_exist_ok=True)
+            shutil.copy2(output / 'hub/tokens.css', shared / 'tokens.css')
+            workflow_registry = json.loads(serialized)
+            workflow_registry['navigationOrigin'] = context['origin']
+            for entry in workflow_registry['entries']:
+                if entry['route'].startswith('/'):
+                    entry['route'] = context['origin'] + entry['route']
+            (shared / 'registry.json').write_text(json.dumps(workflow_registry, ensure_ascii=False), encoding='utf-8')
+            source = source.replace('/hub/tokens.css', './_strgo/tokens.css').replace('/shared/design-system.css', './_strgo/design-system.css')
+            source = source.replace('</body>', '<strgo-navigation class="strgo-space-navigation" data-session="none"></strgo-navigation><script type="module" src="./_strgo/site-navigation.js"></script>\n</body>')
+        page.write_text(source, encoding='utf-8')

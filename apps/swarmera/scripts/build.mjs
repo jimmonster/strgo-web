@@ -1,3 +1,4 @@
+import { integrateStrgo } from '../../../scripts/integrate-strgo.mjs';
 import {mkdir,rm,cp,writeFile,readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
@@ -14,3 +15,5 @@ const manifest={schemaVersion:1,base,origin:'https://strgo.com',paths:pages.map(
 await writeFile(path.join(dest,'sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+manifest.paths.map(p=>`<url><loc>https://strgo.com${p}</loc></url>`).join('')+'</urlset>');
 await writeFile(path.join(dest,'robots.txt'),'User-agent: *\nAllow: '+base+'\nSitemap: https://strgo.com'+base+'sitemap.xml\n');
 console.log(`Built ${pages.length} directory routes at ${base}`);
+
+await integrateStrgo(dest,base);

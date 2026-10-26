@@ -1,3 +1,4 @@
+import { integrateStrgo } from '../../../scripts/integrate-strgo.mjs';
 import {cp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -12,3 +13,5 @@ function html(title='POLYVERSE — Beyond Dimension'){return `<!doctype html>\n<
 for(const p of paths){await mkdir(path.join(out,p),{recursive:true});await writeFile(path.join(out,p,'index.html'),html());}
 await writeFile(path.join(out,'404.html'),html('Unknown coordinates — POLYVERSE'));await writeFile(path.join(out,'build-info.json'),JSON.stringify({base,version:'1.0.0',three:'0.160.1',routes:paths},null,2));
 console.log(`Built ${paths.length} standalone pages → dist/ (base ${base})`);
+
+await integrateStrgo(out,base);
