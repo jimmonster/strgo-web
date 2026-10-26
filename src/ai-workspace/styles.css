@@ -2,14 +2,14 @@
   color-scheme: dark;
   --bg: var(--strgo-bg,#070b10);
   --panel: var(--strgo-surface,#0e151c);
-  --panel2: #18232b;
-  --line: #293740;
-  --text: #eff3f5;
-  --muted: #92a1af;
+  --panel2: var(--strgo-surface-raised);
+  --line: var(--strgo-border);
+  --text: var(--strgo-text);
+  --muted: var(--strgo-muted);
   --mint: var(--strgo-accent,#79f8cb);
   --mint2: #9bffde;
   --nav: 200px;
-  font: 13px/1.65 StrgoInter,Inter,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  font: 13px/1.65 var(--strgo-font);
 }
 
 * {
@@ -125,13 +125,13 @@ p {
 }
 
 .small {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .eyebrow {
   color: #80959e;
   letter-spacing: .18em;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   margin-bottom: 16px;
 }
@@ -204,7 +204,7 @@ p {
   align-items: center;
   gap: 6px;
   padding: 5px 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .text-button:hover {
@@ -252,7 +252,7 @@ p {
   border-radius: 20px;
   background: #29323a;
   color: #b5c2ce;
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -313,7 +313,7 @@ p {
 }
 
 .brand-caption {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 3px;
   color: #8e9da9;
   padding: 10px 13px 0;
@@ -386,7 +386,7 @@ p {
 .account small {
   display: block;
   color: #7d919c;
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 2px;
 }
 
@@ -412,7 +412,7 @@ p {
 }
 
 .back-home {
-  font-size: 10px;
+  font-size: 12px;
   padding: 11px 7px 0;
   color: #667d89;
 }
@@ -469,7 +469,7 @@ p {
   background: #12261f70;
   border-radius: 10px;
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: 12px;
   color: #bfdbd1;
 }
 
@@ -484,7 +484,7 @@ p {
   align-items: center;
   gap: 8px;
   color: #8fa1b0;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .top-actions .account-avatar {
@@ -563,7 +563,7 @@ p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: .14em;
   color: #4f6570;
 }
@@ -572,7 +572,7 @@ p {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0;
 }
 
@@ -582,7 +582,7 @@ p {
 }
 
 .service-banner {
-  font-size: 11px;
+  font-size: 12px;
   padding: 8px 30px;
   background: #3a321c;
   color: #dacb9c;
@@ -615,7 +615,7 @@ p {
 
 .saved-label {
   color: #8c9eab;
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -625,7 +625,7 @@ p {
 
 label {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   color: #c8d2d9;
   margin: 0 0 12px;
 }
@@ -672,7 +672,7 @@ fieldset {
 }
 
 legend {
-  font-size: 11px;
+  font-size: 12px;
   padding: 0;
   margin-bottom: 7px;
   color: #ced7df;
@@ -715,11 +715,11 @@ legend {
   right: 12px;
   top: 10px;
   color: #879bab;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .field-count {
-  font-size: 9px;
+  font-size: 12px;
   color: #869aa9;
   display: block;
   text-align: right;
@@ -755,7 +755,7 @@ legend {
 }
 
 .lyrics-label .text-button {
-  font-size: 10px;
+  font-size: 12px;
   padding: 0;
 }
 
@@ -785,7 +785,7 @@ legend {
   border-radius: 0;
   background: transparent;
   color: #cbd2dc;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .duration-options button:last-child {
@@ -812,14 +812,14 @@ legend {
   margin-top: 0;
   flex: 1;
   min-width: 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .advanced {
   border: 1px solid #2e414a;
   border-radius: 8px;
   padding: 6px 11px;
-  font-size: 11px;
+  font-size: 12px;
   color: #abbcc7;
 }
 
@@ -844,17 +844,17 @@ legend {
 }
 
 .advanced-grid label {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .advanced-grid input,.advanced-grid select {
   padding: 6px;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .advanced p {
   margin-bottom: 4px;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .generate {
@@ -869,7 +869,7 @@ legend {
   align-items: center;
   gap: 7px;
   margin-top: 8px;
-  font-size: 9px;
+  font-size: 12px;
   color: #93a6b2;
 }
 
@@ -952,7 +952,7 @@ legend {
 }
 
 .track-heading .status {
-  font-size: 8px;
+  font-size: 12px;
   padding: 2px 7px;
 }
 
@@ -965,7 +965,7 @@ legend {
 }
 
 .track-meta {
-  font-size: 10px;
+  font-size: 12px;
   color: #a0b0bc;
   margin: 3px 0 9px;
 }
@@ -978,7 +978,7 @@ legend {
 
 .track-actions>* {
   flex: 1;
-  font-size: 10px;
+  font-size: 12px;
   padding: 7px 4px;
 }
 
@@ -1026,7 +1026,7 @@ audio::-webkit-media-controls-panel {
 }
 
 .compact .track-meta {
-  font-size: 9px;
+  font-size: 12px;
   margin: 1px 0;
 }
 
@@ -1041,7 +1041,7 @@ audio::-webkit-media-controls-panel {
 }
 
 .compact .track-actions>* {
-  font-size: 9px;
+  font-size: 12px;
   padding: 3px;
 }
 
@@ -1066,14 +1066,14 @@ audio::-webkit-media-controls-panel {
 }
 
 .task-track p {
-  font-size: 10px;
+  font-size: 12px;
   color: #94a5ae;
   margin: 4px 0;
   overflow-wrap: anywhere;
 }
 
 .task-track button {
-  font-size: 10px;
+  font-size: 12px;
   padding: 5px 10px;
 }
 
@@ -1094,7 +1094,7 @@ audio::-webkit-media-controls-panel {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 12px;
   color: #8396a3;
   padding-top: 9px;
   margin: 0;
@@ -1159,7 +1159,7 @@ audio::-webkit-media-controls-panel {
 }
 
 .empty p {
-  font-size: 11px;
+  font-size: 12px;
   max-width: 300px;
   margin: 9px auto;
   line-height: 1.8;
@@ -1212,7 +1212,7 @@ audio::-webkit-media-controls-panel {
 .search-field input {
   padding-left: 30px;
   background: #141e25;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .search-field>span {
@@ -1224,7 +1224,7 @@ audio::-webkit-media-controls-panel {
 }
 
 .history .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   color: #6f8694;
   margin-bottom: 12px;
 }
@@ -1252,7 +1252,7 @@ audio::-webkit-media-controls-panel {
   border: 0;
   background: none;
   color: #9caebb;
-  font-size: 11px;
+  font-size: 12px;
   text-align: left;
 }
 
@@ -1283,7 +1283,7 @@ audio::-webkit-media-controls-panel {
 .history-foot {
   margin-top: auto;
   padding-top: 30px;
-  font-size: 9px;
+  font-size: 12px;
   color: #637c89;
   line-height: 2;
 }
@@ -1313,7 +1313,7 @@ audio::-webkit-media-controls-panel {
 }
 
 .overview-heading .eyebrow {
-  font-size: 10px;
+  font-size: 12px;
   color: #7a9b95;
   margin-bottom: 14px;
 }
@@ -1362,7 +1362,7 @@ audio::-webkit-media-controls-panel {
 }
 
 .overview-card p {
-  font-size: 11px;
+  font-size: 12px;
   color: #b1c4c8;
 }
 
@@ -1371,7 +1371,7 @@ audio::-webkit-media-controls-panel {
   z-index: 2;
   left: 28px;
   top: 24px;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .14em;
   color: #b6c6c9;
 }
@@ -1492,7 +1492,7 @@ audio::-webkit-media-controls-panel {
 
 .recent-row small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #7c94a2;
   margin-top: 3px;
 }
@@ -1533,12 +1533,12 @@ audio::-webkit-media-controls-panel {
 
 .quota-metrics>div>span {
   color: #8c9faa;
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 12px;
 }
 
 .quota-card .secondary {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .asset-grid {
@@ -1573,7 +1573,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 th {
@@ -1581,7 +1581,7 @@ th {
   background: #1a252c;
   color: #849ba9;
   font-weight: 400;
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -1589,7 +1589,7 @@ td {
   padding: 15px 20px;
   border-top: 1px solid #26343d;
   color: #b1c3cc;
-  font-size: 11px;
+  font-size: 12px;
   vertical-align: middle;
 }
 
@@ -1599,7 +1599,7 @@ td strong {
 }
 
 .table-note {
-  font-size: 10px;
+  font-size: 12px;
   color: #7e97a3;
   padding: 15px 20px;
   border-top: 1px solid #293940;
@@ -1609,7 +1609,7 @@ td strong {
 .task-error {
   display: block;
   max-width: 260px;
-  font-size: 9px;
+  font-size: 12px;
   color: #c4a285;
 }
 
@@ -1662,7 +1662,7 @@ td strong {
 }
 
 .usage-block p {
-  font-size: 10px;
+  font-size: 12px;
   color: #7f99a6;
   margin-top: 6px;
 }
@@ -1780,7 +1780,7 @@ hr {
 }
 
 .model-cell small {
-  font-size: 9px;
+  font-size: 12px;
   color: #7d94a3;
   display: block;
   margin-top: 2px;
@@ -1790,7 +1790,7 @@ hr {
 }
 
 .deployment {
-  font-size: 10px;
+  font-size: 12px;
   color: #a6c6ba;
 }
 
@@ -1813,7 +1813,7 @@ hr {
 
 .saved-key {
   float: right;
-  font-size: 9px;
+  font-size: 12px;
   color: #7a9e8f;
 }
 
@@ -1839,12 +1839,12 @@ hr {
 .checkbox span small {
   display: block;
   color: #7e98a2;
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 2px;
 }
 
 .form-help {
-  font-size: 10px;
+  font-size: 12px;
   color: #8ba0ad;
   padding: 10px 12px;
   border: 1px solid #2a4146;
@@ -1860,11 +1860,11 @@ hr {
 }
 
 .button-row>* {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .admin-side>.eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   margin-bottom: 8px;
 }
 
@@ -1897,19 +1897,19 @@ hr {
 }
 
 .node-summary p {
-  font-size: 11px;
+  font-size: 12px;
   color: #95b4a7;
   margin: 0 0 3px;
   overflow-wrap: anywhere;
 }
 
 .node-summary small {
-  font-size: 9px;
+  font-size: 12px;
   color: #718e9c;
 }
 
 .info-note {
-  font-size: 10px;
+  font-size: 12px;
   color: #a8b8b3;
   line-height: 1.9;
   padding: 13px 14px;
@@ -1928,7 +1928,7 @@ hr {
 }
 
 .node-row button {
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -1941,7 +1941,7 @@ hr {
 }
 
 .node-row .node-summary p {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .node-row .node-device {
@@ -1981,7 +1981,7 @@ hr {
 }
 
 .member-drawer .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .member-identity {
@@ -2000,7 +2000,7 @@ hr {
 
 .member-identity small {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: #7f9da7;
 }
 
@@ -2030,7 +2030,7 @@ hr {
 
 .permission-check small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #86a69c;
   margin-top: 4px;
 }
@@ -2056,7 +2056,7 @@ hr {
   padding: 13px 0;
   border-bottom: 1px solid #293d45;
   flex-wrap: wrap;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .reconcile-row>span {
@@ -2077,7 +2077,7 @@ hr {
 }
 
 .request-row p {
-  font-size: 11px;
+  font-size: 12px;
   margin: 4px 0;
 }
 
@@ -2095,7 +2095,7 @@ hr {
 }
 
 td code {
-  font-size: 9px;
+  font-size: 12px;
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -2144,7 +2144,7 @@ dialog p.muted {
 }
 
 dialog .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   margin-bottom: 10px;
 }
 
@@ -2271,7 +2271,7 @@ dialog label {
     font-size: 12px;
   }
   .brand-caption {
-    font-size: 9px;
+    font-size: 12px;
     letter-spacing: 2.5px;
   }
   .topbar {
@@ -2296,7 +2296,7 @@ dialog label {
   }
   .page-heading>.assistant-toggle {
     display: inline-flex;
-    font-size: 11px;
+    font-size: 12px;
   }
   .assistant-collapsed .music-grid {
     grid-template-columns: 1fr 1fr;
@@ -2308,7 +2308,7 @@ dialog label {
     font-size: 31px;
   }
   .page-heading p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .music-results {
     min-height: 0;
@@ -2378,10 +2378,10 @@ dialog label {
   .brand-caption {
     padding-inline: 7px;
     letter-spacing: 2px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .nav-link {
-    font-size: 11px;
+    font-size: 12px;
     gap: 9px;
   }
   .nav-link svg {
@@ -2391,17 +2391,17 @@ dialog label {
     gap: 7px;
   }
   .account>span:nth-child(2) {
-    font-size: 11px;
+    font-size: 12px;
   }
   .account small {
-    font-size: 8px;
+    font-size: 12px;
   }
   .account-avatar {
     width: 29px;
     height: 29px;
   }
   .back-home {
-    font-size: 8px;
+    font-size: 12px;
   }
   .topbar {
     height: 70px;
@@ -2412,11 +2412,11 @@ dialog label {
   }
   .breadcrumb {
     gap: 12px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .quota-pill {
     padding: 7px 9px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .top-actions .account-avatar {
     width: 29px;
@@ -2455,7 +2455,7 @@ dialog label {
     font-size: 20px;
   }
   .overview-card p {
-    font-size: 10px;
+    font-size: 12px;
   }
   .overview-card>div:last-child {
     padding: 125px 18px 20px;
@@ -2476,7 +2476,7 @@ dialog label {
     grid-template-columns: 185px minmax(0,1fr);
   }
   .history-open {
-    font-size: 10px;
+    font-size: 12px;
     padding-inline: 6px;
   }
   .settings-grid {
@@ -2490,7 +2490,7 @@ dialog label {
     gap: 17px;
   }
   .admin-tabs button {
-    font-size: 11px;
+    font-size: 12px;
   }
   .workspace-footer {
     margin-inline: 20px;
@@ -2526,7 +2526,7 @@ dialog label {
     gap: 10px;
   }
   .brand-caption {
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 3px;
   }
   .nav-link {
@@ -2540,14 +2540,14 @@ dialog label {
     font-size: 13px;
   }
   .account small {
-    font-size: 10px;
+    font-size: 12px;
   }
   .account-avatar {
     width: 35px;
     height: 35px;
   }
   .back-home {
-    font-size: 10px;
+    font-size: 12px;
   }
   .workspace {
     margin: 0;
@@ -2572,7 +2572,7 @@ dialog label {
     gap: 10px;
   }
   .quota-pill {
-    font-size: 9px;
+    font-size: 12px;
     padding: 5px 9px;
     border-radius: 8px;
   }
@@ -2582,7 +2582,7 @@ dialog label {
   .top-actions .account-avatar {
     width: 28px;
     height: 28px;
-    font-size: 11px;
+    font-size: 12px;
   }
   #main {
     padding-inline: 15px;
@@ -2595,10 +2595,10 @@ dialog label {
     padding: 14px;
   }
   .music-composer label {
-    font-size: 10px;
+    font-size: 12px;
   }
   .music-composer input,.music-composer textarea {
-    font-size: 11px;
+    font-size: 12px;
   }
   .panel-title h2 {
     font-size: 17px;
@@ -2610,10 +2610,10 @@ dialog label {
     font-size: 28px;
   }
   .page-heading p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .saved-label {
-    font-size: 8px;
+    font-size: 12px;
   }
   .music-composer #lyrics {
     min-height: 190px;
@@ -2622,7 +2622,7 @@ dialog label {
     font-size: 16px;
   }
   .track-heading .status {
-    font-size: 7px;
+    font-size: 12px;
     padding: 2px 5px;
   }
   .compact .track-heading {
@@ -2643,33 +2643,33 @@ dialog label {
     height: 76px;
   }
   .composer-note {
-    font-size: 8px;
+    font-size: 12px;
   }
   .cover {
     aspect-ratio: 1;
   }
   .track-meta {
-    font-size: 9px;
+    font-size: 12px;
   }
   .duration-options button {
-    font-size: 10px;
+    font-size: 12px;
   }
   .segmented button {
-    font-size: 10px;
+    font-size: 12px;
   }
   .model-row select {
-    font-size: 10px;
+    font-size: 12px;
     padding: 9px 5px;
   }
   .model-row {
-    font-size: 9px;
+    font-size: 12px;
     gap: 7px;
   }
   .track-actions {
     gap: 5px;
   }
   .track-actions>* {
-    font-size: 9px;
+    font-size: 12px;
   }
   .overview-heading {
     margin: 20px 2px 28px;
@@ -2703,7 +2703,7 @@ dialog label {
     font-size: 27px;
   }
   .admin-heading .secondary {
-    font-size: 10px;
+    font-size: 12px;
     white-space: nowrap;
     padding: 8px 10px;
   }
@@ -2713,7 +2713,7 @@ dialog label {
     margin-bottom: 17px;
   }
   .admin-tabs button {
-    font-size: 11px;
+    font-size: 12px;
   }
   .admin-lower {
     margin-top: 16px;
@@ -2721,7 +2721,7 @@ dialog label {
   }
   .service-banner {
     padding-inline: 16px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .chat-layout {
     grid-template-columns: 190px minmax(0,1fr);
@@ -2734,11 +2734,11 @@ dialog label {
     height: calc(100dvh - 96px);
   }
   .workspace-footer {
-    font-size: 7px;
+    font-size: 12px;
     margin-inline: 16px;
   }
   .workspace-footer span {
-    font-size: 8px;
+    font-size: 12px;
   }
   #toast {
     left: 50%;
@@ -2785,7 +2785,7 @@ dialog label {
     padding: 17px;
   }
   .music-composer label {
-    font-size: 11px;
+    font-size: 12px;
   }
   .music-composer input,.music-composer textarea {
     font-size: 12px;
@@ -2794,29 +2794,29 @@ dialog label {
     font-size: 19px;
   }
   .saved-label {
-    font-size: 9px;
+    font-size: 12px;
   }
   .segmented button {
     font-size: 12px;
   }
   .duration-options button {
-    font-size: 11px;
+    font-size: 12px;
   }
   .model-row select {
-    font-size: 11px;
+    font-size: 12px;
   }
   .composer-note {
-    font-size: 9px;
+    font-size: 12px;
   }
   .page-heading h1 {
     font-size: 27px;
   }
   .page-heading p {
-    font-size: 10px;
+    font-size: 12px;
     max-width: 230px;
   }
   .page-heading>.assistant-toggle {
-    font-size: 10px;
+    font-size: 12px;
     padding: 8px 9px;
     white-space: nowrap;
   }
@@ -2824,13 +2824,13 @@ dialog label {
     font-size: 21px;
   }
   .track-heading .status {
-    font-size: 9px;
+    font-size: 12px;
   }
   .track-meta {
-    font-size: 11px;
+    font-size: 12px;
   }
   .track-actions>* {
-    font-size: 11px;
+    font-size: 12px;
     padding: 9px;
   }
   .compact .track-heading h3 {
@@ -2851,7 +2851,7 @@ dialog label {
     position: static;
   }
   .compact .track-meta {
-    font-size: 9px;
+    font-size: 12px;
   }
   .assistant-mobile-open .assistant-column {
     display: block;
@@ -2871,14 +2871,14 @@ dialog label {
     grid-template-columns: 1fr;
   }
   .overview-heading .eyebrow {
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: .14em;
   }
   .overview-heading h1 {
     font-size: 31px;
   }
   .overview-heading>p:last-child {
-    font-size: 11px;
+    font-size: 12px;
   }
   .overview-cards {
     grid-template-columns: 1fr;
@@ -2894,7 +2894,7 @@ dialog label {
     font-size: 25px;
   }
   .overview-card p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .chat-art {
     right: 25px;
@@ -2924,7 +2924,7 @@ dialog label {
     padding-inline: 15px;
   }
   .table-panel>.panel-title p {
-    font-size: 9px;
+    font-size: 12px;
     max-width: 160px;
   }
   .model-cell {
@@ -2939,7 +2939,7 @@ dialog label {
     max-width: 130px;
   }
   .model-cell strong {
-    font-size: 11px;
+    font-size: 12px;
   }
   .form-columns {
     gap: 10px;
@@ -2954,17 +2954,17 @@ dialog label {
     font-size: 25px;
   }
   .admin-heading p {
-    font-size: 10px;
+    font-size: 12px;
   }
   .admin-heading>.secondary {
-    font-size: 9px;
+    font-size: 12px;
     padding: 7px;
   }
   .admin-heading>.secondary svg {
     width: 12px;
   }
   .button-row>* {
-    font-size: 10px;
+    font-size: 12px;
     padding: 9px 10px;
   }
   .button-row>.text-button {
@@ -2991,7 +2991,7 @@ dialog label {
   }
   .history>.primary {
     width: auto;
-    font-size: 10px;
+    font-size: 12px;
     padding: 8px 12px;
     flex-shrink: 0;
   }
@@ -3014,7 +3014,7 @@ dialog label {
     max-width: 170px;
   }
   .history-open {
-    font-size: 9px;
+    font-size: 12px;
     padding: 7px;
   }
   .history-open svg {
@@ -3033,10 +3033,10 @@ dialog label {
   }
   .workspace-footer {
     padding-top: 10px;
-    font-size: 6px;
+    font-size: 12px;
   }
   .workspace-footer span {
-    font-size: 7px;
+    font-size: 12px;
   }
   .topbar {
     gap: 8px;
@@ -3044,10 +3044,10 @@ dialog label {
   }
   .quota-pill {
     padding: 5px 7px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .breadcrumb {
-    font-size: 10px;
+    font-size: 12px;
   }
   .top-actions {
     gap: 9px;
@@ -3055,13 +3055,13 @@ dialog label {
   .top-actions .account-avatar {
     width: 25px;
     height: 25px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .privacy-note {
-    font-size: 9px;
+    font-size: 12px;
   }
   .service-banner {
-    font-size: 9px;
+    font-size: 12px;
     padding: 7px 14px;
   }
   dialog {
@@ -3072,14 +3072,14 @@ dialog label {
   }
   .quote-summary {
     gap: 14px 16px;
-    font-size: 11px;
+    font-size: 12px;
     padding: 15px;
   }
   .workspace-footer svg {
     width: 10px;
   }
   .reconcile-row {
-    font-size: 10px;
+    font-size: 12px;
     gap: 9px;
   }
 }

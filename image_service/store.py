@@ -55,6 +55,17 @@ CREATE TABLE IF NOT EXISTS forum_posts (
  created INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS forum_feed ON forum_posts(deleted,pinned DESC,created DESC,id DESC);
 CREATE INDEX IF NOT EXISTS forum_owner ON forum_posts(user_id,deleted,created DESC);
+CREATE TABLE IF NOT EXISTS forum_comments (
+ id TEXT PRIMARY KEY, post_id TEXT NOT NULL REFERENCES forum_posts(id),
+ user_id TEXT NOT NULL REFERENCES users(id), body TEXT NOT NULL,
+ created INTEGER NOT NULL, deleted INTEGER NOT NULL DEFAULT 0, request_id TEXT NOT NULL,
+ UNIQUE(user_id,request_id));
+CREATE INDEX IF NOT EXISTS forum_replies ON forum_comments(post_id,deleted,created,id);
+CREATE TABLE IF NOT EXISTS forum_notifications (
+ id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+ comment_id TEXT NOT NULL UNIQUE REFERENCES forum_comments(id),
+ created INTEGER NOT NULL, read INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS forum_inbox ON forum_notifications(user_id,read,created DESC,id DESC);
 '''
 
 
@@ -83,6 +94,10 @@ class Store:
                 db.execute('ALTER TABLE jobs ADD COLUMN reference_image BLOB')
             if 'deleted' not in job_columns:
                 db.execute('ALTER TABLE jobs ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0')
+            post_columns = {row['name'] for row in db.execute('PRAGMA table_info(forum_posts)')}
+            for name, default in (('revision', 1), ('updated', 0)):
+                if name not in post_columns:
+                    db.execute(f'ALTER TABLE forum_posts ADD COLUMN {name} INTEGER NOT NULL DEFAULT {default}')
         os.chmod(self.path, 0o600)
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')

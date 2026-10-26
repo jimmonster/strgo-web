@@ -90,3 +90,23 @@ test('NEXUS invalid or missing dependency preserves the previous integration',as
  assert.equal(await readFile(join(root,'src/nexus/previous.txt'),'utf8'),'previous integration');
  assert.deepEqual(await readdir(join(root,'src')),['nexus']);
 });
+
+test('terminal theme check accepts LF and CRLF without writes and still rejects stale tokens',async t=>{
+ const {root,put}=await fixture(t),script=join(root,'scripts/sync-terminal-theme.mjs');
+ await put('scripts/sync-terminal-theme.mjs',await readFile(new URL('../scripts/sync-terminal-theme.mjs',import.meta.url)));
+ await put('content/app-registry.json',JSON.stringify({tokens:{bg:'#070b10',radius:14}}));
+ const css='/* strgo-tokens:start */\n:root{--strgo-bg:#070b10;--strgo-radius:14px}\n/* strgo-tokens:end */\nbody{margin:0}\n';
+ for(const newline of ['\n','\r\n']){
+  const source=css.replaceAll('\n',newline);
+  for(const name of ['style.css','workspace.css'])await put('apps/terminal/web/'+name,source);
+  await execute(process.execPath,[script,'--check'],{cwd:root});
+  for(const name of ['style.css','workspace.css'])assert.equal(await readFile(join(root,'apps/terminal/web',name),'utf8'),source);
+ }
+ const stale=css.replace('#070b10','#000000').replaceAll('\n','\r\n');
+ await put('apps/terminal/web/style.css',stale);
+ await assert.rejects(execute(process.execPath,[script,'--check'],{cwd:root}),/Terminal theme is stale/);
+ assert.equal(await readFile(join(root,'apps/terminal/web/style.css'),'utf8'),stale);
+ await execute(process.execPath,[script],{cwd:root});
+ await execute(process.execPath,[script,'--check'],{cwd:root});
+ assert.equal(await readFile(join(root,'apps/terminal/web/style.css'),'utf8'),css);
+});

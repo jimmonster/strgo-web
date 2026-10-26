@@ -1,3 +1,4 @@
+import { syncTerminalTheme } from '../../../scripts/sync-terminal-theme.mjs';
 import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -18,3 +19,5 @@ for (const [source, destination] of [
 ]) await copyFile(path.join(root, 'node_modules', source), path.join(root, 'web/vendor', destination));
 console.log('Terminal assets prepared locally; runtime does not use a CDN.');
 
+
+await syncTerminalTheme();

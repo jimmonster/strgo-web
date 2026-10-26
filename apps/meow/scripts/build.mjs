@@ -1,3 +1,4 @@
+import { integrateStrgo } from '../../../scripts/integrate-strgo.mjs';
 import {mkdir,rm,cp,readFile,writeFile,stat} from 'node:fs/promises';
 import {cats,galleries,products,pages} from '../modules/catalog.js';
 import {header,footer,pageView} from '../modules/views.js';
@@ -23,3 +24,5 @@ await writeFile(new URL('assets/model-manifest.json',dist),JSON.stringify({versi
 await writeFile(new URL('build-info.json',dist),JSON.stringify({date:new Date().toISOString(),base,paths:[...new Set(paths)].map(p=>base+p),threeVersion:'0.160.1',staticDetails:26},null,2));
 await writeFile(new URL('routes.json',dist),JSON.stringify(paths.map(p=>({path:base+p,file:(p||'')+'index.html'})),null,2));
 console.log(`Built ${new Set(paths).size} static pages + 404, base ${base}`);
+
+await integrateStrgo(dist,base);

@@ -30,8 +30,9 @@
 | U02 | 任务中心 | `/ai/tasks/` | 我的工作区 | 需登录 |
 | U03 | 账号与权限 | `/ai/settings/` | 我的工作区 | 需登录 |
 | U04 | 账号登录 | `/ai/login/` | 我的工作区 | 已有入口 |
-| A01 | 管理控制台 | `/admin/ai/` | 管理 | 管理员 |
+| A01 | 全站管理 | `/admin/` | 管理 | 管理员 |
 | N07 | 经典主页 | `/classic/` | 社区内容 | 保留原入口 |
+| A02 | AI 模型与权限 | `/admin/ai/` | 管理 | 管理员 · 需二次验证 |
 
 终端地址和 Workflow 域名由 `site.json` 的 `TERMINAL_TARGET_URL`、`WORKFLOW_ORIGIN` 覆盖；构建产物中的注册表保存实际地址。
 
@@ -43,11 +44,17 @@
 | `surface` | `#0e151c` |
 | `border` | `#27333b` |
 | `text` | `#f1f7f7` |
-| `muted` | `#9aaab4` |
+| `muted` | `#a5b9b5` |
 | `accent` | `#79f8cb` |
 | `violet` | `#a59bff` |
 | `warning` | `#f4c576` |
-| `radius` | `18` |
+| `radius` | `14` |
 | `spacing` | `8` |
+| `surface-raised` | `#15232c` |
+| `input` | `#0b141b` |
+| `accent-ink` | `#09251d` |
+| `accent-soft` | `#16372c` |
+| `danger` | `#ffaba5` |
+| `danger-soft` | `#392225` |
 
 颜色使用十六进制；radius 和 spacing 的单位为 px。构建输出 `/hub/tokens.css`，供门户、生图和 AI 工作区共用。

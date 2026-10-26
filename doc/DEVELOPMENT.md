@@ -90,3 +90,10 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 `.github/workflows/verify.yml` 在push、pull_request和手动触发时运行Linux检查：Node22、Python3.12、各应用构建/回归、Bash部署辅助回归，以及Rust1.88终端测试。Actions只读仓库权限，不部署生产。实际Linux结果以对应提交的CI运行记录为准。
 
 Windows明确跳过Bash配置生成、创建符号链接与POSIX0600文件权限检查；这些在Linux CI执行。文件内容、持久化恢复、路径边界及业务断言仍在Windows运行。不能将跳过项记为通过。2026-10-23最终本机根Node91项通过，根Python204项中200项通过、4项平台跳过；终端Python31项中30项通过、1项平台跳过。Linux CI已实际跑通两个job，含终端Rust20项；提交与结果见 [审查记录](PROJECT-REVIEW.md)。
+
+
+## 共享视觉与独立应用打包
+
+现行规则见根 `DESIGN.md`。色彩、圆角和间距修改 `content/app-registry.json`；主构建生成 token。独立三维应用的构建通过 `scripts/integrate-strgo.mjs` 打包本地 `_strgo/`，不必改动其场景业务。不要手工修改生成目录。
+
+终端的 token 由 `node scripts/sync-terminal-theme.mjs` 同步，`--check` 只读校验；`apps/terminal` 的资源准备也会执行同步。修改共享资源后按正常生产 base 重建对应应用。Workflow 的独立打包位于 `dist/local-studio/_strgo/`，导航使用 `data-session="none"`，不能把它的独立 Cookie 当作主站账号。

@@ -33,6 +33,12 @@ if(!configSource.includes("chapterPath: 'dreams/'"))throw Error('Missing chapter
 await writeFile(config,configSource.replace("chapterPath: 'dreams/'","chapterPath: ''"));
 const errorPage=new URL('404.html',staging);
 await writeFile(errorPage,(await readFile(errorPage,'utf8')).replaceAll('href="./','href="/dreams/'));
+// The standalone build serves its shared chrome from /_strgo/. Rebase those
+// assets along with the chapters when mounting the same package at /dreams/.
+for(const name of ['index.html','404.html',...Array.from({length:8},(_,n)=>`${String(n+1).padStart(2,'0')}/index.html`)]){
+ const page=new URL(name,staging);
+ await writeFile(page,(await readFile(page,'utf8')).replaceAll('="/_strgo/','="/dreams/_strgo/'));
+}
 await writeFile(new URL('integration.json',staging),JSON.stringify({route:'/dreams/',chapters:'/dreams/:id/',source:'apps/dreams/dist',contentMode:CONFIG.contentMode,entries:9},null,2)+'\n');
 try{await rename(target,backup);hasPrevious=true;}catch(error){if(error.code!=='ENOENT')throw error;}
 try{await rename(staging,target);}catch(error){if(hasPrevious)await rename(backup,target);throw error;}

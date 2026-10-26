@@ -1,6 +1,6 @@
 {
   "version": "3.0",
-  "date": "2026-10-23",
+  "date": "2026-10-26",
   "baseline": "e1f0f5cef1c6389f9633bb6270ccd6ff509660e5",
   "groups": [
     "全部",
@@ -277,11 +277,11 @@
     },
     {
       "id": "A01",
-      "name": "管理控制台",
+      "name": "全站管理",
       "en": "ADMIN",
       "group": "管理",
-      "route": "/admin/ai/",
-      "description": "模型连接、成员授权、节点与预算。",
+      "route": "/admin/",
+      "description": "账号、邀请码、社区、任务与运行状态。",
       "type": "admin",
       "access": "管理员",
       "symbol": "⊞"
@@ -296,6 +296,17 @@
       "type": "classic",
       "access": "保留原入口",
       "symbol": "⌂"
+    },
+    {
+      "id": "A02",
+      "name": "AI 模型与权限",
+      "en": "AI ADMIN",
+      "group": "管理",
+      "route": "/admin/ai/",
+      "description": "模型连接、成员授权、节点、预算与审计。",
+      "type": "admin",
+      "access": "管理员 · 需二次验证",
+      "symbol": "⊞"
     }
   ],
   "screens": [
@@ -345,11 +356,17 @@
     "surface": "#0e151c",
     "border": "#27333b",
     "text": "#f1f7f7",
-    "muted": "#9aaab4",
+    "muted": "#a5b9b5",
     "accent": "#79f8cb",
     "violet": "#a59bff",
     "warning": "#f4c576",
-    "radius": 18,
-    "spacing": 8
+    "radius": 14,
+    "spacing": 8,
+    "surface-raised": "#15232c",
+    "input": "#0b141b",
+    "accent-ink": "#09251d",
+    "accent-soft": "#16372c",
+    "danger": "#ffaba5",
+    "danger-soft": "#392225"
   }
 }
