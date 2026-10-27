@@ -56,6 +56,9 @@ pub async fn run() -> Result<()> {
         .route("/terminal/workspace.js", get(workspace_js))
         .route("/terminal/workspace.css", get(workspace_css))
         .route("/terminal/app.js", get(javascript))
+        .route("/terminal/i18n.js", get(i18n_js))
+        .route("/terminal/i18n-copy.js", get(i18n_copy_js))
+        .route("/terminal/i18n-traditional.js", get(i18n_traditional_js))
         .route("/terminal/vendor/xterm.js", get(xterm_js))
         .route("/terminal/vendor/xterm.css", get(xterm_css))
         .route("/terminal/vendor/addon-fit.js", get(fit_js))
@@ -104,6 +107,9 @@ async fn workspace_js() -> Response { asset(include_str!("../web/workspace.js"),
 async fn workspace_css() -> Response { asset(include_str!("../web/workspace.css"), "text/css; charset=utf-8") }
 async fn css() -> Response { asset(include_str!("../web/style.css"), "text/css; charset=utf-8") }
 async fn javascript() -> Response { asset(include_str!("../web/app.js"), "application/javascript; charset=utf-8") }
+async fn i18n_js() -> Response { asset(include_str!("../web/i18n.js"), "application/javascript; charset=utf-8") }
+async fn i18n_copy_js() -> Response { asset(include_str!("../web/i18n-copy.js"), "application/javascript; charset=utf-8") }
+async fn i18n_traditional_js() -> Response { asset(include_str!("../web/i18n-traditional.js"), "application/javascript; charset=utf-8") }
 async fn xterm_js() -> Response { asset(include_str!("../web/vendor/xterm.js"), "application/javascript; charset=utf-8") }
 async fn xterm_css() -> Response { asset(include_str!("../web/vendor/xterm.css"), "text/css; charset=utf-8") }
 async fn fit_js() -> Response { asset(include_str!("../web/vendor/addon-fit.js"), "application/javascript; charset=utf-8") }

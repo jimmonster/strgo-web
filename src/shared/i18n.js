@@ -1,10 +1,22 @@
 import { english } from './translations.js';
 import { traditional } from './traditional.js';
 import { japanese, korean } from './east-asian.js';
+import { nexusCopy } from './nexus-copy.js';
+import { nexusTraditional } from './nexus-traditional.js';
+import { meowCopy } from './meow-copy.js';
+import { meowTraditional } from './meow-traditional.js';
+import { polyverseCopy } from './polyverse-copy.js';
+import { polyverseTraditional } from './polyverse-traditional.js';
 
 export const LOCALE_KEY = 'strgo:locale:v1';
 export const SUPPORTED_LOCALES = ['zh-CN', 'zh-TW', 'en', 'ja', 'ko'];
 const dictionaries = { 'zh-TW': traditional, en: english, ja: japanese, ko: korean };
+const nexusDictionaries = { ...nexusCopy, 'zh-TW': nexusTraditional };
+const isNexusPage = () => /^\/nexus(?:\/|$)/.test(globalThis.location?.pathname || '');
+const isMeowPage = () => /^\/meow(?:\/|$)/.test(globalThis.location?.pathname || '');
+const isPolyversePage = () => /^\/polyverse(?:\/|$)/.test(globalThis.location?.pathname || '');
+const polyverseDictionaries = { ...polyverseCopy, 'zh-TW': polyverseTraditional };
+const meowDictionaries = { ...meowCopy, 'zh-TW': meowTraditional };
 let current;
 
 export function resolveLocale(saved, languages = []) {
@@ -35,14 +47,52 @@ export function setLocale(locale, { persist = true } = {}) {
 }
 
 export function translate(source, locale = getLocale()) {
-  if (locale === 'zh-CN' || typeof source !== 'string') return source;
+  if (typeof source !== 'string' || (locale === 'zh-CN' && !isMeowPage() && !isPolyversePage())) return source;
   const match = source.match(/^(\s*)([\s\S]*?)(\s*)$/);
   const text = match[2];
-  const dictionary = dictionaries[locale] || english;
-  let value = dictionary[text] ?? (locale === 'zh-TW' ? undefined : english[text]);
+  const dictionary = dictionaries[locale] || {};
+  let value = (isPolyversePage() ? polyverseDictionaries[locale]?.[text] : undefined) ?? (isMeowPage() ? meowDictionaries[locale]?.[text] : undefined) ?? (isNexusPage() ? nexusDictionaries[locale]?.[text] : undefined) ?? dictionary[text] ?? (locale === 'zh-TW' || locale === 'zh-CN' ? undefined : english[text]);
+  if (value === undefined && locale === 'zh-CN' && !isPolyversePage()) return source;
   if (value === undefined) {
     let m;
-    if ((m = text.match(/^(\d+) 个主入口 \/ (\d+) 个沉浸空间 \/ 一个起点$/))) {
+    if (isPolyversePage() && (m = text.match(/^(\d+) RESULTS(?: FOR “([\s\S]*)”)?$/))) {
+      const suffix=m[2] ? { 'zh-CN':` · “${m[2]}”`, 'zh-TW':` · “${m[2]}”`, ja:` · 「${m[2]}」`, ko:` · “${m[2]}”` }[locale] || ` FOR “${m[2]}”` : '';
+      value=({ 'zh-CN':`${m[1]} 条结果`, 'zh-TW':`${m[1]} 條結果`, ja:`${m[1]} 件`, ko:`결과 ${m[1]}개` }[locale] || `${m[1]} RESULTS`) + suffix;
+    } else if (isPolyversePage() && (m = text.match(/^(\d\d \/ )(.+)$/)) && polyverseDictionaries[locale]?.[m[2]]) {
+      value=m[1]+translate(m[2],locale);
+    } else if (isPolyversePage() && (m = text.match(/^([XYZWVU]{2}) rotation · radians$/))) {
+      value = { 'zh-CN':`${m[1]} 旋转 · 弧度`, 'zh-TW':`${m[1]} 旋轉 · 弧度`, ja:`${m[1]} 回転 · ラジアン`, ko:`${m[1]} 회전 · 라디안` }[locale];
+    } else if (isPolyversePage() && (m = text.match(/^Advanced planes \((\d+)\)$/))) {
+      value = { 'zh-CN':`更多旋转平面（${m[1]}）`, 'zh-TW':`更多旋轉平面（${m[1]}）`, ja:`詳細な回転平面（${m[1]}）`, ko:`고급 회전 평면 (${m[1]})` }[locale];
+    } else if (isPolyversePage() && (m = text.match(/^(.+) ↗$/)) && polyverseDictionaries[locale]?.[m[1]]) {
+      value=translate(m[1],locale)+' ↗';
+    } else if (isPolyversePage() && (m = text.match(/^(.+) — POLYVERSE$/)) && polyverseDictionaries[locale]?.[m[1]]) {
+      value=translate(m[1],locale)+' — POLYVERSE';
+    } else if (isMeowPage() && (m = text.match(/^(\d+) (位朋友|件作品|条可搜索内容 · 输入关键词开始)$/))) {
+      const n=m[1],unit=m[2]; value = unit==='位朋友' ? {en:`${n} friends`,'zh-TW':`${n} 位朋友`,ja:`${n} 匹の友だち`,ko:`친구 ${n}마리`}[locale] : unit==='件作品' ? {en:`${n} works`,'zh-TW':`${n} 件作品`,ja:`${n} 作品`,ko:`작품 ${n}개`}[locale] : {en:`${n} searchable items · enter a keyword`,'zh-TW':`${n} 條可搜尋內容 · 輸入關鍵詞開始`,ja:`検索対象 ${n} 件 · キーワードを入力`,ko:`검색 가능한 항목 ${n}개 · 검색어 입력`}[locale];
+    } else if (isMeowPage() && (m = text.match(/^认识 ([A-Za-z]+)$/))) {
+      value={en:`Meet ${m[1]}`,'zh-TW':`認識 ${m[1]}`,ja:`${m[1]} に会う`,ko:`${m[1]} 만나기`}[locale];
+    } else if (isMeowPage() && (m = text.match(/^([A-Za-z]+) · (.+)$/)) && meowDictionaries[locale]?.[m[2]]) {
+      value=`${m[1]} · ${translate(m[2],locale)}`;
+    } else if (isMeowPage() && (m = text.match(/^([A-Za-z]+)：(.+)，(.+)$/))) {
+      value=`${m[1]}: ${translate(m[2],locale)}, ${m[3].split('、').map(part=>translate(part,locale)).join(', ')}`;
+    } else if (isMeowPage() && (m = text.match(/^(取消收藏|收藏) (.+)$/))) {
+      const action = m[1]==='收藏'?{en:'Favorite','zh-TW':'收藏',ja:'お気に入りに追加',ko:'즐겨찾기 추가'}[locale]:{en:'Remove favorite','zh-TW':'取消收藏',ja:'お気に入りから削除',ko:'즐겨찾기 제거'}[locale]; value = `${action} ${translate(m[2],locale)}`;
+    } else if (isMeowPage() && (m = text.match(/^(.+。) (每件商品都有自己的三维结构，可以旋转观察正面、侧面与背面。)$/))) {
+      value=`${translate(m[1],locale)} ${translate(m[2],locale)}`;
+    } else if (isMeowPage() && (m = text.match(/^· (短毛|长毛|半长毛|近乎无毛)$/))) {
+      value=`· ${translate(m[1],locale)}`;
+    } else if (isNexusPage() && (m = text.match(/^(\d+) 个本地结果( \/ 全部内容)?$/))) {
+      const all = !!m[2]; value = { en: `${m[1]} local results${all ? ' / all content' : ''}`, 'zh-TW': `${m[1]} 個本地結果${all ? ' / 全部內容' : ''}`, ja: `ローカル結果 ${m[1]} 件${all ? ' / すべて' : ''}`, ko: `로컬 결과 ${m[1]}개${all ? ' / 전체 콘텐츠' : ''}` }[locale];
+    } else if (isNexusPage() && (m = text.match(/^(.*?) \/ (NEXUS ARCHIVE|[\d.]+ (?:LY|KM)|查看目的地 ↗)$/))) {
+      value = `${translate(m[1], locale)} / ${translate(m[2], locale)}`;
+    } else if (isNexusPage() && (m = text.match(/^✓ 演示航线已生成：地球 → 深空跃迁点 → (.+)$/))) {
+      const destination = translate(m[1], locale); value = { en: `✓ Demo route created: Earth → Deep-space jump point → ${destination}`, 'zh-TW': `✓ 演示航線已生成：地球 → 深空躍遷點 → ${destination}`, ja: `✓ デモ航路を作成：地球 → 深宇宙ジャンプ地点 → ${destination}`, ko: `✓ 데모 항로 생성: 지구 → 심우주 도약 지점 → ${destination}` }[locale];
+    } else if (isNexusPage() && (m = text.match(/^画质已设为：(.+)$/))) {
+      value = { en: `Quality set to: ${m[1]}`, 'zh-TW': `畫質已設為：${m[1]}`, ja: `画質を設定：${m[1]}`, ko: `화질 설정: ${m[1]}` }[locale];
+    } else if (isNexusPage() && (m = text.match(/^(\d+ \/ )(.+?) — (.+)$/))) {
+      value = `${m[1]}${translate(m[2], locale)} — ${translate(m[3], locale)}`;
+    } else if ((m = text.match(/^(\d+) 个主入口 \/ (\d+) 个沉浸空间 \/ 一个起点$/))) {
       value = { en: `${m[1]} features / ${m[2]} immersive spaces / one starting point`, 'zh-TW': `${m[1]} 個主入口 / ${m[2]} 個沉浸空間 / 一個起點`, ja: `${m[1]} の機能 / ${m[2]} つの空間 / ひとつの入口`, ko: `기능 ${m[1]}개 / 몰입형 공간 ${m[2]}개 / 하나의 시작점` }[locale];
     } else if ((m = text.match(/^(\d+) 个匹配入口$/))) {
       value = { en: `${m[1]} matching ${m[1] === '1' ? 'feature' : 'features'}`, 'zh-TW': `${m[1]} 個符合的入口`, ja: `${m[1]} 件の機能`, ko: `일치하는 기능 ${m[1]}개` }[locale];
@@ -66,10 +116,10 @@ export function translate(source, locale = getLocale()) {
 // A whitelist of UI regions, not a translation service. Never traverse user content.
 const protectedContent = [
   '[data-strgo-user-content]', 'option:not([value])', 'script', 'style', 'code', 'pre', '[contenteditable]:not([contenteditable="false"])',
-  '#profile', '#dialog-title', '#dialog-description',
+  '#profile', '#dialog-description', '.profile-card h2', '.local-message p', '#companion-card h2', '#selection-info',
   '#posts', '#comments-list', '#notifications-list', '#detail-content', '#delete-description', '#header-name', '#side-name', '#side-avatar', '#header-avatar',
   '#account-name', '#conversation-list', '#auth-error', '.account-avatar', '.account', '#music-results', '#current-output', '#library-list', '#preset-results', '#preset-list', '#shared-preset-list', '#inspiration-list', '#reference-name', '#preview-prompt', '#model-label', '#storage-description', '.assistant-column',
-  '#music-form select[name="model_id"]', '#toast', '[data-toast-text]', '.message-content', '.post-preview', '.post-author', '.author-name'
+  '#music-form select[name="model_id"]', '[data-toast-text]', '.message-content', '.post-preview', '.post-author', '.author-name'
 ].join(',');
 const records = new WeakMap();
 let initialized = false;
@@ -78,16 +128,16 @@ function isHubPage() {
   return document.documentElement.dataset.strgoUi === 'hub' || (/^\/ai\/(?:tasks|assets)\/?$/.test(location.pathname) && !!document.querySelector('#railNav'));
 }
 
-function localizesTitle() { return isHubPage() || /^\/(?:home|dance|forum|image-playground)\/?$/.test(location.pathname); }
+function localizesTitle() { return isHubPage() || isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance|forum|image-playground)\/?$/.test(location.pathname); }
 
 function eligible(element) {
-  if (!element || element.closest(protectedContent)) return false;
+  if (!element || element.closest(protectedContent) || (!isNexusPage() && !isPolyversePage() && element.closest('#dialog-title, #toast'))) return false;
   const html = document.documentElement;
   const surface = html.dataset.strgoUi;
   const path = location.pathname;
   if (element.tagName === 'TITLE' && localizesTitle()) return true;
   if (isHubPage() || surface === 'classic') return true;
-  if (surface === 'experience') return /^\/(?:home|dance)\/?$/.test(path);
+  if (surface === 'experience') return isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance)\/?$/.test(path);
   if (path.startsWith('/forum/')) return !!element.closest('.skip, .topbar, #auth-view, #workspace, .mobile-bottom, dialog');
   if (path.startsWith('/image-playground/')) return !!element.closest('.skip, .topbar, #auth-view, #workspace, #image-dialog');
   if (path.startsWith('/ai/')) return !!element.closest('.sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .overview-heading, #main .overview-cards, #main .history, #main .music-composer > .panel-title, #music-form') || (!!document.querySelector('#login-form') && !!element.closest('#dialog-content'));
@@ -119,7 +169,7 @@ export function localizeTree(node) {
   if (node.nodeType !== 1 && node.nodeType !== 9 && node.nodeType !== 11) return;
   if (node.nodeType === 1) {
     if (node.matches(protectedContent)) return;
-    for (const attribute of ['aria-label', 'placeholder']) if (node.hasAttribute(attribute)) updateValue(node, attribute);
+    for (const attribute of ['aria-label', 'placeholder', 'alt', 'title']) if (node.hasAttribute(attribute)) updateValue(node, attribute);
     if (node.matches('input, textarea, option:not([value])')) return; // Never change form values.
   }
   for (const child of node.childNodes) localizeTree(child);
@@ -128,10 +178,11 @@ export function localizeTree(node) {
 export function setupI18n() {
   if (initialized || typeof document === 'undefined') return;
   initialized = true;
+  window.strgoI18n = Object.freeze({ translate, getLocale, setLocale, supportedLocales: SUPPORTED_LOCALES });
   const start = () => {
     const update = () => {
       const surface = document.documentElement.dataset.strgoUi;
-      if (isHubPage() || surface === 'classic' || (surface === 'experience' && /^\/(?:home|dance)\/?$/.test(location.pathname)) || /^\/(?:forum|image-playground)\//.test(location.pathname)) document.documentElement.lang = getLocale();
+      if (isHubPage() || surface === 'classic' || (surface === 'experience' && (isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance)\/?$/.test(location.pathname))) || /^\/(?:forum|image-playground)\//.test(location.pathname)) document.documentElement.lang = getLocale();
       localizeTree(document.body);
       if (localizesTitle()) localizeTree(document.querySelector('title'));
     };
@@ -143,7 +194,7 @@ export function setupI18n() {
         else for (const node of mutation.addedNodes) localizeTree(node);
       }
     });
-    observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'placeholder'] });
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'placeholder', 'alt', 'title'] });
     const title = document.querySelector('title');
     if (localizesTitle() && title) observer.observe(title, { childList: true, characterData: true, subtree: true });
     window.addEventListener('strgo:localechange', update);
@@ -151,6 +202,7 @@ export function setupI18n() {
     window.addEventListener('storage', event => {
       if (event.key === LOCALE_KEY) setLocale(resolveLocale(event.newValue, navigator.languages), { persist: false });
     });
+    window.dispatchEvent(new CustomEvent('strgo:i18nready'));
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
 }

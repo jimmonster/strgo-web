@@ -1,3 +1,4 @@
+import { locales, localized } from './locale.js';
 export const pair = (zh, en) => [zh, en];
 export const mechs = [
  {id:'breaker',name:pair('破阵镰虎机甲','BREAKER'),tag:pair('撕开防线，为虫群开道','Cut a path through the last line'),type:'ASSAULT / 01',color:'#b7ee58',desc:pair('低伏的六足躯干以交错步态穿过废墟。双镰先于身体切入障碍，绿色能量沿关节注入刃缘。','A low six-legged chassis advances in alternating tripods. Twin scythes clear debris while energy travels from its reactor to the blades.'),action:pair('行进 · 镰肢开道','ADVANCE & CLEAR'),parts:[pair('头部光核','Head reactor'),pair('巨型镰肢','Clearing scythes'),pair('六足支撑链','Hexapod support')]},
@@ -48,5 +49,5 @@ export const pages=[
  ...discussions.map(d=>({...d,path:`/community/${d.id}/`,kind:'discussion'}))
 ];
 export const nav=[['/','首页','HOME'],['/world/','世界观','WORLD'],['/factions/','阵营势力','FACTIONS'],['/characters/','角色机甲','CHARACTERS'],['/showcase/','实机展示','SHOWCASE'],['/news/','新闻资讯','ARCHIVES'],['/community/','社区','COMMUNITY']];
-export function searchPages(q){const query=q.trim().normalize('NFKC').toLowerCase().slice(0,100);return query?pages.filter(p=>(p.name.join(' ')+(p.tag||[]).join(' ')+(p.desc||[]).join(' ')+p.path).normalize('NFKC').toLowerCase().includes(query)):[];}
+export function searchPages(q){const query=q.trim().normalize('NFKC').toLowerCase().slice(0,100);return query?pages.filter(p=>[...locales.flatMap(locale=>[localized(p.name,locale),localized(p.tag||[],locale),localized(p.desc||[],locale)]),p.path].join(' ').normalize('NFKC').toLowerCase().includes(query)):[];}
 export const presets=[pair('女皇降临','THE QUEEN DESCENDS'),pair('机甲开道','THE PATH OF THE SWARM'),pair('裂隙虫潮','BEYOND THE RIFT')];

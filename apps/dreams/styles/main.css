@@ -33,3 +33,5 @@ body[data-page="home"] .site-header nav,body[data-page="home"] .header-tools{col
 .not-found .site-legal{margin-top:36px}
 /* Keep the filing link reachable inside the single-screen desktop garden. */
 @media(min-width:1440px) and (min-height:900px){body[data-page="home"] .site-legal{position:fixed;left:4%;bottom:12px;z-index:6;border:0;border-radius:8px;padding:0 10px;background:#102e35c7}body[data-page="home"] .site-legal .icp-link{min-height:24px}}
+
+@media(max-width:1100px){.header-tools .extra-locale{display:none}}

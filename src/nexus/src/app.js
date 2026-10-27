@@ -57,14 +57,15 @@ function renderPanel(type){
  case 'search':setDialog('寻找你的宇宙','NEXUS / LOCAL SEARCH','<p class="panel-lead">搜索目的地与宇宙档案。试试“比邻星”“黑洞”或“文明”。</p><label class="search-field"><svg><use href="#i-search"/></svg><input id="search-input" type="search" autocomplete="off" placeholder="输入星球、主题或关键词…" aria-label="搜索本地目的地和宇宙档案"></label><div id="search-results" aria-live="polite"></div>');renderSearch('');break;
  case 'account':setDialog('每位探索者，都有一个起点','NEXUS / EXPLORER ACCESS','<span class="demo-label">界面演示 · 未接入账户系统</span><p class="panel-lead">观景台对所有访客开放。你可以浏览全部本地演示内容，无需提交真实姓名、邮箱或密码。</p><div class="content-item"><small>GUEST EXPLORER / 0387</small><h3>以好奇心，作为通行证</h3><p>访客模式可查看星系、筛选档案、选择演示航线与调整观景设置。</p></div><button class="panel-button" data-action="guest">以访客身份继续 ↗</button>');break;
  case 'menu':setDialog('观景台控制中心','NEXUS / OBSERVATORY CONTROLS','<div class="menu-nav">'+[['home','首页'],['explore','探索'],['destinations','目的地'],['technology','星舰科技'],['archives','宇宙档案'],['about','关于我们']].map(([key,label])=>`<button ${key==='home'?'data-action="home"':`data-panel="${key}"`}>${label}</button>`).join('')+'</div>'+setting('audio','环境音','轻声聆听深空。默认关闭，仅在主动开启后播放。',state.audioEnabled)+setting('pause','暂停动效','冻结场景、卡片、扫描线与数据刷新。',state.motionPaused)+setting('reduce','减少动态效果','停止持续运动与镜头推进，保留完整静态观景。',state.reducedMotion)+'<label class="settings-row"><span>画质<small>自动模式根据持续帧时间调整；核心尺寸保持一致。</small></span><select id="quality-select" aria-label="渲染画质">'+[['auto','自动'],['high','高'],['medium','中'],['low','低']].map(([v,n])=>`<option value="${v}" ${state.quality===v?'selected':''}>${n}</option>`).join('')+'</select></label>');break;
- case 'language':setDialog('语言设置','NEXUS / LANGUAGE','<p class="panel-lead">当前版本提供简体中文界面。</p><div class="content-item"><small>CURRENT LANGUAGE</small><h3>简体中文 <span class="language-check">✓</span></h3><p>其余语言暂未提供翻译。</p></div>');break;
+ case 'language':{const selected=window.strgoI18n?.getLocale()||'zh-CN';setDialog('语言设置','NEXUS / LANGUAGE','<label class="settings-row"><span>选择界面语言</span><select id="nexus-language" aria-label="选择界面语言">'+[['zh-CN','简体中文'],['zh-TW','繁體中文'],['en','English'],['ja','日本語'],['ko','한국어']].map(([value,label])=>`<option value="${value}" ${value===selected?'selected':''}>${label}</option>`).join('')+'</select></label>');break;}
  }
 }
 function setting(id,title,description,checked){return `<div class="settings-row"><span>${title}<small>${description}</small></span><button class="switch" role="switch" aria-checked="${checked}" aria-label="${title}" data-setting="${id}"></button></div>`;}
 function renderSearch(query){
- const q=query.trim().toLowerCase();const terms=q==='黑洞'?['黑洞','视界']: [q];
- const ds=destinations.filter(d=>terms.some(k=>(d.name+d.en+d.type+d.description).toLowerCase().includes(k)));
- const as=archives.filter(a=>terms.some(k=>(a.title+a.summary+a.category).toLowerCase().includes(k)));
+ const q=query.trim().toLowerCase();const terms=['黑洞','ブラックホール','black hole','블랙홀'].includes(q)?[q,'黑洞','视界','event horizon']: [q];
+ const corpus=(...values)=>values.flatMap(value=>[value,...['zh-TW','en','ja','ko'].map(locale=>window.strgoI18n?.translate(value,locale)||value)]).join(' ').toLowerCase();
+ const ds=destinations.filter(d=>terms.some(k=>corpus(d.name,d.en,d.type,d.description,d.details).includes(k)));
+ const as=archives.filter(a=>terms.some(k=>corpus(a.title,a.summary,a.category).includes(k)));
  $('#search-results').innerHTML=`<p class="result-count">${ds.length+as.length} 个本地结果${q?'':' / 全部内容'}</p>`+(ds.length+as.length?'<div class="archive-list">'+ds.map(d=>`<button class="content-item" data-destination="${d.id}"><small>目的地 / ${d.distance}</small><h3>${d.name}</h3><p>${d.description}</p></button>`).join('')+archiveItems(as)+'</div>':'<div class="empty-state">没有找到匹配的目的地或档案。<br>换一个关键词，继续探索。</div>');
 }
 function showDestination(id){
@@ -109,7 +110,8 @@ listen(document,'click',async e=>{
  if(b.dataset.setting){switch(b.dataset.setting){case 'audio':await toggleAudio();break;case 'pause':state.motionPaused=!state.motionPaused;syncMotion();break;case 'reduce':state.reducedMotion=!state.reducedMotion;syncMotion();break;}b.setAttribute('aria-checked',String(b.dataset.setting==='audio'?state.audioEnabled:b.dataset.setting==='pause'?state.motionPaused:state.reducedMotion));}
 });
 listen(document,'input',e=>{if(e.target.id==='search-input')renderSearch(e.target.value);});
-listen(document,'change',e=>{if(e.target.id==='quality-select'){scene.setQuality(e.target.value);persist();toast('画质已设为：'+e.target.selectedOptions[0].textContent);}});
+listen(document,'change',e=>{if(e.target.id==='quality-select'){scene.setQuality(e.target.value);persist();toast('画质已设为：'+e.target.selectedOptions[0].textContent);}else if(e.target.id==='nexus-language'){window.dispatchEvent(new CustomEvent('strgo:localerequest',{detail:{locale:e.target.value}}));}});
+listen(window,'strgo:localechange',e=>{const language=$('#nexus-language');if(language)language.value=e.detail.locale;});
 listen($('#close-dialog'),'click',()=>closePanel());
 listen(dialog,'cancel',e=>{e.preventDefault();closePanel();});
 listen(dialog,'close',()=>{document.body.classList.remove('modal-open');document.documentElement.classList.remove('modal-open');state.overlay=null;});

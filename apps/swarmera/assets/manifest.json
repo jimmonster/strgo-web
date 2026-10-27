@@ -109,8 +109,8 @@
     },
     {
       "path": "src/state.js",
-      "bytes": 4855,
-      "sha256": "2c572cdde4d63f5dd98c3827fbdd7a228905b7fd29ed7feee9ffa0ff6d3e7a16",
+      "bytes": 4873,
+      "sha256": "3c6a9c68e8c8be37eb19c3613ef7c4d3e6c8b60ae6ebd6d98c4e44698c57cd26",
       "source": "Original project procedural geometry / materials / animation",
       "textureSize": null
     },

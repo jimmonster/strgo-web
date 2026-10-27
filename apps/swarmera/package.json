@@ -7,7 +7,7 @@
     "build": "node scripts/build.mjs",
     "dev": "node scripts/build.mjs && node scripts/serve.mjs",
     "preview": "node scripts/serve.mjs",
-    "test": "node tests/core.test.mjs && node tests/scene.test.mjs && node tests/runtime.test.mjs && node tests/deployment.test.mjs",
+    "test": "node tests/core.test.mjs && node --test tests/i18n.test.mjs && node tests/scene.test.mjs && node tests/runtime.test.mjs && node tests/deployment.test.mjs",
     "test:browser": "node tests/browser.mjs",
     "previews": "node scripts/export-previews.mjs && python3 scripts/render-previews.py",
     "deploy": "bash deploy.sh",

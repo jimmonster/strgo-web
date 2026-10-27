@@ -1,12 +1,23 @@
 import { AIClient, escapeHTML as esc, modelLabel, uuid7, costLabel, terminalStates } from './client.js';
+import { initialAssistantLocale, assistantText, localizeAssistant } from './assistant-i18n.js';
 
 /** Reusable text-only assistant. The host owns its form and final generation. */
 export class StrgoAssistant extends HTMLElement {
   constructor() {
     super(); this.attachShadow({ mode: 'open' }); this.context = { scope: 'global' }; this.messages = []; this.models = []; this.busy = false; this.controller = null;
+    this.locale = initialAssistantLocale(); this.localeRecords = new WeakMap();
   }
-  connectedCallback() { this.render(); }
-  disconnectedCallback() { this.controller?.abort(); }
+  connectedCallback() {
+    this.render();
+    this.localeHandler = event => { if (!['zh-CN','zh-TW','en','ja','ko'].includes(event.detail?.locale)) return; this.locale = event.detail.locale; this.localize(); this.renderNotice(); };
+    window.addEventListener('strgo:localechange', this.localeHandler);
+    this.localeObserver = new MutationObserver(() => this.localize());
+    this.localeObserver.observe(this.shadowRoot, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-label','title','placeholder'] });
+  }
+  disconnectedCallback() { this.controller?.abort(); this.localeObserver?.disconnect(); window.removeEventListener('strgo:localechange', this.localeHandler); }
+  localize() { localizeAssistant(this.shadowRoot, this.locale, this.localeRecords); }
+  text(source) { return assistantText(source, this.locale); }
+  renderNotice() { const el=this.shadowRoot.querySelector('.notice'); if(el) el.textContent=this.text(this.noticeSource || ''); }
   async configure({ client, scope = 'global', formId, revision, conversationId, beforeSend, fullPage = false }) {
     this.controller?.abort(); this.client = client || new AIClient(); this.context = { scope, formId, revision, conversationId }; this.beforeSend = beforeSend; this.fullPage = fullPage;
     if (!this.client.session) await this.client.refreshSession();
@@ -43,9 +54,9 @@ export class StrgoAssistant extends HTMLElement {
     this.shadowRoot.querySelector('.dialog-close').onclick = () => this.shadowRoot.querySelector('dialog').close();
     this.shadowRoot.querySelectorAll('[data-quick]').forEach(button => { button.onclick = () => {
       const prompts = scope === 'music' ? ['根据当前音乐草稿，起草一版有画面感的中文歌词。', '优化当前风格描述，让编曲、情绪和节奏更清晰。', '解释音乐时长、BPM、调性和随机种子的作用。'] : scope === 'image' ? ['优化我当前的画面提示词，保留主体和创作意图。', '为当前画面提供三个构图建议。', '为当前画面描述适合的光线和色彩。'] : ['帮我梳理一个新的创作灵感。', '帮我构思一首温暖的中文流行歌曲。', '用简单的例子解释一个有趣的概念。'];
-      input.value = prompts[Number(button.dataset.quick)]; input.focus();
+      input.value = this.text(prompts[Number(button.dataset.quick)]); this.quickExplanation = scope === 'music' && Number(button.dataset.quick) === 2 ? input.value : ''; input.focus();
     }; });
-    this.renderMessages();
+    this.renderMessages(); this.localize();
   }
   renderMessages() {
     const area = this.shadowRoot.querySelector('.messages'); if (!area) return;
@@ -58,7 +69,7 @@ export class StrgoAssistant extends HTMLElement {
     }
     area.scrollTop = area.scrollHeight;
   }
-  notice(message) { const el = this.shadowRoot.querySelector('.notice'); if (el) el.textContent = message; }
+  notice(message) { this.noticeSource = message; this.renderNotice(); }
   setBusy(value) { this.busy = value; this.shadowRoot.querySelector('.send').hidden = value; this.shadowRoot.querySelector('.stop').hidden = !value; this.shadowRoot.querySelector('.model').disabled = value; }
   async send() {
     if (this.busy) return;
@@ -75,7 +86,7 @@ export class StrgoAssistant extends HTMLElement {
           this.dispatchEvent(new CustomEvent('strgo:conversation-created', { detail: conversation, bubbles: true, composed: true }));
         }
         const body = { model_id: this.modelId, conversation_id: this.context.conversationId, content, local_only: Boolean(this.localOnly),
-          mode: this.context.scope === 'music' && !content.includes('解释') ? 'music_draft' : 'chat',
+          mode: this.context.scope === 'music' && content !== this.quickExplanation && !/解释|explain|説明|설명/i.test(content) ? 'music_draft' : 'chat',
           ...(this.context.formId ? { form_revision: this.context.revision } : {}) };
         const quote = await this.client.quote('chat', body);
         if (quote.locality === 'cloud' && !await this.confirmCost(quote)) { this.setBusy(false); return; }

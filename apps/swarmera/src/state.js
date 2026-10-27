@@ -5,7 +5,7 @@ export function validateConfig(input={}){
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Invalid configuration');
  if(input.schemaVersion!==undefined&&input.schemaVersion!==1)throw Error('Unsupported schema version');
  const d=structuredClone(defaults);
- for(const [k,list]of Object.entries({sceneId:sceneIds,selectedUnit:unitIds,cameraPreset:['battlefield','front','side','back','core','face','armor','wing'],quality:['auto','low','high'],locale:['zh-CN','en']}))if(list.includes(input[k]))d[k]=input[k];
+ for(const [k,list]of Object.entries({sceneId:sceneIds,selectedUnit:unitIds,cameraPreset:['battlefield','front','side','back','core','face','armor','wing'],quality:['auto','low','high'],locale:['zh-CN','zh-TW','en','ja','ko']}))if(list.includes(input[k]))d[k]=input[k];
  if(Number.isSafeInteger(input.seed)&&input.seed>=0&&input.seed<=2147483647)d.seed=input.seed;
  if(input.effects&&typeof input.effects==='object')for(const k of Object.keys(d.effects))if(typeof input.effects[k]==='boolean')d.effects[k]=input.effects[k];
  return d;

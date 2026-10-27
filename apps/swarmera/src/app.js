@@ -1,11 +1,16 @@
+import { phrase, localized, locales } from './locale.js';
 import {pages,mechs,factions,presets,searchPages} from './data.js';
 import {renderPage,escapeHTML as e} from './views.js';
 import {defaults,fromQuery,validateConfig,parseConfig,read,save,remove} from './state.js';
 const base=document.body.dataset.base||'/swarmera/',path='/'+decodeURI(location.pathname).slice(base.length).replace(/\/?$/,'/'),page=pages.find(p=>p.path===(path==='//'?'/' :path))||{kind:'404',path,name:['档案不存在','ARCHIVE NOT FOUND']},query=new URLSearchParams(location.search);
-let locale=['en','zh-CN'].includes(query.get('lang'))?query.get('lang'):read('locale','zh-CN');if(!['en','zh-CN'].includes(locale))locale='zh-CN';
+let sharedLocale;try{sharedLocale=localStorage.getItem('strgo:locale:v1');}catch{}
+const preferred=locales.includes(sharedLocale)?sharedLocale:locales.includes(query.get('lang'))?query.get('lang'):read('locale',null);
+const browserLanguage=(navigator.languages?.[0]||navigator.language||'zh-CN').toLowerCase();
+let locale=locales.includes(preferred)?preferred:browserLanguage.startsWith('zh')?(/hant|tw|hk|mo/.test(browserLanguage)?'zh-TW':'zh-CN'):browserLanguage.startsWith('ja')?'ja':browserLanguage.startsWith('ko')?'ko':'en';
+if(!sharedLocale){try{localStorage.setItem('strgo:locale:v1',locale);}catch{}}
 let motionBuffer=null;let config=validateConfig({...fromQuery(location.search),locale,quality:read('quality','auto')}),host,abort,interval,toastTimer,audio,audioGain,opener,formBuffer={},drafts=read('drafts',{}),interest=read('interest',null);
 if(!drafts||typeof drafts!=='object'||Array.isArray(drafts))drafts={};
-const L=(zh,en)=>locale==='en'?en:zh,tr=v=>Array.isArray(v)?v[locale==='en'?1:0]:v,$=(selector)=>document.querySelector(selector),all=s=>[...document.querySelectorAll(s)];
+const L=(zh,en)=>phrase(zh,en,locale),tr=v=>localized(v,locale),$=(selector)=>document.querySelector(selector),all=s=>[...document.querySelectorAll(s)];
 function toast(text){const el=$('.toast');el.textContent=text;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,4000);}
 function status(text){const el=$('#operation-status');if(el)el.textContent=text;else toast(text);}
 function storageMessage(ok,success){return ok?success:L('浏览器存储不可用，内容仍在当前页面，可导出备份。','Browser storage is unavailable. Your data remains in this page and can be exported.');}
@@ -36,7 +41,7 @@ function require3D(){if(!host||host.mode==='static'){toast(L('三维模式不可
 async function handleAction(button){const id=button.dataset.action;
  if(id==='search'){opener=button;$('#search-dialog').showModal();$('#search-dialog input').focus();return;}
  if(id==='help'){opener=button;$('#help-dialog').showModal();return;}
- if(id==='language'){captureForms();if(host&&host.mode!=='static'){config=validateConfig({...host.config,selectedUnit:host.selected==='queen'?'queen':'breaker'});motionBuffer={paused:host.paused,reduced:host.reduced,intensity:host.intensity,aperture:host.aperture,swarmDensity:host.swarmDensity,speed:host.speed};}locale=locale==='en'?'zh-CN':'en';save('locale',locale);config.locale=locale;const u=new URL(location.href);u.searchParams.set('lang',locale);history.replaceState(null,'',u);await render();return;}
+ if(id==='language'){const next=locales[(locales.indexOf(locale)+1)%locales.length];if(window.strgoI18n)window.strgoI18n.setLocale(next);else{try{localStorage.setItem('strgo:locale:v1',next);}catch{}await changeLanguage(next);}return;}
  if(id==='menu'){const nav=$('.mobile-nav');nav.hidden=!nav.hidden;button.setAttribute('aria-expanded',String(!nav.hidden));return;}
  if(id==='filter'){const filter=button.dataset.filter;all('[data-filter]').forEach(b=>b.classList.toggle('selected',b===button));all('.news-grid .catalog-card').forEach((c,i)=>c.hidden=filter!=='all'&&(filter==='design'?i!==1:i===1));return;}
  if(id==='choose-faction'){toast(storageMessage(save('faction',page.id),L('已保存本地体验立场，可随时更换。','Local preference saved. You can change it any time.')));factionChoice();return;}
@@ -68,7 +73,14 @@ async function handleAction(button){const id=button.dataset.action;
   if(id==='fire'&&host.selected==='queen'){status(L('女皇使用能量脉冲。请选择机甲进行发射。','The Queen uses energy pulses. Select a mech to fire.'));return;}
   const ok=host.action(id);status(ok?L('动作已执行，正在实时场景中演示。','Action started in the live scene.'):L('动作冷却中，请稍候再试。','Action cooling down. Try again shortly.'));syncPause();}
 }
-async function render(){abort?.abort();clearInterval(interval);host?.dispose();host=null;abort=new AbortController();document.documentElement.lang=locale==='en'?'en':'zh-CN';document.body.innerHTML=renderPage(page,locale,base,{q:query.get('q')||''});document.title=tr(page.name)+' | SWARMERA';document.documentElement.classList.toggle('motion-paused',matchMedia('(prefers-reduced-motion: reduce)').matches);
+async function changeLanguage(next){
+ if(!locales.includes(next)||next===locale)return;
+ captureForms();
+ if(host&&host.mode!=='static'){config=validateConfig({...host.config,selectedUnit:host.selected==='queen'?'queen':'breaker'});motionBuffer={paused:host.paused,reduced:host.reduced,intensity:host.intensity,aperture:host.aperture,swarmDensity:host.swarmDensity,speed:host.speed};}
+ locale=next;save('locale',locale);config.locale=locale;const u=new URL(location.href);u.searchParams.set('lang',locale);history.replaceState(null,'',u);await render();
+}
+window.addEventListener('strgo:localechange',event=>{changeLanguage(event.detail?.locale).catch(console.error);});
+async function render(){abort?.abort();clearInterval(interval);host?.dispose();host=null;abort=new AbortController();document.documentElement.lang=locale;document.body.innerHTML=renderPage(page,locale,base,{q:query.get('q')||''});document.title=tr(page.name)+' | SWARMERA';document.documentElement.classList.toggle('motion-paused',matchMedia('(prefers-reduced-motion: reduce)').matches);
  document.addEventListener('click',ev=>{const b=ev.target.closest('[data-action]');if(b){ev.stopImmediatePropagation();handleAction(b).catch(error=>{console.error(error);toast(L('操作未完成，请重试。','Action could not complete. Please retry.'));});}}, {signal:abort.signal});
  $('#stage')?.addEventListener('pointerdown',()=>{if(host)host.auto=false;all('[data-action=auto]').forEach(b=>b.setAttribute('aria-pressed','false'));},{signal:abort.signal});
  document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){$('.mobile-nav').hidden=true;$('.menu-toggle').setAttribute('aria-expanded','false');if(host){host.moveArmed=false;if(host.touchMode){host.controls.enabled=false;host.renderer.domElement.style.touchAction='pan-y';const activate=$('[data-action=activate-scene]');if(activate){activate.textContent=L('激活三维观察','ACTIVATE 3D');activate.setAttribute('aria-pressed','false');}}}}},{signal:abort.signal});

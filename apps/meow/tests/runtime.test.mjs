@@ -19,5 +19,6 @@ test('real app survives WebGL failure, navigates 14 roles, keeps favorites, and 
     window.meow.navigate(base+'cats/?type=domestic&coat=long');assert.equal(document.querySelectorAll('.cat-card').length,1);
     window.meow.navigate(base+'gallery/cloud-nap/');assert.match(document.querySelector('.scene-fallback').src,/gallery-cloud-nap/);
     window.meow.navigate(base+'cats/unknown/');assert.match(document.querySelector('h1').textContent,/wandered off/);assert.ok(document.querySelector(`a[href="${base}"]`));
+    window.meow.navigate(base+'search/?q=%EB%9E%99%EB%8F%8C');assert.equal(document.querySelectorAll('.search-results a').length,0);window.strgoI18n={translate:(v,locale)=>locale==='ko'&&v==='布偶猫'?'랙돌':v};window.dispatchEvent(new dom.Event('strgo:i18nready'));assert.ok(document.querySelectorAll('.search-results a').length>0);assert.equal(document.querySelector('#search-query').value,'랙돌');
   }finally{clearTimeout(0);console.error=originalError;}
 });

@@ -24,11 +24,16 @@ export const findProduct=id=>products.find(c=>c.id===id);
 export const coatNames={short:'短毛',long:'长毛','semi-long':'半长毛',hairless:'近乎无毛'};
 export const colorNames={cream:'奶油色',orange:'橘色',gray:'灰色',brown:'棕色',white:'白色',warm:'暖肤色',mixed:'多色'};
 export const patternNames={'cream':'奶白纯色','orange-tabby':'橘色虎斑','silver-white':'银灰白','cream-white':'奶油橘白','blue-bicolor-point':'蓝双色重点','brown-tabby-white':'棕虎斑白胸','seal-point':'海豹重点','rosette':'玫瑰斑','blue-solid':'蓝灰纯色','brown-white':'棕白双色','warm-skin':'暖肤色','calico':'三花'};
+// Include translations of authored metadata without modifying user-entered queries.
+const searchable = (...parts) => parts.flatMap(part => {
+  const text=String(part||''); const translate=globalThis.window?.strgoI18n?.translate;
+  return translate ? [text,...['zh-CN','zh-TW','en','ja','ko'].map(locale=>translate(text,locale))] : [text];
+}).join(' ').toLocaleLowerCase();
 export function filterCats(params,favorites=[]){
   const read=key=>(params.get(key)||'').split(',').filter(Boolean);
   const selected={type:read('type'),coat:read('coat'),color:read('color'),pattern:read('pattern')};
   const q=(params.get('q')||'').trim().toLocaleLowerCase();
-  return cats.filter(c=>Object.entries(selected).every(([key,values])=>!values.length||values.some(v=>key==='type'?c.typeId===v:key==='coat'?(v==='long'?['long','semi-long'].includes(c.coat):c.coat===v):key==='color'?c.baseColor===v:c.pattern===v))&&(!q||`${c.name} ${c.type} ${c.zh} ${c.aliases.en} ${c.aliases.alias} ${c.tags.join(' ')}`.toLocaleLowerCase().includes(q))&&(params.get('favorite')!=='1'||favorites.includes(`cat:${c.id}`)));
+  return cats.filter(c=>Object.entries(selected).every(([key,values])=>!values.length||values.some(v=>key==='type'?c.typeId===v:key==='coat'?(v==='long'?['long','semi-long'].includes(c.coat):c.coat===v):key==='color'?c.baseColor===v:c.pattern===v))&&(!q||searchable(c.name,c.type,c.zh,c.aliases.en,c.aliases.alias,...c.tags).includes(q))&&(params.get('favorite')!=='1'||favorites.includes(`cat:${c.id}`)));
 }
 export const searchIndex=[
   ...cats.map(c=>({type:'cat',id:c.id,title:c.name,description:`${c.type} · ${c.personality}`,route:c.route,text:`${c.name} ${c.type} ${c.zh} ${c.aliases.en} ${c.aliases.alias} ${c.tags.join(' ')}`})),
@@ -37,4 +42,8 @@ export const searchIndex=[
   ...products.map(p=>({type:'product',id:p.id,title:p.title,description:p.copy,route:p.route,text:`${p.title} ${p.copy}`})),
   ...pages.map(p=>({type:'page',id:p.id,title:p.name,description:p.description,route:p.route,text:`${p.name} ${p.id} ${p.description}`}))
 ];
-export const search=term=>term.trim()?searchIndex.filter(i=>i.text.toLocaleLowerCase().includes(term.trim().toLocaleLowerCase())):[];
+export const search=term=>term.trim()?searchIndex.filter(i=>{
+  const cat=cats.find(x=>i.type==='cat'&&x.id===i.id),type=types.find(x=>i.type==='type'&&x.id===i.id);
+  const gallery=galleries.find(x=>i.type==='gallery'&&x.id===i.id),product=products.find(x=>i.type==='product'&&x.id===i.id);
+  return searchable(i.text,i.title,i.description,cat?.type,cat?.zh,...(cat?.tags||[]),type?.name,gallery?.copy,product?.title,product?.copy).includes(term.trim().toLocaleLowerCase());
+}):[];

@@ -12,5 +12,6 @@ fn main() {
     println!("cargo:rerun-if-changed=web/session.html");
     println!("cargo:rerun-if-changed=web/workspace.js");
     println!("cargo:rerun-if-changed=web/workspace.css");
+    for name in ["i18n.js", "i18n-copy.js", "i18n-traditional.js"] { println!("cargo:rerun-if-changed=web/{name}"); }
 }
 

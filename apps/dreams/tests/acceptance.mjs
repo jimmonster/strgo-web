@@ -3,7 +3,7 @@ import {readFile,stat,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,dirname} from 'node:path';
 import {parseHTML} from 'linkedom';
 import {createCanvas} from '@napi-rs/canvas';
-import {CHAPTERS,THEMES,STRINGS} from '../src/content.js';
+import {CHAPTERS,THEMES,STRINGS,LOCALES} from '../src/content.js';
 import {makeDreamWorld} from '../src/world.js';
 
 const report={date:new Date().toISOString(),environment:{node:process.version,platform:process.platform,renderer:'Scene graph + native Canvas, no browser'},checks:[],scenes:[],limitations:['Layout, native focus, WebGL reflection and actual frame rate require the separate browser suite.']};
@@ -21,10 +21,10 @@ for(const id of CHAPTERS.map(c=>c.id)){
  assert.equal(!!prev,id!=='01');assert.equal(!!next,id!=='08');
 }
 for(const el of homeDoc.querySelectorAll('[src],link[href]')){const path=el.getAttribute('src')||el.getAttribute('href');if(path&&!/^(https?:|#|data:)/.test(path))await stat(resolve(path));}
-assert.deepEqual(Object.keys(STRINGS.en).sort(),Object.keys(STRINGS.ja).sort());
-for(const ch of CHAPTERS)for(const mode of ['design','film']){assert.ok(ch[mode+'Artwork']);for(const locale of ['en','ja']){assert.ok(ch[mode+'Title'][locale]);assert.ok(ch[mode+'Summary'][locale]);assert.equal(ch[mode+'Body'][locale].length,2);}for(const id of ch[mode+'Themes'])assert.ok(THEMES.some(th=>th.id===id));}
+for(const locale of LOCALES)assert.deepEqual(Object.keys(STRINGS.en).sort(),Object.keys(STRINGS[locale]).sort(),locale);
+for(const ch of CHAPTERS)for(const mode of ['design','film']){assert.ok(ch[mode+'Artwork']);for(const locale of LOCALES){assert.ok(ch[mode+'Title'][locale]);assert.ok(ch[mode+'Summary'][locale]);assert.equal(ch[mode+'Body'][locale].length,2);}for(const id of ch[mode+'Themes'])assert.ok(THEMES.some(th=>th.id===id));}
 assert.notEqual(CHAPTERS[0].designTitle.en,CHAPTERS[0].filmTitle.en);assert.notEqual(CHAPTERS[2].designTitle.en,CHAPTERS[2].filmTitle.en);assert.notEqual(CHAPTERS[7].designTitle.en,CHAPTERS[7].filmTitle.en);
-report.checks.push('Nine real HTML entries, native card links, valid relative assets, full content and two complete locale dictionaries');
+report.checks.push('Nine real HTML entries, native card links, valid relative assets, full content and five complete locale dictionaries');
 function geometryStats(world){let meshes=0,triangles=0,instances=0;world.scene.traverse(o=>{if(o.isMesh){meshes++;triangles+=(o.geometry.index?.count||o.geometry.attributes.position.count)/3*(o.count||1);if(o.isInstancedMesh)instances+=o.count;}});return{meshes,triangles,instances};}
 for(const mode of ['design','film'])for(const ch of CHAPTERS){
  const world=makeDreamWorld({id:ch.id,film:mode==='film',canvasFactory:createCanvas});world.update(0,0);const before=geometryStats(world);
@@ -54,11 +54,12 @@ await import('../src/app.js');console.error=originalError;
 const app=window.dreams;
 assert.equal(app.state.locale,'ja');
 window.dispatchEvent(new window.CustomEvent('strgo:localechange',{detail:{locale:'en'}}));assert.equal(app.state.locale,'en');
-window.dispatchEvent(new window.CustomEvent('strgo:localechange',{detail:{locale:'ko'}}));assert.equal(app.state.locale,'en');
+window.dispatchEvent(new window.CustomEvent('strgo:localechange',{detail:{locale:'ko'}}));assert.equal(app.state.locale,'ko');
+window.dispatchEvent(new window.CustomEvent('strgo:localechange',{detail:{locale:'en'}}));assert.equal(app.state.locale,'en');
 let requestedLocale;window.addEventListener('strgo:localerequest',event=>requestedLocale=event.detail.locale);
 function click(sel){const el=document.querySelector(sel);assert.ok(el,'Missing '+sel);const event=new window.Event('click',{bubbles:true});event.button=0;el.dispatchEvent(event);}
 function input(selector,value,event='input'){const el=document.querySelector(selector);if(el.tagName==='SELECT'){for(const option of el.querySelectorAll('option')){if(option.getAttribute('value')===value)option.setAttribute('selected','');else option.removeAttribute('selected');}}else el.value=value;el.dispatchEvent(new window.Event(event,{bubbles:true}));}
-app.openPanel('search');assert.equal(dialog.open,true);input('#dream-search','water');assert.ok(document.querySelectorAll('.search-result').length>=3);input('#dream-search','no-such-dream-9v');assert.ok(document.querySelector('.empty-state'));click('[data-locale="ja"]');assert.equal(requestedLocale,'ja');assert.equal(document.documentElement.lang,'ja');assert.equal(document.querySelector('#dream-search').value,'no-such-dream-9v');assert.match(document.querySelector('.empty-state').textContent,/見つかりません/);app.closePanel();assert.equal(dialog.open,false);
+app.openPanel('search');assert.equal(dialog.open,true);for(const locale of LOCALES)assert.ok(dialog.querySelector(`[data-locale="${locale}"]`));input('#dream-search','water');assert.ok(document.querySelectorAll('.search-result').length>=3);input('#dream-search','no-such-dream-9v');assert.ok(document.querySelector('.empty-state'));click('[data-locale="ja"]');assert.equal(requestedLocale,'ja');assert.equal(document.documentElement.lang,'ja');assert.equal(document.querySelector('#dream-search').value,'no-such-dream-9v');assert.match(document.querySelector('.empty-state').textContent,/見つかりません/);click('[data-locale="zh-CN"]');assert.equal(document.documentElement.lang,'zh-CN');assert.equal(document.querySelector('#dream-search').value,'no-such-dream-9v');click('[data-locale="zh-TW"]');assert.equal(document.documentElement.lang,'zh-TW');click('[data-locale="ko"]');assert.equal(document.documentElement.lang,'ko');app.closePanel();assert.equal(dialog.open,false);
 click('[data-locale="en"]');app.openPanel('gallery');assert.equal(document.querySelectorAll('.gallery-work').length,8);input('#gallery-theme','war','change');assert.ok(document.querySelectorAll('.gallery-work').length>1);input('#gallery-dream','01','change');assert.equal(document.querySelectorAll('.gallery-work').length,0);click('[data-clear-gallery]');assert.equal(document.querySelectorAll('.gallery-work').length,8);click('[data-art="02"]');assert.equal(app.state.panel.type,'art');assert.equal(app.state.artIndex,1);click('[data-art-step="1"]');assert.equal(app.state.artIndex,2);
 app.openPanel('themes');assert.equal(document.querySelectorAll('.theme-overview a').length,5);click('[data-theme="nature"]');assert.equal(app.state.panel.id,'nature');assert.ok(document.querySelectorAll('.related-dreams a').length>=5);app.closePanel();
 click('[data-setting="pause"]');assert.equal(app.state.paused,true);assert.equal(document.documentElement.classList.contains('motion-paused'),true);click('[data-setting="pause"]');assert.equal(app.state.paused,false);callbacks.forEach(fn=>fn({matches:true}));assert.equal(app.state.reduced,true);assert.equal(document.documentElement.classList.contains('motion-reduced'),true);callbacks.forEach(fn=>fn({matches:false}));app.openPanel('legacy');assert.equal(document.querySelectorAll('.source-link').length,2);assert.equal(dialog.querySelectorAll('a[target="_blank"][rel="noopener noreferrer"]').length,2);app.closePanel();

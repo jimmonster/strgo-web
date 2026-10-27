@@ -3,6 +3,7 @@ import {PainterlyWater} from './water.js';
 import {OrbitControls} from '../assets/vendor/OrbitControls.js';
 import {makeDreamWorld} from './world.js';
 import {CONFIG} from './config.js';
+import {STRINGS} from './content.js';
 import {makeThemePond} from './pond.js';
 
 const ROOT=new URL('../',import.meta.url);
@@ -54,7 +55,7 @@ export class PaintedGarden{
   this.canvas.style.display='none';this.mode='painted fallback';
   if(!document.querySelector('.scene-fallback-note')){
    const note=document.createElement('span');note.className='scene-fallback-note';note.dataset.i18n='simple';
-   note.textContent=this.state.locale==='ja'?'簡易画境 · WebGL を利用できません':'Simplified painted scene · WebGL is unavailable';
+   note.textContent=STRINGS[this.state.locale].simple;
    document.querySelector('.hero')?.append(note);
   }
  }
@@ -120,7 +121,7 @@ export class DreamRenderer{
   this.water=new PainterlyWater(this.world.waterSpec,{quality:this.quality.level,sun:this.world.sunPosition,amplitude:CONFIG.water.amplitudePx});
   this.world.scene.add(this.water);
  }
- fallback(){this.mode='simplified painting';if(this.canvas)this.canvas.style.display='none';document.querySelector('#render-status').dataset.i18n='simple';document.querySelector('#render-status').textContent=this.state.locale==='ja'?'簡易画境 · WebGL を利用できません':'Simplified painted scene · WebGL is unavailable';document.querySelectorAll('#reset-view,#roam-view,#tour-view').forEach(b=>b.disabled=true);}
+ fallback(){this.mode='simplified painting';if(this.canvas)this.canvas.style.display='none';document.querySelector('#render-status').dataset.i18n='simple';document.querySelector('#render-status').textContent=STRINGS[this.state.locale].simple;document.querySelectorAll('#reset-view,#roam-view,#tour-view').forEach(b=>b.disabled=true);}
  frame(now){if(this.dead)return;this.frameId=requestAnimationFrame(this.frame);const t=this.clock.tick(now);if(document.hidden||!this.visible||this.mode!=='real-time 3D')return;const stopped=this.state.paused||this.state.reduced;if(stopped&&this.frames>0&&!this.force)return;this.force=false;this.quality.update(this.clock.delta,now);if(!stopped)this.world.update(t,this.clock.delta);this.controller.update(stopped?0:this.clock.delta,t);this.water?.update(t,this.host.clientWidth,this.host.clientHeight);this.renderer.render(this.world.scene,this.camera);this.frames++;
  }
  refresh(){this.force=true;}

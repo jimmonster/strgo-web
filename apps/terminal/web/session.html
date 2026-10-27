@@ -13,11 +13,12 @@
   <script defer src="/terminal/vendor/xterm.js"></script>
   <script defer src="/terminal/vendor/addon-fit.js"></script>
   <script defer src="/terminal/app.js"></script>
+  <script type="module" src="/terminal/i18n.js"></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="返回 STRGO 首页"><span class="brand-symbol">&gt;_</span> STRGO <span class="brand-path">/ terminal</span></a>
-    <div class="topbar-actions"><span class="sandbox-badge"><span class="dot"></span>独立沙箱</span><button id="logout" class="text-button" type="button" aria-label="返回终端列表" hidden>返回终端</button></div>
+    <div class="topbar-actions"><label class="terminal-language"><span aria-hidden="true">🌐</span><select data-terminal-locale aria-label="Language / 语言"><option value="zh-CN">简体</option><option value="zh-TW">繁體</option><option value="en">EN</option><option value="ja">日本語</option><option value="ko">한국어</option></select></label><span class="sandbox-badge"><span class="dot"></span>独立沙箱</span><button id="logout" class="text-button" type="button" aria-label="返回终端列表" hidden>返回终端</button></div>
   </header>
   <main class="workspace">
     <aside class="sidebar">

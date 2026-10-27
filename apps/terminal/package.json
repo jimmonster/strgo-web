@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "assets": "node scripts/prepare-assets.mjs",
-    "test": "node tests/ui.test.mjs && node tests/workspace.test.mjs",
+    "test": "node tests/ui.test.mjs && node tests/workspace.test.mjs && node --test tests/i18n.test.mjs",
     "test:browser": "node tests/browser-check.mjs && node tests/workspace-browser.mjs"
   },
   "dependencies": {

@@ -10,9 +10,9 @@ import {renderPage} from '../src/views.js';
 import {readFile,access} from 'node:fs/promises';
 const base='/swarmera/';
 
-test('28 distinct directory routes, every native link and asset resolves in both languages',async()=>{
+test('28 distinct directory routes, every native link and asset resolves in five languages',async()=>{
  const routes=new Set(pages.map(p=>base+p.path.slice(1)));assert.equal(routes.size,28);
- for(const locale of ['zh-CN','en'])for(const page of pages){const {document}=parseHTML(renderPage(page,locale,base));assert.ok(document.querySelector('h1'));for(const a of document.querySelectorAll('a[href]')){const href=a.getAttribute('href');if(href.startsWith(base))assert.ok(routes.has(href),`${page.path} links to missing ${href}`);else if(href==='https://beian.miit.gov.cn/'){assert.equal(a.textContent,'渝ICP备2026024419号-1');assert.equal(a.getAttribute('target'),'_blank');assert.equal(a.getAttribute('rel'),'noopener noreferrer');}else assert.ok(href==='/'||href.startsWith('#'),href);}
+ for(const locale of ['zh-CN','zh-TW','en','ja','ko'])for(const page of pages){const {document}=parseHTML(renderPage(page,locale,base));assert.ok(document.querySelector('h1'));for(const a of document.querySelectorAll('a[href]')){const href=a.getAttribute('href');if(href.startsWith(base))assert.ok(routes.has(href),`${page.path} links to missing ${href}`);else if(href==='https://beian.miit.gov.cn/'){assert.equal(a.textContent,'渝ICP备2026024419号-1');assert.equal(a.getAttribute('target'),'_blank');assert.equal(a.getAttribute('rel'),'noopener noreferrer');}else assert.ok(href==='/'||href.startsWith('#'),href);}
   for(const img of document.querySelectorAll('img'))await access('dist/'+img.getAttribute('src').slice(base.length));
   const html=await readFile('dist/'+page.path.slice(1)+'index.html','utf8');assert.ok(html.includes('data-base="/swarmera/"'));assert.ok(!/\son\w+=|<script>(?!<)/.test(html));
  }
