@@ -1,5 +1,6 @@
 // Traditional Chinese NEXUS copy.
 export const nexusTraditional = {
+  "STRGO 主页 ↗": "STRGO 主頁 ↗",
   "NEXUS INTERSTELLAR · 星际穿越": "NEXUS INTERSTELLAR · 星際穿越",
   "跳转到主要内容": "跳轉到主要內容",
   "NEXUS 星际穿越首页": "NEXUS 星際穿越首頁",

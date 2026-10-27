@@ -5,9 +5,10 @@
   let user = null, csrf = '', active = '', epoch = 0, refreshing = false, dialogAction = null;
   const MAX_WINDOWS = 8;
   const compactQuery = '(max-width:700px), (max-width:1000px) and (max-height:500px)';
-  let viewportState = { compact: false, keyboard: false };
+  let viewportState = { compact: false, keyboard: false }, restoredNotice = false;
 
-  function feedback(message = '') { $('workspace-message').textContent = message; $('workspace-message').hidden = !message; }
+  function feedback(message = '') { restoredNotice = message.startsWith('已恢复窗口配置'); $('workspace-message').textContent = message; $('workspace-message').hidden = !message; }
+  function translated(message) { return window.terminalI18n?.text(message) ?? message; }
   async function account(path, body) {
     const controller = new AbortController(), deadline = setTimeout(() => controller.abort(), 8000);
     try {
@@ -69,17 +70,17 @@
     $('conversation-list').replaceChildren();
     let shown = 0;
     for (const s of windows.values()) {
-      if (query && !`${s.name} ${s.mode === 'ssh' ? 'SSH' : '工作区'}`.toLowerCase().includes(query)) continue;
+      if (query && !`${s.name} ${s.mode === 'ssh' ? 'SSH' : '工作区 '+translated('工作区')}`.toLowerCase().includes(query)) continue;
       shown++;
       const row = document.createElement('button'); row.type = 'button'; row.className = 'conversation-item'; row.dataset.id = s.id;
       row.setAttribute('aria-current', String(s.id === active)); row.setAttribute('role', 'listitem');
       const avatar = document.createElement('span'); avatar.className = `session-avatar ${s.mode}`; avatar.textContent = s.mode === 'ssh' ? '↗' : '>_'; avatar.setAttribute('aria-hidden', 'true');
       const content = document.createElement('span'); content.className = 'session-summary';
       const title = document.createElement('strong'); title.textContent = s.name;
-      const preview = document.createElement('span'); preview.textContent = s.preview || (s.mode === 'ssh' ? 'SSH · ' : '工作区 · ') + s.status;
+      const preview = document.createElement('span'); preview.textContent = s.preview ? (s.previewUI ? translated(s.preview).slice(-80) : s.preview) : (s.mode === 'ssh' ? 'SSH · ' : translated('工作区') + ' · ') + translated(s.status);
       content.append(title, preview);
       const indicator = document.createElement('span'); indicator.className = 'session-indicator'; indicator.dataset.state = s.state;
-      indicator.textContent = s.unread ? '●' : ''; indicator.setAttribute('aria-label', s.unread ? '有新输出' : s.status);
+      indicator.textContent = s.unread ? '●' : ''; indicator.setAttribute('aria-label', translated(s.unread ? '有新输出' : s.status));
       row.append(avatar, content, indicator); row.addEventListener('click', () => select(s.id));
       $('conversation-list').append(row);
     }
@@ -116,7 +117,7 @@
   function reset(message = '') {
     epoch++;
     for (const s of windows.values()) { post(s, 'dispose'); s.frame.remove(); }
-    windows.clear(); active = ''; user = null; csrf = '';
+    windows.clear(); active = ''; user = null; csrf = ''; feedback();
     $('action-dialog').close(); dialogAction = null;
     $('session-menu').hidden = true; mobileList(false);
     $('app-view').hidden = true; $('auth-view').hidden = false;
@@ -221,9 +222,9 @@
     const { type, state, text, target } = event.data;
     if (type === 'status' && ['idle', 'ready', 'connecting', 'error'].includes(state)) {
       s.state = state; s.status = String(text).slice(0, 80);
-      if (state === 'ready' && $('workspace-message').textContent.startsWith('已恢复窗口配置')) feedback();
+      if (state === 'ready' && restoredNotice) feedback();
     }
-    else if (type === 'output') { if (s.id !== active) s.unread = true; s.preview = String(text || '').replace(/\s+/g, ' ').slice(-80); }
+    else if (type === 'output') { if (s.id !== active) s.unread = true; s.previewUI = event.data.ui === true; const output = String(text || '').replace(/\s+/g, ' '); s.preview = s.previewUI ? output : output.slice(-80); }
     else if (type === 'target' && s.mode === 'ssh') { s.target = safeTarget(target); save(); }
     else if (type === 'auth-expired') { refresh(); return; }
     else if (type === 'sessions') { if (s.id === active) mobileList(true); return; }
@@ -231,6 +232,7 @@
     else return;
     renderList();
   });
+  window.addEventListener('terminal:localechange', () => { if (user) renderList(); });
   function viewport() {
     const visual = window.visualViewport;
     const height = Math.max(1, Math.round(visual?.height || innerHeight));

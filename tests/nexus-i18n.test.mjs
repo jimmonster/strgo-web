@@ -29,6 +29,7 @@ test('NEXUS panel, descriptions, statuses and accessibility labels switch withou
       assert.equal(document.querySelector('button').dataset.filter,'深空观测');
       assert.equal(document.querySelector('[data-strgo-user-content]').textContent,'探索');
       if(locale==='ja') assert.match(translate('7 个本地结果 / 全部内容'),/7 件/);
+      if(locale==='en'){assert.equal(translate('NEXUS / 天体物理'),'NEXUS / Astrophysics');assert.equal(translate('目的地 / 1.43 B KM'),'Destinations / 1.43 B KM');}
     }
   } finally { setLocale('zh-CN',{persist:false});globalThis.document=previousDocument;globalThis.location=previousLocation; }
 });

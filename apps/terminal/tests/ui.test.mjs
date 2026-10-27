@@ -23,6 +23,7 @@ function application({ authenticated = true, storageFailure = false, mobile = fa
       };
     }
     setAttribute(key, value) { this.attributes[key] = value; }
+    removeAttribute(key) { delete this.attributes[key]; }
     addEventListener(type, callback) { (this.listeners[type] ||= []).push(callback); }
     async trigger(type, event = {}) {
       const data = { target: this, preventDefault() {}, stopImmediatePropagation() {}, ...event };
@@ -281,6 +282,7 @@ test('chat stream uses real xterm parsing for ANSI, carriage returns, echo and U
     await app.elements.get('submit-input').trigger('click');
     await app.output('echo 你好\r\n\x1b[32m你好\x1b[0m\r\n10%');
     assert.equal(app.bubbles('received').at(-1).textContent, '你好\n10%');
+    assert.equal(Object.hasOwn(app.bubbles('received').at(-1).attributes, 'data-terminal-ui'), false);
     await app.output('\r\x1b[2K100%\r\nroot@ecs:~# ');
     const text = app.bubbles('received').at(-1).textContent;
     assert.equal(text, '你好\n100%\nroot@ecs:~# ');

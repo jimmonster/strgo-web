@@ -1,5 +1,6 @@
 // Fixed NEXUS interface and editorial copy: source, English, Japanese, Korean.
 export const nexusRows = [
+['STRGO 主页 ↗','STRGO home ↗','STRGO ホーム ↗','STRGO 홈 ↗'],
 ['NEXUS INTERSTELLAR · 星际穿越','NEXUS INTERSTELLAR · Interstellar','NEXUS INTERSTELLAR · 星間の旅','NEXUS INTERSTELLAR · 성간 여행'],
 ['跳转到主要内容','Skip to main content','メインコンテンツへ','본문으로 건너뛰기'],
 ['NEXUS 星际穿越首页','NEXUS interstellar home','NEXUS 星間の旅 ホーム','NEXUS 성간 여행 홈'],

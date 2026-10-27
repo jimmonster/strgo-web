@@ -16,7 +16,7 @@ test('terminal UI switches live and keeps commands, output, names and passwords 
  const {window,document}=parseHTML(`<html lang="zh-CN"><head><title>STRGO · 我的终端</title></head><body>
  <select data-terminal-locale><option value="zh-CN">简</option><option value="zh-TW">繁</option><option value="en">EN</option><option value="ja">日本語</option><option value="ko">한국어</option></select>
  <button id="connect">连接</button><p id="status">待连接</p><input id="password" value="连接" placeholder="输入密码"><textarea id="editor">连接</textarea>
- <div id="terminal"><span>连接</span></div><div id="chat-log"><div class="chat-welcome">服务器，也可以聊着用。</div><div class="server-message">连接</div></div><div id="conversation-list"><strong>连接</strong></div><strong id="account-label">连接</strong></body></html>`);
+ <div id="terminal"><span>连接</span></div><div id="chat-log"><div class="chat-welcome">服务器，也可以聊着用。</div><pre class="chat-bubble" data-terminal-ui>连接已关闭。工作区文件保留，重新连接不会自动执行之前的命令。</pre><pre class="chat-bubble server-message">连接</pre></div><div id="conversation-list"><strong>连接</strong></div><strong id="account-label">连接</strong></body></html>`);
  const proto=Object.getPrototypeOf(document.querySelector('select'));
  Object.defineProperty(proto,'value',{configurable:true,get(){return [...this.options].find(o=>o.hasAttribute('selected'))?.value??this.options[0]?.value;},set(value){for(const option of this.options)option.toggleAttribute('selected',option.value===value);}});
  const store=new Map([['strgo:locale:v1','zh-CN']]);
@@ -28,6 +28,7 @@ test('terminal UI switches live and keeps commands, output, names and passwords 
   assert.equal(store.get('strgo:locale:v1'),locale);assert.equal(document.querySelector('#connect').textContent,label);
   assert.equal(document.querySelector('#password').value,'连接');assert.equal(document.querySelector('#editor').value,'连接');
   assert.equal(document.querySelector('#terminal span').textContent,'连接');assert.equal(document.querySelector('.server-message').textContent,'连接');
+  if(locale==='en') assert.match(document.querySelector('[data-terminal-ui]').textContent,/Connection closed/);
   assert.equal(document.querySelector('#conversation-list strong').textContent,'连接');assert.equal(document.querySelector('#account-label').textContent,'连接');
  }
  window.dispatchEvent(new window.CustomEvent('strgo:localechange',{detail:{locale:'ja'}}));
@@ -35,4 +36,6 @@ test('terminal UI switches live and keeps commands, output, names and passwords 
  document.querySelector('#status').textContent='连接失败';await new Promise(resolve=>setImmediate(resolve));
  assert.equal(document.querySelector('#status').textContent,'接続に失敗');
  assert.match(module.text('3 / 8 个窗口','ko'),/3 \/ 8개 창/);
+ assert.match(module.text('SSH已退出（23）。重新连接即可继续。','en'),/SSH exited \(23\)/);
+ assert.match(module.text('02:04 / 默认 60 分钟','ja'),/既定 60 分/);
 });

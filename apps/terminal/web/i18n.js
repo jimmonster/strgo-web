@@ -18,12 +18,15 @@ export function text(source,language=locale) {
   if(language==='zh-CN'||typeof source!=='string')return source;
   const parts=source.match(/^(\s*)([\s\S]*?)(\s*)$/),raw=parts[2];
   let value=(dictionaries[language]||tables.en)[raw];
-  if(value===undefined){const match=raw.match(/^(\d+) \/ (\d+) 个窗口$/);if(match)value={en:`${match[1]} / ${match[2]} windows`,'zh-TW':`${match[1]} / ${match[2]} 個視窗`,ja:`${match[1]} / ${match[2]} ウィンドウ`,ko:`${match[1]} / ${match[2]}개 창`}[language];}
+  if(value===undefined){let match;if((match=raw.match(/^(\d+) \/ (\d+) 个窗口$/)))value={en:`${match[1]} / ${match[2]} windows`,'zh-TW':`${match[1]} / ${match[2]} 個視窗`,ja:`${match[1]} / ${match[2]} ウィンドウ`,ko:`${match[1]} / ${match[2]}개 창`}[language];
+  else if((match=raw.match(/^(\d\d:\d\d) \/ 默认 60 分钟$/)))value={en:`${match[1]} / 60 min default`,'zh-TW':`${match[1]} / 預設 60 分鐘`,ja:`${match[1]} / 既定 60 分`,ko:`${match[1]} / 기본 60분`}[language];
+  else if((match=raw.match(/^(工作区|SSH)已退出（(-?\d+|NaN)）。重新连接即可继续。$/))){const name=match[1]==='SSH'?'SSH':text('工作区',language);value={en:`${name} exited (${match[2]}). Reconnect to continue.`,'zh-TW':`${name}已退出（${match[2]}）。重新連線即可繼續。`,ja:`${name} が終了しました（${match[2]}）。再接続して続行できます。`,ko:`${name} 종료 (${match[2]}). 다시 연결하여 계속하세요.`}[language];}}
+
   return value===undefined?source:parts[1]+value+parts[3];
 }
 // Protect the terminal emulator, server replies, account names and user-created session names.
-const excluded='script,style,pre,code,#terminal,.xterm,#conversation-list,#account-label,#account-avatar,#conversation-name,#target-label,#session-frames,[data-user-content],[contenteditable]:not([contenteditable="false"]),option:not([value])';
-function safe(element){return element&&!element.closest(excluded)&&(!element.closest('#chat-log')||!!element.closest('.chat-welcome,.chat-avatar,.message-label,.message-actions'));}
+const excluded='script,style,pre:not([data-terminal-ui]),code,#terminal,.xterm,#conversation-list,#account-label,#account-avatar,#conversation-name,#target-label,#session-frames,[data-user-content],[contenteditable]:not([contenteditable="false"]),option:not([value])';
+function safe(element){return element&&!element.closest(excluded)&&(!element.closest('#chat-log')||!!element.closest('.chat-welcome,.chat-avatar,.message-label,.message-actions,.chat-bubble[data-terminal-ui]'));}
 function update(node,attribute){
   const element=attribute?node:node.parentElement;if(!safe(element))return;
   const value=attribute?node.getAttribute(attribute):node.nodeValue;if(value==null)return;
@@ -45,7 +48,7 @@ function render(){
 export function setLocale(value,{persist=true,notify=true}={}){
   if(!supported.includes(value))return false;locale=value;
   if(persist){try{localStorage.setItem(key,value);}catch{}}
-  render();if(notify)window.dispatchEvent(new CustomEvent('strgo:localechange',{detail:{locale:value}}));return true;
+  render();window.dispatchEvent(new CustomEvent('terminal:localechange',{detail:{locale:value}}));if(notify)window.dispatchEvent(new CustomEvent('strgo:localechange',{detail:{locale:value}}));return true;
 }
 locale=read();
 function start(){
@@ -54,6 +57,7 @@ function start(){
   const observer=new MutationObserver(mutations=>{for(const m of mutations){if(m.type==='characterData')localizeTree(m.target);else if(m.type==='attributes')update(m.target,m.attributeName);else for(const n of m.addedNodes)localizeTree(n);}});
   observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','title','placeholder']});
   const title=document.querySelector('title');if(title)observer.observe(title,{subtree:true,childList:true,characterData:true});
+  window.dispatchEvent(new CustomEvent('terminal:localechange',{detail:{locale}}));
   window.addEventListener('storage',event=>{if(event.key===key)setLocale(detect(event.newValue),{persist:false,notify:false});});
   window.addEventListener('strgo:localechange',event=>{if(supported.includes(event.detail?.locale)&&event.detail.locale!==locale)setLocale(event.detail.locale,{persist:false,notify:false});});
 }

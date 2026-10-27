@@ -202,7 +202,7 @@
     unread = false; $('scroll-bottom').textContent = '↓ 最新';
     if (direct && scrollTerminal) terminal?.scrollToBottom();
   }
-  function addBubble(side, text, secret = false) {
+  function addBubble(side, text, secret = false, system = false) {
     const stick = nearBottom(), row = document.createElement('article');
     row.className = `chat-message ${side}`;
     const avatar = document.createElement('span'); avatar.className = 'chat-avatar';
@@ -210,7 +210,7 @@
     const content = document.createElement('div'); content.className = 'message-content';
     const label = document.createElement('span'); label.className = 'message-label';
     label.textContent = side === 'sent' ? '我 · 已发送' : '服务器';
-    const bubble = document.createElement('pre'); bubble.className = 'chat-bubble'; bubble.textContent = text;
+    const bubble = document.createElement('pre'); bubble.className = 'chat-bubble'; if (system) bubble.setAttribute('data-terminal-ui', ''); bubble.textContent = text;
     content.append(label, bubble);
     if (!secret) {
       const actions = document.createElement('div'); actions.className = 'message-actions';
@@ -227,7 +227,7 @@
       const first = $('chat-log').firstElementChild; messages.delete(first.dataset.messageId); first.remove();
     }
     if (stick || side === 'sent') latest();
-    notify('output', { text: secret ? '［隐藏输入］' : text });
+    notify('output', { text: secret ? '［隐藏输入］' : text, ui: system });
     return bubble;
   }
   function startReply(echo = '', secret = false) {
@@ -235,7 +235,7 @@
     reply?.marker?.dispose();
     const buffer = terminal?.buffer?.active;
     reply = {
-      bubble: addBubble('received', '等待服务器输出…'), echo, secret,
+      bubble: addBubble('received', '等待服务器输出…', false, true), echo, secret,
       start: buffer ? buffer.baseY + buffer.cursorY : 0,
       prefix: buffer?.getLine(buffer.baseY + buffer.cursorY)?.translateToString(true) || '',
       marker: terminal?.registerMarker?.(0),
@@ -273,7 +273,7 @@
     text = text.replace(/^\n+/, '');
     const clipped = first > reply.start || text.length > 48000;
     text = text.slice(-48000).replace(/^[\uDC00-\uDFFF]/, '');
-    if (text) reply.bubble.textContent = (clipped ? '［较早输出已省略］\n' : '') + text;
+    if (text) { reply.bubble.removeAttribute('data-terminal-ui'); const omitted = window.terminalI18n?.text('［较早输出已省略］') ?? '［较早输出已省略］'; reply.bubble.textContent = (clipped ? omitted + '\n' : '') + text; }
     if (text) notify('output', { text: reply.bubble.textContent });
     if (stick) latest();
     else { unread = true; $('scroll-bottom').textContent = '↓ 新回复'; }
@@ -355,7 +355,7 @@
       if (message.type === 'ready') {
         clearTimeout(connectionTimer);
         ready = true; started = Date.now(); status('会话已就绪', 'ready'); updateControls();
-        addBubble('received', workspaceMode ? '工作区已打开，可以直接发送命令。文件按账号保存；默认离线，每次连接最长 1 小时，断开后进程结束。' : '连接已建立。请完成 SSH 登录；输入密码前点「密码模式」。');
+        addBubble('received', workspaceMode ? '工作区已打开，可以直接发送命令。文件按账号保存；默认离线，每次连接最长 1 小时，断开后进程结束。' : '连接已建立。请完成 SSH 登录；输入密码前点「密码模式」。', false, true);
         startReply();
         scheduleFit(); inputFocus();
       } else if (message.type === 'output') {
@@ -367,7 +367,7 @@
         terminal.writeln(`\r\n[STRGO] ${lastError.replace(/[\x00-\x1f\x7f]/g, '')}`); ws.close();
       } else if (message.type === 'exit') {
         const label = workspaceMode ? '工作区' : 'SSH';
-        addBubble('received', `${label}已退出（${Number(message.code)}）。重新连接即可继续。`);
+        addBubble('received', `${label}已退出（${Number(message.code)}）。重新连接即可继续。`, false, true);
         terminal.writeln(`\r\n[STRGO] ${label}已退出 (${Number(message.code)})，沙箱正在销毁。`); ws.close();
       }
     };
@@ -375,8 +375,8 @@
     ws.onclose = () => {
       if (current !== generation) return;
       finishConnection(lastError ? '连接结束' : '已断开', lastError ? 'error' : 'idle');
-      addBubble('received', workspaceMode ? '连接已关闭。工作区文件保留，重新连接不会自动执行之前的命令。' : '连接已关闭。聊天记录仅保留在当前页面；远端任务可使用 tmux 保留。');
-      terminal.writeln('\r\n[STRGO] 连接已关闭。重新连接会创建新的沙箱。');
+      addBubble('received', workspaceMode ? '连接已关闭。工作区文件保留，重新连接不会自动执行之前的命令。' : '连接已关闭。聊天记录仅保留在当前页面；远端任务可使用 tmux 保留。', false, true);
+      terminal.writeln('\r\n[STRGO] ' + (window.terminalI18n?.text('连接已关闭。重新连接会创建新的沙箱。') ?? '连接已关闭。重新连接会创建新的沙箱。'));
     };
     scheduleFit();
   });
@@ -474,7 +474,7 @@
     else terminal.paste(text.replace(/\r\n?/g, '\n'));
     if (text && !lastInputAccepted) return;
     if (!sendInput('\r')) return;
-    addBubble('sent', secret ? '［密码已发送］' : text, secret);
+    addBubble('sent', secret ? '［密码已发送］' : text, secret, secret);
     startReply(text, secret);
     input.value = ''; toggleCtrl(false); growEditor(); editorFocus(); latest();
   }
@@ -574,7 +574,8 @@
       $('chat-log').replaceChildren(); $('chat-log').classList.remove('has-messages');
       if (ready) startReply();
     } else if (action === 'export') {
-      const lines = ['STRGO 终端聊天 · ' + new Date().toISOString(), '仅导出当前页面保留的最近 120 条消息，每条约最近 300 行。不是完整会话日志。', ''];
+      const t = source => window.terminalI18n?.text(source) ?? source;
+      const lines = [t('STRGO 终端聊天 ·') + ' ' + new Date().toISOString(), t('仅导出当前页面保留的最近 120 条消息，每条约最近 300 行。不是完整会话日志。'), ''];
       for (const text of messages.values()) lines.push(text.textContent, '');
       const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' }));
       const link = document.createElement('a'); link.href = url; link.download = `terminal-${Date.now()}.txt`; document.body.append(link); link.click(); link.remove();

@@ -1,4 +1,4 @@
-// Fixed Traditional Chinese terminal interface copy.
+// Traditional Chinese terminal interface copy.
 export const traditional = {
   "终端": "終端",
   "我的终端": "我的終端",
@@ -181,5 +181,8 @@ export const traditional = {
   "返回终端列表": "返回終端列表",
   "返回": "返回",
   "［密码已发送］": "［密碼已發送］",
-  "［隐藏输入］": "［隱藏輸入］"
+  "［隐藏输入］": "［隱藏輸入］",
+  "STRGO 终端聊天 ·": "STRGO 終端聊天 ·",
+  "连接已关闭。重新连接会创建新的沙箱。": "連接已關閉。重新連接會創建新的沙箱。",
+  "［较早输出已省略］": "［較早輸出已省略］"
 };

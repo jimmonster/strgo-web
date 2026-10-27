@@ -66,10 +66,24 @@ export function translate(source, locale = getLocale()) {
       value = { 'zh-CN':`更多旋转平面（${m[1]}）`, 'zh-TW':`更多旋轉平面（${m[1]}）`, ja:`詳細な回転平面（${m[1]}）`, ko:`고급 회전 평면 (${m[1]})` }[locale];
     } else if (isPolyversePage() && (m = text.match(/^(.+) ↗$/)) && polyverseDictionaries[locale]?.[m[1]]) {
       value=translate(m[1],locale)+' ↗';
+    } else if (isPolyversePage() && (m = text.match(/^(params\.[A-Za-z][A-Za-z0-9]*): (unknown parameter|unknown option|expected boolean|expected true or false)\.$/))) {
+      const index=['unknown parameter','unknown option','expected boolean','expected true or false'].indexOf(m[2]); const labels={ 'zh-CN':['未知参数','未知选项','需要布尔值','需要 true 或 false'], 'zh-TW':['未知參數','未知選項','需要布林值','需要 true 或 false'], ja:['不明なパラメータ','不明な選択肢','真偽値が必要です','true または false が必要です'], ko:['알 수 없는 매개변수','알 수 없는 옵션','불리언 값이 필요합니다','true 또는 false가 필요합니다'] };if(labels[locale])value=`${m[1]}: ${labels[locale][index]}.`;
+    } else if (isPolyversePage() && (m = text.match(/^(params\.[A-Za-z][A-Za-z0-9]*): use a number from (-?[\d.]+) to (-?[\d.]+)\.$/))) {
+      value={ 'zh-CN':`${m[1]}：请输入 ${m[2]} 至 ${m[3]} 的数值。`, 'zh-TW':`${m[1]}：請輸入 ${m[2]} 至 ${m[3]} 的數值。`, ja:`${m[1]}：${m[2]} から ${m[3]} の数値を入力してください。`, ko:`${m[1]}: ${m[2]}에서 ${m[3]} 사이의 값을 입력하세요.` }[locale];
+    } else if (isPolyversePage() && (m = text.match(/^Import rejected · (.+)$/))) {
+      const prefix={ 'zh-CN':'导入被拒绝', 'zh-TW':'匯入被拒絕', ja:'読み込みを拒否', ko:'가져오기 거부' }[locale]; if(prefix)value=`${prefix} · ${translate(m[1],locale)}`;
+    } else if (isPolyversePage() && (m = text.match(/^Rendering quality: (auto|low|medium|high)$/))) {
+      const prefix={ 'zh-CN':'渲染质量', 'zh-TW':'渲染質量', ja:'描画品質', ko:'렌더링 화질' }[locale]; if(prefix)value=`${prefix}: ${translate(m[1],locale)}`;
     } else if (isPolyversePage() && (m = text.match(/^(.+) — POLYVERSE$/)) && polyverseDictionaries[locale]?.[m[1]]) {
       value=translate(m[1],locale)+' — POLYVERSE';
     } else if (isMeowPage() && (m = text.match(/^(\d+) (位朋友|件作品|条可搜索内容 · 输入关键词开始)$/))) {
       const n=m[1],unit=m[2]; value = unit==='位朋友' ? {en:`${n} friends`,'zh-TW':`${n} 位朋友`,ja:`${n} 匹の友だち`,ko:`친구 ${n}마리`}[locale] : unit==='件作品' ? {en:`${n} works`,'zh-TW':`${n} 件作品`,ja:`${n} 作品`,ko:`작품 ${n}개`}[locale] : {en:`${n} searchable items · enter a keyword`,'zh-TW':`${n} 條可搜尋內容 · 輸入關鍵詞開始`,ja:`検索対象 ${n} 件 · キーワードを入力`,ko:`검색 가능한 항목 ${n}개 · 검색어 입력`}[locale];
+    } else if (isMeowPage() && (m = text.match(/^(.+) · 播放中(（单次预览）)?$/)) && meowDictionaries[locale]?.[m[1]]) {
+      const action=translate(m[1],locale), single=!!m[2]; value={en:`${action} · Playing${single?' (single preview)':''}`,'zh-TW':`${action} · 播放中${single?'（單次預覽）':''}`,ja:`${action} · 再生中${single?'（1 回プレビュー）':''}`,ko:`${action} · 재생 중${single?' (1회 미리보기)':''}`}[locale];
+    } else if (isMeowPage() && (m = text.match(/^idle · (已回到暂停状态|轻轻呼吸中)$/))) {
+      value=`${{en:'Idle','zh-TW':'待機',ja:'待機',ko:'대기'}[locale]} · ${translate(m[1],locale)}`;
+    } else if (isMeowPage() && (m = text.match(/^(当前网址|导入未完成|无法生成图片)：(.+)$/))) {
+      const labels={en:['Current URL','Import incomplete','Image creation failed'],'zh-TW':['當前網址','匯入未完成','無法生成圖片'],ja:['現在の URL','読み込み未完了','画像を作成できません'],ko:['현재 주소','가져오기 미완료','이미지를 만들 수 없습니다']}; const index=['当前网址','导入未完成','无法生成图片'].indexOf(m[1]); if(labels[locale])value=`${labels[locale][index]}: ${index===0?m[2]:translate(m[2],locale)}`;
     } else if (isMeowPage() && (m = text.match(/^认识 ([A-Za-z]+)$/))) {
       value={en:`Meet ${m[1]}`,'zh-TW':`認識 ${m[1]}`,ja:`${m[1]} に会う`,ko:`${m[1]} 만나기`}[locale];
     } else if (isMeowPage() && (m = text.match(/^([A-Za-z]+) · (.+)$/)) && meowDictionaries[locale]?.[m[2]]) {
@@ -84,7 +98,9 @@ export function translate(source, locale = getLocale()) {
       value=`· ${translate(m[1],locale)}`;
     } else if (isNexusPage() && (m = text.match(/^(\d+) 个本地结果( \/ 全部内容)?$/))) {
       const all = !!m[2]; value = { en: `${m[1]} local results${all ? ' / all content' : ''}`, 'zh-TW': `${m[1]} 個本地結果${all ? ' / 全部內容' : ''}`, ja: `ローカル結果 ${m[1]} 件${all ? ' / すべて' : ''}`, ko: `로컬 결과 ${m[1]}개${all ? ' / 전체 콘텐츠' : ''}` }[locale];
-    } else if (isNexusPage() && (m = text.match(/^(.*?) \/ (NEXUS ARCHIVE|[\d.]+ (?:LY|KM)|查看目的地 ↗)$/))) {
+    } else if (isNexusPage() && (m = text.match(/^NEXUS \/ (.+)$/)) && nexusDictionaries[locale]?.[m[1]]) {
+      value=`NEXUS / ${translate(m[1],locale)}`;
+    } else if (isNexusPage() && (m = text.match(/^(.*?) \/ (NEXUS ARCHIVE|[\d.]+ (?:B )?(?:LY|KM)|查看目的地 ↗)$/))) {
       value = `${translate(m[1], locale)} / ${translate(m[2], locale)}`;
     } else if (isNexusPage() && (m = text.match(/^✓ 演示航线已生成：地球 → 深空跃迁点 → (.+)$/))) {
       const destination = translate(m[1], locale); value = { en: `✓ Demo route created: Earth → Deep-space jump point → ${destination}`, 'zh-TW': `✓ 演示航線已生成：地球 → 深空躍遷點 → ${destination}`, ja: `✓ デモ航路を作成：地球 → 深宇宙ジャンプ地点 → ${destination}`, ko: `✓ 데모 항로 생성: 지구 → 심우주 도약 지점 → ${destination}` }[locale];

@@ -48,7 +48,7 @@ async function application({ loggedIn = true, storageFailure = false, saved = nu
   };
   vm.runInNewContext(script, context); await tick(); await tick();
   const $ = id => document.getElementById(id);
-  return { $, document, frames, storage, requests,
+  return { $, document, window, frames, storage, requests,
     visual: window.visualViewport,
     viewport: async type => { for (const fn of visualListeners[type || 'resize'] || []) fn(); await tick(); },
     flush: async () => { await tick(); await tick(); },
@@ -106,10 +106,28 @@ test('restore is disconnected, never replays commands, and uses only the current
   assert.equal(app.frames[1].hidden, false); assert.equal(app.$('conversation-name').textContent, '服务器');
   assert.ok(!JSON.stringify([...app.storage.values()]).includes('private'));
   assert.match(app.$('workspace-message').textContent, /不会自动执行/);
+  // A translated notice must still clear when a restored session becomes ready.
+  app.$('workspace-message').textContent = 'Restored window settings';
+  await app.emit('message', { origin: 'https://strgo.test', source: app.frames[1].contentWindow, data: { source: 'strgo-terminal', type: 'status', state: 'ready', text: '会话已就绪' } });
+  assert.equal(app.$('workspace-message').hidden, true);
   app.switchAccount({ id: 'b'.repeat(32), username: 'other', role: 'member' }); await app.emit('focus'); await app.flush();
   assert.equal(app.$('account-label').textContent, 'other'); assert.equal(app.frames.length, 3);
   assert.equal(app.frames[0].parentElement, null); assert.ok(app.frames[0].contentWindow.packets.some(p => p.action === 'dispose'));
   assert.equal(app.$('conversation-name').textContent, '我的终端');
+});
+
+test('locale changes translate system previews without rewriting session names or shell output', async () => {
+  const saved = { active:'one', sessions:[{ id:'one', name:'连接', mode:'workspace' }] };
+  const app = await application({saved});
+  app.window.terminalI18n={text:value=>({'工作区':'Workspace','会话已就绪':'Session ready','连接':'Connect','有新输出':'New output'})[value]||value};
+  await app.emit('message',{origin:'https://strgo.test',source:app.frames[0].contentWindow,data:{source:'strgo-terminal',type:'status',state:'ready',text:'会话已就绪'}});
+  await app.emit('terminal:localechange',{});
+  assert.equal(app.$('conversation-list').querySelector('strong').textContent,'连接');
+  assert.match(app.$('conversation-list').textContent,/Workspace · Session ready/);
+  await app.emit('message',{origin:'https://strgo.test',source:app.frames[0].contentWindow,data:{source:'strgo-terminal',type:'output',text:'连接'}});
+  assert.match(app.$('conversation-list').textContent,/连接连接/);
+  await app.emit('message',{origin:'https://strgo.test',source:app.frames[0].contentWindow,data:{source:'strgo-terminal',type:'output',text:'连接',ui:true}});
+  assert.match(app.$('conversation-list').textContent,/连接Connect/);
 });
 
 test('rename and close target only the selected window and closing asks for confirmation', async () => {

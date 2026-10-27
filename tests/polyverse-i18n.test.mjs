@@ -25,3 +25,22 @@ test('POLYVERSE UI switches while preserving user work names, inputs and paramet
   assert.equal(translate('Dimension Laboratory','ko'),'차원 실험실');
  }finally{setLocale('zh-CN',{persist:false});globalThis.document=previousDocument;globalThis.location=previousLocation;}
 });
+
+test('all experiment-specific controls have five-language labels',async()=>{
+ const {descriptors}=await import('../apps/polyverse/src/panels.js');
+ const {defaultConfig}=await import('../apps/polyverse/src/state.js');
+ const oldWidth=globalThis.innerWidth,oldLocation=globalThis.location;globalThis.innerWidth=1440;globalThis.location={pathname:'/polyverse/laws/'};
+ try{
+  const cases=[];for(const id of ['dimensions','higher','geometry','motion','orbital','laws','cubic','fractal']){
+   const params=defaultConfig(id).params;cases.push([id,params]);
+   if(id==='dimensions')cases.push([id,{...params,dimension:4,viewMode:'slice'}]);
+   if(id==='laws')for(const experiment of ['distance','gravity','harmonic','wave'])cases.push([id,{...params,experiment}]);
+   if(id==='motion')cases.push([id,{...params,preset:'analytic'}]);
+  }
+  for(const [id,params] of cases)for(const descriptor of descriptors(id,params)){
+   for(const source of [descriptor.label,...(descriptor.options||[]).map(option=>String(option[1]))])if(/[A-Za-z]{3}/.test(source)){
+    for(const locale of ['zh-CN','zh-TW','ja','ko'])assert.notEqual(translate(source,locale),source,`${locale}: ${source}`);
+   }
+  }
+ }finally{globalThis.innerWidth=oldWidth;globalThis.location=oldLocation;}
+});
