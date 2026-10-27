@@ -483,5 +483,21 @@ export const meowTraditional = {
   "Fictional digital companion · Saved in this browser": "虛構數字陪伴 · 保存在當前瀏覽器",
   "Milk 与多种不同外形的猫咪": "Milk 與多種不同外形的貓咪",
   "可旋转的三维场景": "可旋轉的三維場景",
-  "浏览器禁用了本地存储。": "瀏覽器禁用了本地存儲。"
+  "浏览器禁用了本地存储。": "瀏覽器禁用了本地存儲。",
+  "3D MOMENT": "三維時刻",
+  "Bubble Wave": "泡泡揮爪",
+  "Hoodie Peek": "帽兜探頭",
+  "Cozy Roll": "軟毯翻身",
+  "Paw Party": "爪爪派對",
+  "Cloud Nap": "雲朵午睡",
+  "Boba in a bubble bath": "Boba 的泡泡浴",
+  "Peach says hello": "Peach 來打招呼",
+  "Milk on the soft blanket": "Milk 躺在軟毯上",
+  "Luna reaches the sky": "Luna 伸爪觸天空",
+  "Sunny sleeps above the clouds": "Sunny 睡在雲朵上",
+  "Meet Milk": "認識 Milk",
+  "REAL-TIME 3D": "實時三維",
+  "Siamese": "暹羅貓",
+  "You": "你",
+  "© 2026 Meow · Fictional cats. Real little moments.": "© 2026 Meow · 虛構貓咪，真實的溫柔時刻。"
 };

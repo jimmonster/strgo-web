@@ -41,14 +41,16 @@ function node(tag, className, text) {
   if (text !== undefined) element.textContent = text;
   return element;
 }
+function fixedNode(tag, className, text) { const element = node(tag, className, text); element.setAttribute('data-strgo-ui-copy', ''); return element; }
 function message(selector, text = '', error = false) {
   const element = $(selector); element.textContent = text; element.classList.toggle('error', error);
 }
 let toastTimer;
-function toast(text) {
-  clearTimeout(toastTimer); $('#toast').textContent = text; $('#toast').hidden = false;
+function toast(text, fixed = false) {
+  clearTimeout(toastTimer); const element = $('#toast'); if (fixed) element.setAttribute('data-strgo-static', ''); else element.removeAttribute('data-strgo-static'); element.textContent = text; element.hidden = false;
   toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 3500);
 }
+function toastFixed(text) { toast(text, true); }
 async function api(path, { method = 'GET', body } = {}) {
   const response = await fetch(API + path, {
     method, credentials: 'same-origin', cache: 'no-store',
@@ -126,18 +128,18 @@ function postMeta(post) {
   const avatar = node('span', 'avatar', post.author.username.slice(0, 1).toUpperCase());
   const info = node('div'); const author = node('div', 'post-author');
   author.append(node('span', 'author-name', post.author.username));
-  if (post.author.role === 'admin') author.append(node('span', 'role-badge', '管理员'));
-  if (post.author.id === state.user.id) author.append(node('span', 'role-badge', '我'));
-  const time = node('time', 'post-time', formatTime(post.created));
+  if (post.author.role === 'admin') author.append(fixedNode('span', 'role-badge', '管理员'));
+  if (post.author.id === state.user.id) author.append(fixedNode('span', 'role-badge', '我'));
+  const time = fixedNode('time', 'post-time', formatTime(post.created));
   time.dateTime = new Date(post.created * 1000).toISOString();
   time.title = new Date(post.created * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-  info.append(author, time); meta.append(avatar, info, node('span', 'post-category category-' + post.category, categories[post.category] || '日常闲聊'));
-  if (post.updated) info.append(node('small', 'muted', '已编辑 · ' + formatTime(post.updated)));
+  info.append(author, time); meta.append(avatar, info, fixedNode('span', 'post-category category-' + post.category, categories[post.category] || '日常闲聊'));
+  if (post.updated) info.append(fixedNode('small', 'muted', '已编辑 · ' + formatTime(post.updated)));
   return meta;
 }
-function pinBadge() { const badge = node('span', 'pin-badge'); badge.append(icon('pin'), document.createTextNode('置顶')); return badge; }
+function pinBadge() { const badge = fixedNode('span', 'pin-badge'); badge.append(icon('pin'), document.createTextNode('置顶')); return badge; }
 function action(label, symbol, className, handler) {
-  const button = node('button', className); button.type = 'button'; button.append(icon(symbol), document.createTextNode(label)); button.addEventListener('click', handler); return button;
+  const button = fixedNode('button', className); button.type = 'button'; button.append(icon(symbol), document.createTextNode(label)); button.addEventListener('click', handler); return button;
 }
 function postActions(post, detail = false) {
   const actions = node('div', 'post-actions');
@@ -149,7 +151,7 @@ function postActions(post, detail = false) {
         const updated = await api(`${POSTS}/${post.id}/pin`, { method: 'PUT', body: { pinned: !post.pinned } });
         if (epoch !== state.epoch) return;
         if (state.current?.id === post.id) { renderDetail(updated); loadComments(post.id); }
-        await loadPosts(); toast(updated.pinned ? '帖子已置顶' : '已取消置顶');
+        await loadPosts(); toastFixed(updated.pinned ? '帖子已置顶' : '已取消置顶');
       } catch (error) { if (epoch === state.epoch) message(detail ? '#detail-message' : '#feed-message', error.message, true); }
       finally { pin.disabled = false; }
     });
@@ -157,6 +159,7 @@ function postActions(post, detail = false) {
   }
   if (post.canDelete) actions.append(action('删除', 'trash', 'delete-post', () => {
     state.deleting = post; $('#delete-title').textContent = '确定删除这篇帖子？'; message('#delete-message');
+    $('#delete-description').removeAttribute('data-strgo-static');
     $('#delete-description').textContent = `“${post.title}”将从社区移除，无法在页面恢复。`;
     $('#delete-dialog').showModal(); $('#delete-cancel').focus();
   }));
@@ -203,14 +206,14 @@ function renderDetail(post) {
   state.current = post; message('#detail-message');
   const title = node('h2'); title.id = 'detail-title'; if (post.pinned) title.append(pinBadge()); title.append(document.createTextNode(post.title));
   const body = node('div', 'detail-body', post.body);
-  const bottom = node('div', 'post-bottom'); bottom.append(node('span', 'muted', '谢谢你，让想法在这里发生。'), postActions(post, true));
+  const bottom = node('div', 'post-bottom'); bottom.append(fixedNode('span', 'muted', '谢谢你，让想法在这里发生。'), postActions(post, true));
   $('#detail-content').replaceChildren(postMeta(post), title, body, bottom);
 }
 async function openPost(id) {
   const epoch = state.epoch, request = ++state.detail;
   state.current = null; state.commentLoad++; state.comments = []; state.replyRequest = null;
   $('#comments-list').replaceChildren(); $('#comment-form').reset(); $('#comments-section').hidden = true;
-  $('#detail-content').replaceChildren(node('h2', '', '正在打开话题…')); message('#detail-message');
+  $('#detail-content').replaceChildren(fixedNode('h2', '', '正在打开话题…')); message('#detail-message');
   if (!$('#detail-dialog').open) $('#detail-dialog').showModal();
   try {
     const post = await api(`${POSTS}/${id}`);
@@ -273,7 +276,7 @@ $('#post-form').addEventListener('submit', async event => {
     if (epoch !== state.epoch) return;
     $('#compose-dialog').close(); $('#post-form').reset(); updateCounters();
     showNotificationFeed(false); state.category = ''; state.search = ''; $('#search').value = ''; syncFilters();
-    await loadPosts(); toast('发布成功，想法已经被看见。');
+    await loadPosts(); toastFixed('发布成功，想法已经被看见。');
   } catch (error) { if (epoch === state.epoch) message('#post-message', error.message, true); }
   finally { state.publishing = false; $('#publish').disabled = false; $('#compose-close').disabled = false; }
 });
@@ -292,7 +295,7 @@ $('#delete-confirm').addEventListener('click', async () => {
     $('#delete-dialog').close();
     if (post.commentId) { await loadComments(post.id); await loadNotifications(); }
     else if (state.current?.id === post.id) $('#detail-dialog').close();
-    await loadPosts(); toast(post.commentId ? '评论已删除' : '帖子已删除');
+    await loadPosts(); toastFixed(post.commentId ? '评论已删除' : '帖子已删除');
   } catch (error) { if (epoch === state.epoch) message('#delete-message', error.message, true); }
   finally { $('#delete-confirm').disabled = false; $('#delete-cancel').disabled = false; }
 });
@@ -320,7 +323,10 @@ async function loadNotifications(append = false) {
     $('#notifications-list').replaceChildren(...state.notices.map(notice => {
       const button = node('button', 'notification-item' + (notice.read ? '' : ' unread'));
       button.type = 'button';
-      button.append(node('strong', '', `${notice.username} 评论了「${notice.title}」`), node('p', '', notice.body), node('small', 'muted', `${notice.read ? '已读' : '未读'} · ${formatTime(notice.created)}`));
+      const noticeTitle = node('strong'); const author = node('span', '', notice.username), title = node('span', '', notice.title);
+      author.setAttribute('data-strgo-user-content', ''); title.setAttribute('data-strgo-user-content', '');
+      noticeTitle.append(author, fixedNode('span', '', ' 评论了「'), title, fixedNode('span', '', '」'));
+      button.append(noticeTitle, node('p', '', notice.body), fixedNode('small', 'muted', `${notice.read ? '已读' : '未读'} · ${formatTime(notice.created)}`));
       button.addEventListener('click', async () => {
         button.disabled = true;
         try {
@@ -332,7 +338,7 @@ async function loadNotifications(append = false) {
       });
       return button;
     }));
-    if (!state.notices.length) $('#notifications-list').append(node('p', 'empty-state', '还没有回复通知。有人评论你的帖子后，会在这里告诉你。'));
+    if (!state.notices.length) $('#notifications-list').append(fixedNode('p', 'empty-state', '还没有回复通知。有人评论你的帖子后，会在这里告诉你。'));
     $('#notifications-more').hidden = !data.hasMore;
     $('#notifications-read').hidden = !state.notices.some(n => !n.read);
     message('#notifications-message');
@@ -369,16 +375,17 @@ async function loadComments(id, append = false) {
     $('#comments-list').replaceChildren(...state.comments.map(comment => {
       const item = node('article', 'comment-item');
       const meta = node('div', 'comment-meta');
-      meta.append(node('strong', '', comment.author.username), node('time', 'muted', formatTime(comment.created)));
+      meta.append(node('strong', '', comment.author.username), fixedNode('time', 'muted', formatTime(comment.created)));
       if (comment.canDelete) meta.append(action('删除评论', 'trash', 'delete-comment', () => {
         state.deleting = { id, commentId: comment.id };
         $('#delete-title').textContent = '确定删除这条评论？';
+        $('#delete-description').setAttribute('data-strgo-static', '');
         $('#delete-description').textContent = '评论将从话题和回复通知中移除。'; message('#delete-message');
         $('#delete-dialog').showModal(); $('#delete-cancel').focus();
       }));
       item.append(meta, node('p', 'comment-body', comment.body)); return item;
     }));
-    if (!state.comments.length) $('#comments-list').append(node('p', 'muted', '还没有评论。说说你的想法吧。'));
+    if (!state.comments.length) $('#comments-list').append(fixedNode('p', 'muted', '还没有评论。说说你的想法吧。'));
     $('#comments-more').hidden = !data.hasMore; message('#comments-message');
   } catch (error) { if (epoch === state.epoch && request === state.commentLoad) message('#comments-message', `${error.message} 可关闭话题后重新打开。`, true); }
   finally { if (request === state.commentLoad) $('#comments-more').disabled = false; }
@@ -402,7 +409,7 @@ $('#comment-form').addEventListener('submit', async event => {
   try {
     await api(`${POSTS}/${id}/comments`, { method: 'POST', body: { body, request_id: requestId } });
     if (epoch !== state.epoch || state.current?.id !== id) return;
-    $('#comment-form').reset(); state.replyRequest = null; await loadComments(id); await loadPosts(); toast('评论已发布');
+    $('#comment-form').reset(); state.replyRequest = null; await loadComments(id); await loadPosts(); toastFixed('评论已发布');
   } catch (error) { if (epoch === state.epoch && state.current?.id === id) message('#comments-message', error.message, true); }
   finally { $('#comment-submit').disabled = false; }
 });
@@ -434,7 +441,7 @@ $('#edit-form').addEventListener('submit', async event => {
     if (epoch !== state.epoch) return;
     $('#edit-dialog').close();
     if (state.current?.id === post.id) renderDetail(updated);
-    await loadPosts(); toast('修改已保存');
+    await loadPosts(); toastFixed('修改已保存');
   } catch (error) { if (epoch === state.epoch) message('#edit-message', error.message, true); }
   finally { state.editSaving = false; $('#edit-save').disabled = false; $('#edit-close').disabled = false; }
 });

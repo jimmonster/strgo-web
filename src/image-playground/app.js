@@ -33,12 +33,14 @@ function message(id, text, kind = '') {
   target.className = 'message' + (kind ? ' ' + kind : '');
 }
 let toastTimer;
-function toast(text) {
+function toast(text, fixed = false) {
   clearTimeout(toastTimer);
-  $('#toast').textContent = text;
-  $('#toast').hidden = false;
+  const element = $('#toast'); if (fixed) element.setAttribute('data-strgo-static', ''); else element.removeAttribute('data-strgo-static');
+  element.textContent = text;
+  element.hidden = false;
   toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 4200);
 }
+function toastFixed(text) { toast(text, true); }
 async function api(path, { method = 'GET', body, timeout = 30000 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -176,7 +178,7 @@ async function openHubJob() {
       $('#prompt').value = job.prompt; $('#prompt').dispatchEvent(new Event('input'));
       selectSize(job.size); $('#quality').value = job.quality; $('#count').value = String(job.count);
       $('#prompt').focus();
-      toast(job.hasReference ? '已复用文字和参数；参考图需重新选择，确认后再生成。' : '已复用参数，请确认后再生成。');
+      toastFixed(job.hasReference ? '已复用文字和参数；参考图需重新选择，确认后再生成。' : '已复用参数，请确认后再生成。');
     }
     const params = new URLSearchParams(location.search); params.delete('job'); params.delete('reuse');
     history.replaceState(null, '', location.pathname + (params.size ? '?' + params : '') + location.hash);
@@ -219,7 +221,7 @@ function renderImage(image, job) {
     const retry = el('button', 'quiet retry', '重试'); retry.type = 'button'; retry.title = image.error || '重试保存';
     retry.addEventListener('click', async () => {
       retry.disabled = true;
-      try { await api('/images/' + image.id + '/retry', { method: 'POST' }); toast('已加入同步队列。'); await refreshCurrent(); }
+      try { await api('/images/' + image.id + '/retry', { method: 'POST' }); toastFixed('已加入同步队列。'); await refreshCurrent(); }
       catch (error) { toast(error.message); } finally { retry.disabled = false; }
     }); actions.append(retry);
   }
@@ -257,7 +259,7 @@ function renderImage(image, job) {
         $('#download-image').removeAttribute('href'); state.preview = null;
       }
       card.remove(); renderCurrent();
-      toast(result.cleanupPending ? '作品已移除，存储恢复后会自动清理文件。' : '作品已删除。');
+      toastFixed(result.cleanupPending ? '作品已移除，存储恢复后会自动清理文件。' : '作品已删除。');
       await refreshCurrent();
       if (state.view === 'library') await refreshLibrary();
     } catch (error) {
@@ -285,7 +287,7 @@ function renderJob(job) {
         state.jobs.delete(job.id); state.libraryJobs = state.libraryJobs.filter(item => item.id !== job.id);
         if (state.current === job.id) state.current = null;
         $$('[data-job="' + job.id + '"]').forEach(node => node.remove());
-        renderCurrent(); schedulePoll(); toast('失败任务记录已删除。');
+        renderCurrent(); schedulePoll(); toastFixed('失败任务记录已删除。');
         await refreshCurrent();
         if (state.view === 'library') await refreshLibrary();
       } catch (error) { if (state.user?.id === owner) toast(error.message); }
@@ -316,12 +318,12 @@ function renderInspiration(item) {
   use.addEventListener('click', () => {
     $('#prompt').value = item.prompt; $('#prompt').dispatchEvent(new Event('input'));
     $('#quality').value = item.quality; $('#count').value = String(item.count);
-    selectSize(item.size); showView('create'); $('#prompt').focus(); toast('灵感已载入创作区。');
+    selectSize(item.size); showView('create'); $('#prompt').focus(); toastFixed('灵感已载入创作区。');
   });
   const remove = el('button', 'quiet', '删除'); remove.type = 'button';
   remove.addEventListener('click', async () => {
     remove.disabled = true;
-    try { await api('/inspirations/' + item.id, { method: 'DELETE' }); await refreshInspirations(); toast('灵感已删除。'); }
+    try { await api('/inspirations/' + item.id, { method: 'DELETE' }); await refreshInspirations(); toastFixed('灵感已删除。'); }
     catch (error) { toast(error.message); } finally { remove.disabled = false; }
   });
   actions.append(use, remove); card.append(heading, prompt, details, actions); return card;
@@ -364,7 +366,7 @@ function renderPresetManagement() {
           if (state.user?.id !== owner) return;
           presetState.request++; presetState.items = presetState.items.filter(value => value.id !== item.id);
           if (presetState.editing?.id === item.id) cancelPresetEdit();
-          renderPresetInspirations(); renderPresetManagement(); toast('预装灵感已删除。');
+          renderPresetInspirations(); renderPresetManagement(); toastFixed('预装灵感已删除。');
         } catch (error) { if (state.user?.id === owner) message('#presets-message', error.message, 'error'); }
         finally { remove.disabled = false; }
       });
@@ -538,7 +540,7 @@ $('#count').addEventListener('change', () => { state.requestId = null; });
 $('#quality').addEventListener('change', () => { state.requestId = null; });
 const examples = ['雨后的小巷，一家亮着暖黄灯光的花店，路面积水倒映橱窗，电影摄影，细腻的自然光，安静的傍晚。', '清晨的山间湖泊，薄雾轻轻掠过水面，一艘小木船停在岸边，油画笔触，柔和的绿色与银灰色。', '一只透明玻璃花瓶，三枝白色野花，落在白墙上的斑驳树影，极简静物摄影，真实的材质与光线。'];
 let exampleIndex = 0;
-$('#example-prompt').addEventListener('click', () => { $('#prompt').value = examples[exampleIndex++ % examples.length]; $('#prompt').dispatchEvent(new Event('input')); $('#prompt').focus(); });
+$('#example-prompt').addEventListener('click', () => { const example = examples[exampleIndex++ % examples.length]; $('#prompt').value = window.strgoI18n?.translate(example) ?? example; $('#prompt').dispatchEvent(new Event('input')); $('#prompt').focus(); });
 $('#save-inspiration').addEventListener('click', async () => {
   const prompt = $('#prompt').value.trim();
   if (!prompt) { message('#generation-message', '先写下画面描述，再保存为灵感。', 'error'); $('#prompt').focus(); return; }
@@ -546,7 +548,7 @@ $('#save-inspiration').addEventListener('click', async () => {
   const button = $('#save-inspiration'); button.disabled = true;
   try {
     await api('/inspirations', { method: 'POST', body: { prompt, title: prompt.split('\n')[0].slice(0, 80), size: state.size, quality: $('#quality').value, count: Number($('#count').value) } });
-    message('#generation-message', '已保存到灵感库。', 'success'); toast('灵感已保存到你的账号。');
+    message('#generation-message', '已保存到灵感库。', 'success'); toastFixed('灵感已保存到你的账号。');
   } catch (error) { message('#generation-message', error.message, 'error'); }
   finally { button.disabled = false; }
 });
@@ -660,8 +662,8 @@ $('#create-invite').addEventListener('click', async () => {
   finally { $('#create-invite').disabled = false; }
 });
 $('#copy-invite').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText($('#invite-code').textContent); toast('邀请码已复制。'); }
-  catch { toast('复制失败，请手动选择邀请码。'); }
+  try { await navigator.clipboard.writeText($('#invite-code').textContent); toastFixed('邀请码已复制。'); }
+  catch { toastFixed('复制失败，请手动选择邀请码。'); }
 });
 $('#backup').addEventListener('click', async () => {
   $('#backup').disabled = true; message('#backup-message', '正在保存加密备份…');
