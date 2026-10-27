@@ -1,3 +1,5 @@
+import { translate, SUPPORTED_LOCALES } from './i18n.js';
+
 export const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function sanitizePreferences(value, entries) {
@@ -20,7 +22,7 @@ export function filterEntries(entries, { role, query = '', group = '全部', fav
   const needle = query.trim().toLocaleLowerCase();
   return entries.filter(e => (role === 'admin' || e.group !== '管理')
     && (group === '全部' || (group === '我的收藏' ? favorites.includes(e.id) : e.group === group))
-    && [e.name, e.en, e.description, e.route].join(' ').toLocaleLowerCase().includes(needle));
+    && [e.name, e.en, e.description, e.route, ...SUPPORTED_LOCALES.flatMap(locale => [translate(e.name, locale), translate(e.description, locale)])].join(' ').toLocaleLowerCase().includes(needle));
 }
 
 export function safeReturnPath(value, fallback = '/hub/') {

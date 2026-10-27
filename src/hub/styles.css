@@ -28,3 +28,5 @@ body{font-family:var(--strgo-font);font-size:15px;line-height:1.65}h1,h2,h3{lett
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.tool-card,.space-art svg{transition:none}.tool-card:hover,.space-card:hover svg{transform:none}}
 .account-strip{font-size:12px}footer{font-family:var(--strgo-font);font-size:12px;letter-spacing:.03em}.mobile-nav a span{font-size:12px}.eyebrow .dot{box-shadow:none}
 @media(max-width:760px){body{font-size:16px}.hero{display:flex;flex-direction:column;align-items:stretch;min-height:0}.hero-copy{order:1;padding:36px 0 0;max-width:none}.hero-meta{margin-top:24px;margin-bottom:0}.orbit{position:relative;order:2;inset:auto;width:100%;height:220px;opacity:.9;mask-image:none}.orbit-label{display:none}.hero-mode{position:static;order:3;justify-content:flex-start;flex-wrap:wrap;margin:0 0 24px}.immersive .hero{min-height:0}.immersive .orbit{height:260px;top:auto}}
+
+@media(max-width:760px){header{gap:10px;padding-left:16px;padding-right:16px}header strgo-navigation{flex-shrink:0}}

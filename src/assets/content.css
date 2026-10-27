@@ -69,3 +69,6 @@
 /* STRGO site filing */
 .content-footer .icp-link{font:11px/1.8 var(--font-sans,sans-serif);letter-spacing:0;white-space:nowrap;color:#a7bacd;min-height:28px;display:inline-flex;align-items:center}
 .nav-forum{font-size:11px;white-space:nowrap;color:#b7cfa9;padding:10px 0}.forum-tool-entry{background:#121b12;border-color:#b7cfa939;color:#d3e3c7}.forum-tool-entry:hover{border-color:#b7cfa980}@media(max-width:1023px){.nav-forum{display:none}}
+
+/* Leave room for the shared language selector on narrow screens. */
+@media(max-width:767px){.floating-navbar{gap:8px}.floating-navbar .nav-cta{display:none}.floating-navbar .menu-toggle{margin-left:auto}}

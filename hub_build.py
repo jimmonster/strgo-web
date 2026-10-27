@@ -84,6 +84,8 @@ def build_hub(root, output, config, context, replace):
             source = source.replace('</body>', '<script type="module" src="/shared/experience-navigation.js"></script>\n</body>')
         if route == 'admin/index.html' and '<strgo-navigation' not in source:
             source = source.replace('<span id="account">', '<strgo-navigation></strgo-navigation><span id="account">')
+        if (route == 'terminal/index.html' or route.startswith(('projects/', 'updates/'))) and '<strgo-navigation' not in source:
+            source = source.replace('</body>', '<strgo-navigation class="strgo-space-navigation"></strgo-navigation>\n</body>')
         if '<strgo-navigation' in source and '/shared/site-navigation.js' not in source:
             source = source.replace('</body>', script + '\n</body>')
         if route.startswith(('dreams/', 'nexus/')):
