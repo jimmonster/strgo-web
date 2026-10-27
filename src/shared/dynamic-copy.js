@@ -13,5 +13,6 @@ export const dynamicRows = [
 
 ['已编辑','Edited','編集済み','수정됨'],['评论了「','commented on “','が「','님이 “'],['」','”','」','”'],
 
+['AI 创作空间 — STRGO','AI Workspace — STRGO','AI 制作スペース — STRGO','AI 창작 공간 — STRGO'],
 ];
 export const dynamicCopy=Object.fromEntries(['en','ja','ko'].map((locale,i)=>[locale,Object.fromEntries(dynamicRows.map(row=>[row[0],row[i+1]]))]));

@@ -31,7 +31,7 @@ test('MEOW live UI switching preserves local names, notes, inputs, options and f
       assert.equal(document.querySelector('input').value,'猫咪');
       assert.equal(document.querySelector('textarea').value,'保存本地草稿');
       for(const selector of ['.profile-card h2','.local-message p','#companion-card h2'])assert.equal(document.querySelector(selector).textContent,'短毛');
-      if(locale==='zh-CN')assert.equal(document.querySelector('#sample-default-name').textContent,'你');
+      if(locale==='zh-CN'){assert.equal(document.querySelector('#sample-default-name').textContent,'你');assert.equal(translate('Bubble Wave ←'),'泡泡挥爪 ←');assert.equal(translate('收藏 Bubble Wave'),'收藏 泡泡挥爪');assert.equal(translate('idle · 轻轻呼吸中'),'待机 · 轻轻呼吸中');}
       if(locale==='en'){assert.equal(translate('摸摸头 · 播放中（单次预览）'),'Pet · Playing (single preview)');assert.equal(translate('当前网址：https://example.test/?q=猫咪'),'Current URL: https://example.test/?q=猫咪');}
     }
   } finally {setLocale('zh-CN',{persist:false});globalThis.document=previousDocument;globalThis.location=previousLocation;}

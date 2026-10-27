@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-strgo-surface="workflow">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,7 +20,7 @@
     <section id="studio" hidden>
       <div class="studio-heading"><div><p class="eyebrow">LOCAL CREATIVE STUDIO</p><h1>本地创作台<span class="accent">.</span></h1></div><div class="connection"><span id="connection-dot" class="dot"></span><div><strong id="connection-label">检查本机连接</strong><p id="connection-detail" class="small muted">任务由本机 ComfyUI 执行</p></div></div></div>
       <div class="studio-layout"><form id="create-form" class="panel create-panel"><div class="panel-heading"><h2>新的创作</h2><span class="small muted">01 / CREATE</span></div><label>工作流<select id="workflow" required><option value="">等待本机工作流</option></select></label><p id="workflow-description" class="small muted">连接本机后会显示可用工作流。</p><label>创作描述<textarea id="prompt" rows="9" maxlength="12000" required placeholder="描述画面、动作、镜头与声音…"></textarea></label><div id="reference-section" hidden><label>参考图片<input id="reference" type="file" accept="image/*"></label><p id="reference-status" class="small muted">图片会压缩至 2 MB 内。</p><img id="reference-preview" hidden alt="参考图片预览"><button id="clear-reference" type="button" class="text-button">移除参考图</button></div><p class="small muted">尺寸、时长与采样参数采用本机已配置的工作流预设。</p><p id="create-message" class="message" role="status"></p><button id="generate" class="primary" type="submit" disabled>提交本机生成 <span>↗</span></button></form>
-      <div class="results-panel"><div class="panel-heading"><h2>创作记录 <span id="job-count" class="count">0</span></h2><button id="refresh" type="button">刷新状态 ↻</button></div><p id="jobs-message" class="message" role="status"></p><div id="jobs" class="jobs"><div class="empty"><span>✳</span><h3>第一件作品，从这里开始</h3><p class="small muted">图片与视频完成后将出现在这里。</p></div></div><p class="small muted footnote">展示最近 50 个任务 · 本机每次执行一个任务 · 离线时暂停提交</p></div></div>
+      <div class="results-panel"><div class="panel-heading"><h2>创作记录 <span id="job-count" class="count">0</span></h2><button id="refresh" type="button">刷新状态 ↻</button></div><p id="jobs-message" class="message" role="status"></p><div id="jobs" class="jobs"><div class="empty"><span>✳</span><h3 data-strgo-ui-copy>第一件作品，从这里开始</h3><p class="small muted" data-strgo-ui-copy>图片与视频完成后将出现在这里。</p></div></div><p class="small muted footnote">展示最近 50 个任务 · 本机每次执行一个任务 · 离线时暂停提交</p></div></div>
     </section>
   </main>
   <footer><span>STRGO WORKFLOW</span><span>PRIVATE LOCAL COMPUTE / <span id="account-name">ADMINISTRATOR</span></span></footer>

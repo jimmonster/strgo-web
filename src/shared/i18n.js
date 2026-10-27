@@ -9,11 +9,20 @@ import { polyverseCopy } from './polyverse-copy.js';
 import { polyverseTraditional } from './polyverse-traditional.js';
 import { dynamicCopy } from './dynamic-copy.js';
 import { dynamicTraditional } from './dynamic-traditional.js';
+import { adminCopy } from './admin-copy.js';
+import { adminTraditional } from './admin-traditional.js';
+import { workflowCopy } from './workflow-copy.js';
+import { workflowTraditional } from './workflow-traditional.js';
 
 export const LOCALE_KEY = 'strgo:locale:v1';
 export const SUPPORTED_LOCALES = ['zh-CN', 'zh-TW', 'en', 'ja', 'ko'];
 const dictionaries = { 'zh-TW': traditional, en: english, ja: japanese, ko: korean };
 const dynamicDictionaries = { ...dynamicCopy, 'zh-TW': dynamicTraditional };
+const adminDictionaries = { ...adminCopy, 'zh-TW': adminTraditional };
+const workflowDictionaries = { ...workflowCopy, 'zh-TW': workflowTraditional };
+const isWorkflowPage = () => globalThis.document?.documentElement?.dataset.strgoSurface === 'workflow';
+const isSiteAdminPage = () => /^\/admin\/?$/.test(globalThis.location?.pathname || '');
+const isAiAdminPage = () => /^\/admin\/ai\/?$/.test(globalThis.location?.pathname || '');
 const nexusDictionaries = { ...nexusCopy, 'zh-TW': nexusTraditional };
 const isNexusPage = () => /^\/nexus(?:\/|$)/.test(globalThis.location?.pathname || '');
 const isMeowPage = () => /^\/meow(?:\/|$)/.test(globalThis.location?.pathname || '');
@@ -50,12 +59,14 @@ export function setLocale(locale, { persist = true } = {}) {
 }
 
 export function translate(source, locale = getLocale()) {
-  if (typeof source !== 'string' || (locale === 'zh-CN' && !isMeowPage() && !isPolyversePage())) return source;
+  if (typeof source !== 'string' || (locale === 'zh-CN' && !isMeowPage() && !isPolyversePage() && !isWorkflowPage())) return source;
   const match = source.match(/^(\s*)([\s\S]*?)(\s*)$/);
   const text = match[2];
   const dictionary = dictionaries[locale] || {};
-  let value = (isPolyversePage() ? polyverseDictionaries[locale]?.[text] : undefined) ?? (isMeowPage() ? meowDictionaries[locale]?.[text] : undefined) ?? (isNexusPage() ? nexusDictionaries[locale]?.[text] : undefined) ?? dynamicDictionaries[locale]?.[text] ?? dictionary[text] ?? (locale === 'zh-TW' || locale === 'zh-CN' ? undefined : english[text]);
-  if (value === undefined && locale === 'zh-CN' && !isPolyversePage()) return source;
+  let value = (isWorkflowPage() ? workflowDictionaries[locale]?.[text] : undefined) ?? (isPolyversePage() ? polyverseDictionaries[locale]?.[text] : undefined) ?? (isMeowPage() ? meowDictionaries[locale]?.[text] : undefined) ?? (isNexusPage() ? nexusDictionaries[locale]?.[text] : undefined) ?? ((isSiteAdminPage() || isAiAdminPage()) ? adminDictionaries[locale]?.[text] : undefined) ?? dynamicDictionaries[locale]?.[text] ?? dictionary[text] ?? (locale === 'zh-TW' || locale === 'zh-CN' ? undefined : english[text]);
+  // MEOW also has English source labels composed at runtime (for example,
+  // gallery titles followed by an arrow), so let its patterns run in zh-CN.
+  if (value === undefined && locale === 'zh-CN' && !isPolyversePage() && !isMeowPage()) return source;
   if (value === undefined) {
     let m;
     if (isPolyversePage() && (m = text.match(/^(\d+) RESULTS(?: FOR “([\s\S]*)”)?$/))) {
@@ -84,7 +95,7 @@ export function translate(source, locale = getLocale()) {
     } else if (isMeowPage() && (m = text.match(/^(.+) · 播放中(（单次预览）)?$/)) && meowDictionaries[locale]?.[m[1]]) {
       const action=translate(m[1],locale), single=!!m[2]; value={en:`${action} · Playing${single?' (single preview)':''}`,'zh-TW':`${action} · 播放中${single?'（單次預覽）':''}`,ja:`${action} · 再生中${single?'（1 回プレビュー）':''}`,ko:`${action} · 재생 중${single?' (1회 미리보기)':''}`}[locale];
     } else if (isMeowPage() && (m = text.match(/^idle · (已回到暂停状态|轻轻呼吸中)$/))) {
-      value=`${{en:'Idle','zh-TW':'待機',ja:'待機',ko:'대기'}[locale]} · ${translate(m[1],locale)}`;
+      value=`${{en:'Idle','zh-CN':'待机','zh-TW':'待機',ja:'待機',ko:'대기'}[locale]} · ${translate(m[1],locale)}`;
     } else if (isMeowPage() && (m = text.match(/^(当前网址|导入未完成|无法生成图片)：(.+)$/))) {
       const labels={en:['Current URL','Import incomplete','Image creation failed'],'zh-TW':['當前網址','匯入未完成','無法生成圖片'],ja:['現在の URL','読み込み未完了','画像を作成できません'],ko:['현재 주소','가져오기 미완료','이미지를 만들 수 없습니다']}; const index=['当前网址','导入未完成','无法生成图片'].indexOf(m[1]); if(labels[locale])value=`${labels[locale][index]}: ${index===0?m[2]:translate(m[2],locale)}`;
     } else if (isMeowPage() && (m = text.match(/^认识 ([A-Za-z]+)$/))) {
@@ -96,7 +107,7 @@ export function translate(source, locale = getLocale()) {
     } else if (isMeowPage() && (m = text.match(/^([A-Za-z]+)：(.+)，(.+)$/))) {
       value=`${m[1]}: ${translate(m[2],locale)}, ${m[3].split('、').map(part=>translate(part,locale)).join(', ')}`;
     } else if (isMeowPage() && (m = text.match(/^(取消收藏|收藏) (.+)$/))) {
-      const action = m[1]==='收藏'?{en:'Favorite','zh-TW':'收藏',ja:'お気に入りに追加',ko:'즐겨찾기 추가'}[locale]:{en:'Remove favorite','zh-TW':'取消收藏',ja:'お気に入りから削除',ko:'즐겨찾기 제거'}[locale]; value = `${action} ${translate(m[2],locale)}`;
+      const action = m[1]==='收藏'?{en:'Favorite','zh-CN':'收藏','zh-TW':'收藏',ja:'お気に入りに追加',ko:'즐겨찾기 추가'}[locale]:{en:'Remove favorite','zh-CN':'取消收藏','zh-TW':'取消收藏',ja:'お気に入りから削除',ko:'즐겨찾기 제거'}[locale]; value = `${action} ${translate(m[2],locale)}`;
     } else if (isMeowPage() && (m = text.match(/^(.+。) (每件商品都有自己的三维结构，可以旋转观察正面、侧面与背面。)$/))) {
       value=`${translate(m[1],locale)} ${translate(m[2],locale)}`;
     } else if (isMeowPage() && (m = text.match(/^· (短毛|长毛|半长毛|近乎无毛)$/))) {
@@ -113,6 +124,24 @@ export function translate(source, locale = getLocale()) {
       value = { en: `Quality set to: ${m[1]}`, 'zh-TW': `畫質已設為：${m[1]}`, ja: `画質を設定：${m[1]}`, ko: `화질 설정: ${m[1]}` }[locale];
     } else if (isNexusPage() && (m = text.match(/^(\d+ \/ )(.+?) — (.+)$/))) {
       value = `${m[1]}${translate(m[2], locale)} — ${translate(m[3], locale)}`;
+    } else if (isAiAdminPage() && (m = text.match(/^(对话|—) \/ (音乐|—)$/))) {
+      value=`${translate(m[1],locale)} / ${translate(m[2],locale)}`;
+    } else if (isAiAdminPage() && (m = text.match(/^(\d+) 次 \/ (\d+) 秒$/))) {
+      value={en:`${m[1]} chats / ${m[2]} seconds`,'zh-TW':`${m[1]} 次 / ${m[2]} 秒`,ja:`${m[1]} 回 / ${m[2]} 秒`,ko:`${m[1]}회 / ${m[2]}초`}[locale];
+    } else if (isAiAdminPage() && /^(?:AI 对话|音乐生成)(?: \/ (?:AI 对话|音乐生成))?$/.test(text)) {
+      value=text.split(' / ').map(part=>translate(part,locale)).join(' / ');
+    } else if (isAiAdminPage() && (m = text.match(/^(GPU 任务占用中|已连接|待连接检查)( · 排空中)?$/))) {
+      value=translate(m[1],locale)+(m[2]?` · ${translate('排空中',locale)}`:'');
+    } else if (isAiAdminPage() && (m = text.match(/^(\d+) 个连接$/))) {
+      value={en:`${m[1]} connections`,'zh-TW':`${m[1]} 個連接`,ja:`${m[1]} 件の接続`,ko:`연결 ${m[1]}개`}[locale];
+    } else if (isSiteAdminPage() && (m = text.match(/^共 (\d+) 条( · .+)?$/))) {
+      value={en:`${m[1]} total${m[2] || ''}`,'zh-TW':`共 ${m[1]} 條${m[2] || ''}`,ja:`合計 ${m[1]} 件${m[2] || ''}`,ko:`총 ${m[1]}건${m[2] || ''}`}[locale];
+    } else if (isSiteAdminPage() && (m = text.match(/^(\d+) 张 \/ (\d+) 首$/))) {
+      value={en:`${m[1]} images / ${m[2]} tracks`,'zh-TW':`${m[1]} 張 / ${m[2]} 首`,ja:`画像 ${m[1]} 件 / 音声 ${m[2]} 件`,ko:`이미지 ${m[1]}개 / 오디오 ${m[2]}개`}[locale];
+    } else if (isSiteAdminPage() && (m = text.match(/^有效期至 (.+)$/))) {
+      value={en:`Valid until ${m[1]}`,'zh-TW':`有效期至 ${m[1]}`,ja:`有効期限 ${m[1]}`,ko:`유효 기간 ${m[1]}`}[locale];
+    } else if (isSiteAdminPage() && (m = text.match(/^(.+) (\d+)$/)) && adminDictionaries[locale]?.[m[1]]) {
+      value=`${translate(m[1],locale)} ${m[2]}`;
     } else if ((globalThis.location?.pathname || '').startsWith('/forum/') && (m = text.match(/^(\d+) (分钟|小时)前$/))) {
       const n=m[1],hours=m[2]==='小时';value={en:`${n} ${hours?'hours':'minutes'} ago`,'zh-TW':`${n} ${hours?'小時':'分鐘'}前`,ja:`${n} ${hours?'時間':'分'}前`,ko:`${n}${hours?'시간':'분'} 전`}[locale];
     } else if ((globalThis.location?.pathname || '').startsWith('/forum/') && (m = text.match(/^(已编辑|已读|未读) · (.+)$/))) {
@@ -131,7 +160,7 @@ export function translate(source, locale = getLocale()) {
       value={en:`Apply built-in inspiration (${m[1]})`,'zh-TW':`一鍵套用預裝靈感（${m[1]} 個）`,ja:`プリセットのアイデアを適用（${m[1]} 件）`,ko:`기본 영감 적용 (${m[1]}개)`}[locale];
     } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (m = text.match(/^✧ 本次占用 (\d+) 秒额度$/))) {
       value={en:`✧ Uses ${m[1]} seconds of allowance`,'zh-TW':`✧ 本次佔用 ${m[1]} 秒額度`,ja:`✧ 今回は ${m[1]} 秒の利用枠を使用`,ko:`✧ 이번 작업에 ${m[1]}초 한도 사용`}[locale];
-    } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (m = text.match(/^今日剩余 (\d+) 秒$/))) {
+    } else if (((globalThis.location?.pathname || '').startsWith('/ai/') || isAiAdminPage()) && (m = text.match(/^今日剩余 (\d+) 秒$/))) {
       value={en:`${m[1]} seconds left today`,'zh-TW':`今日剩餘 ${m[1]} 秒`,ja:`本日の残り ${m[1]} 秒`,ko:`오늘 ${m[1]}초 남음`}[locale];
     } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (m = text.match(/^有效期：(.+)$/))) {
       const prefix={en:'Valid until: ','zh-TW':'有效期：',ja:'有効期限：',ko:'유효 기간: '}[locale]; if(prefix)value=prefix+translate(m[1],locale);
@@ -175,10 +204,12 @@ function isHubPage() {
   return document.documentElement.dataset.strgoUi === 'hub' || (/^\/ai\/(?:tasks|assets)\/?$/.test(location.pathname) && !!document.querySelector('#railNav'));
 }
 
-function localizesTitle() { return isHubPage() || isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance|forum|image-playground)\/?$/.test(location.pathname); }
+function localizesTitle() { return isHubPage() || isWorkflowPage() || isNexusPage() || isMeowPage() || isPolyversePage() || isSiteAdminPage() || isAiAdminPage() || /^\/ai(?:\/|$)/.test(location.pathname) || /^\/(?:home|dance|forum|image-playground)\/?$/.test(location.pathname); }
 
 function eligible(element) {
   if (!element || element.closest('[data-strgo-user-content], [contenteditable]:not([contenteditable="false"]), .post-preview, .comment-body, .author-name')) return false;
+  if (isWorkflowPage() && element.closest('#jobs') && !element.closest('#jobs [data-strgo-ui-copy]')) return false;
+  if (isAiAdminPage() && element.closest('#admin-content .error, #dialog-content .error')) return false;
   const forumCopy = (globalThis.location?.pathname || '').startsWith('/forum/') && element.closest('[data-strgo-ui-copy]') && element.closest('#posts, #comments-list, #notifications-list, #detail-content');
   const staticToast = !!element.closest('#toast[data-strgo-static]');
   if ((element.closest(protectedContent) && !forumCopy) || (!isNexusPage() && !isPolyversePage() && !staticToast && element.closest('#dialog-title, #toast'))) return false;
@@ -186,11 +217,14 @@ function eligible(element) {
   const surface = html.dataset.strgoUi;
   const path = location.pathname;
   if (element.tagName === 'TITLE' && localizesTitle()) return true;
+  if (isWorkflowPage()) return !!element.closest('header, #auth, #studio, footer');
   if (isHubPage() || surface === 'classic') return true;
   if (surface === 'experience') return isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance)\/?$/.test(path);
   if (path.startsWith('/forum/')) return staticToast || !!element.closest('.skip, .topbar, #auth-view, #workspace, .mobile-bottom, dialog');
   if (path.startsWith('/image-playground/')) return staticToast || !!element.closest('.skip, .topbar, #auth-view, #workspace, #image-dialog');
   if (path.startsWith('/ai/')) return staticToast || !!element.closest('.sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .overview-heading, #main .overview-cards, #main .history, #main .music-composer > .panel-title, #music-form, .settings-grid, .settings-panel, #access-form') || (!!document.querySelector('#login-form, #access-form') && !!element.closest('#dialog-content'));
+  if (isSiteAdminPage()) return !!element.closest('.skip, .layout aside, .workspace > header, .workspace > footer, #main, #feedback[data-strgo-static]');
+  if (isAiAdminPage()) return staticToast || !!element.closest('.skip, .sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .admin-tabs, #main > section > .empty, #main > section > button, #admin-content .panel-title, #admin-content thead, #admin-content .info-note, #admin-content .empty, #admin-content [data-strgo-ui-copy], #admin-content > section > h2, #admin-content .admin-lower > section > h2, #admin-content .reconcile-panel > p, #admin-content .table-wrap + p, #admin-content button, #model-editor, #node-form, #budget-form, #member-form, #dialog-content, #dialog > .dialog-x');
   if (path.startsWith('/admin/')) return staticToast || !!element.closest('.layout aside, .workspace > header, .workspace > footer');
   return false;
 }
@@ -236,7 +270,7 @@ export function setupI18n() {
   const start = () => {
     const update = () => {
       const surface = document.documentElement.dataset.strgoUi;
-      if (isHubPage() || surface === 'classic' || (surface === 'experience' && (isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance)\/?$/.test(location.pathname))) || /^\/(?:forum|image-playground)\//.test(location.pathname)) document.documentElement.lang = getLocale();
+      if (isHubPage() || isWorkflowPage() || isSiteAdminPage() || isAiAdminPage() || surface === 'classic' || (surface === 'experience' && (isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance)\/?$/.test(location.pathname))) || /^\/(?:forum|image-playground|ai)\//.test(location.pathname)) document.documentElement.lang = getLocale();
       localizeTree(document.body);
       if (localizesTitle()) localizeTree(document.querySelector('title'));
     };
