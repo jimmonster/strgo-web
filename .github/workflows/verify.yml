@@ -48,6 +48,7 @@ jobs:
         run: |
           node tests/admin-browser.mjs
           node tests/ai-browser.mjs
+          node tests/panorama-browser.mjs
   terminal:
     runs-on: ubuntu-latest
     timeout-minutes: 20

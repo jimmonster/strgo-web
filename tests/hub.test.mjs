@@ -10,10 +10,10 @@ import { escapeHTML as esc } from '../src/hub/core.js';
 
 const registry = JSON.parse(await readFile(new URL('../content/app-registry.json', import.meta.url)));
 test('public catalogue hides administrative routes and searches Chinese, English and paths', () => {
-  assert.equal(registry.entries.length, 27);
-  assert.equal(registry.entries.filter(e => e.group === '沉浸空间').length, 8);
-  assert.equal(filterEntries(registry.entries, { role: 'guest' }).length, 24);
-  assert.equal(filterEntries(registry.entries, { role: 'admin' }).length, 27);
+  assert.equal(registry.entries.length, 28);
+  assert.equal(registry.entries.filter(e => e.group === '沉浸空间').length, 9);
+  assert.equal(filterEntries(registry.entries, { role: 'guest' }).length, 25);
+  assert.equal(filterEntries(registry.entries, { role: 'admin' }).length, 28);
   assert.equal(filterEntries(registry.entries, { query: '/home' })[0].id, 'S01');
   assert.equal(filterEntries(registry.entries, { query: '  音乐  ' })[0].id, 'C03');
   assert.deepEqual(filterEntries(registry.entries, { group: '我的收藏', favorites: ['A01'] }), []);

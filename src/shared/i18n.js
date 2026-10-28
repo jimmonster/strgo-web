@@ -15,6 +15,7 @@ import { workflowCopy } from './workflow-copy.js';
 import { workflowTraditional } from './workflow-traditional.js';
 import { legacyCopy } from './legacy-copy.js';
 import { legacyTraditional } from './legacy-traditional.js';
+import { panoramaCopy } from './panorama-copy.js';
 
 export const LOCALE_KEY = 'strgo:locale:v1';
 export const SUPPORTED_LOCALES = ['zh-CN', 'zh-TW', 'en', 'ja', 'ko'];
@@ -68,7 +69,7 @@ export function translate(source, locale = getLocale()) {
   const match = source.match(/^(\s*)([\s\S]*?)(\s*)$/);
   const text = match[2];
   const dictionary = dictionaries[locale] || {};
-  let value = (isWorkflowPage() ? workflowDictionaries[locale]?.[text] : undefined) ?? (isLegacyPage() ? legacyDictionaries[locale]?.[text] : undefined) ?? (isPolyversePage() ? polyverseDictionaries[locale]?.[text] : undefined) ?? (isMeowPage() ? meowDictionaries[locale]?.[text] : undefined) ?? (isNexusPage() ? nexusDictionaries[locale]?.[text] : undefined) ?? ((isSiteAdminPage() || isAiAdminPage()) ? adminDictionaries[locale]?.[text] : undefined) ?? dynamicDictionaries[locale]?.[text] ?? dictionary[text] ?? (locale === 'zh-TW' || locale === 'zh-CN' ? undefined : english[text]);
+  let value = panoramaCopy[locale]?.[text] ?? (isWorkflowPage() ? workflowDictionaries[locale]?.[text] : undefined) ?? (isLegacyPage() ? legacyDictionaries[locale]?.[text] : undefined) ?? (isPolyversePage() ? polyverseDictionaries[locale]?.[text] : undefined) ?? (isMeowPage() ? meowDictionaries[locale]?.[text] : undefined) ?? (isNexusPage() ? nexusDictionaries[locale]?.[text] : undefined) ?? ((isSiteAdminPage() || isAiAdminPage()) ? adminDictionaries[locale]?.[text] : undefined) ?? dynamicDictionaries[locale]?.[text] ?? dictionary[text] ?? (locale === 'zh-TW' || locale === 'zh-CN' ? undefined : english[text]);
   // MEOW also has English source labels composed at runtime (for example,
   // gallery titles followed by an arrow), so let its patterns run in zh-CN.
   if (value === undefined && locale === 'zh-CN' && !isPolyversePage() && !isMeowPage()) return source;
@@ -248,7 +249,7 @@ function eligible(element) {
   if (element.tagName === 'TITLE' && localizesTitle()) return true;
   if (isWorkflowPage()) return !!element.closest('header, #auth, #studio, footer');
   if (isHubPage() || surface === 'classic') return true;
-  if (surface === 'experience') return isArchivePage() || isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance)\/?$/.test(path);
+  if (surface === 'experience') return isArchivePage() || isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance|360)\/?$/.test(path);
   if (path.startsWith('/forum/')) return staticToast || !!element.closest('.skip, .topbar, #auth-view, #workspace, .mobile-bottom, dialog');
   if (path.startsWith('/image-playground/')) return staticToast || !!element.closest('.skip, .topbar, #auth-view, #workspace, #image-dialog');
   if (path.startsWith('/ai/')) return staticToast || aiCopy || !!element.closest('.skip, #app .initial-loading, .service-banner, .sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .overview-heading, #main .overview-cards, #main .recent-panel > .panel-title, #main .quota-card, #main .history, #main .music-composer > .panel-title, #main .music-results > .panel-title, #music-form, .settings-grid, .settings-panel, #access-form') || (!!document.querySelector('#login-form, #access-form') && !!element.closest('#dialog-content'));
@@ -302,7 +303,7 @@ export function setupI18n() {
   const start = () => {
     const update = () => {
       const surface = document.documentElement.dataset.strgoUi;
-      if (isHubPage() || isWorkflowPage() || isLegacyPage() || isSiteAdminPage() || isAiAdminPage() || surface === 'classic' || (surface === 'experience' && (isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance)\/?$/.test(location.pathname))) || /^\/(?:forum|image-playground|ai)\//.test(location.pathname)) document.documentElement.lang = getLocale();
+      if (isHubPage() || isWorkflowPage() || isLegacyPage() || isSiteAdminPage() || isAiAdminPage() || surface === 'classic' || (surface === 'experience' && (isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance|360)\/?$/.test(location.pathname))) || /^\/(?:forum|image-playground|ai)\//.test(location.pathname)) document.documentElement.lang = getLocale();
       localizeTree(document.body);
       if (localizesTitle()) localizeTree(document.querySelector('title'));
     };

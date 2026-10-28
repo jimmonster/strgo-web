@@ -1,4 +1,4 @@
-import { requestedJob } from './hub-links.js';
+import { requestedJob, panoramaPath, panoramaDraft } from './hub-links.js';
 import { icons } from './icons.js';
 import { compressReferenceImage } from './reference-image.js';
 
@@ -84,6 +84,7 @@ function lock() {
   $('#endpoint').value = ''; $('#model').value = ''; $('#invite-code').textContent = ''; $('#invite-result').hidden = true;
   $('#old-password').value = ''; $('#new-password').value = '';
   $('#image-dialog').close(); $('#preview-image').removeAttribute('src');
+  $('#panorama-image').removeAttribute('href');
   $('#current-output').replaceChildren(); $('#library-list').replaceChildren();
 }
 function setConfig(config) {
@@ -168,7 +169,14 @@ async function unlock() {
   setStorage(info.storageReady, info.backup, info.storage); setConfig(info.config);
   showView(['create', 'library', 'inspirations', 'settings'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'create');
   await refreshCurrent();
+  const draft = panoramaDraft(location.search);
   await openHubJob();
+  if (draft) {
+    selectSize(draft.size); $('#prompt').value = draft.prompt; $('#prompt').dispatchEvent(new Event('input'));
+    showView('create');
+    const params = new URLSearchParams(location.search); params.delete('panorama');
+    history.replaceState(null, '', location.pathname + (params.size ? '?' + params : '') + location.hash);
+  }
 }
 async function openHubJob() {
   const requested = requestedJob(location.search);
@@ -208,6 +216,9 @@ function openImage(image, job) {
   $('#preview-prompt').textContent = job.prompt;
   $('#download-image').href = image.downloadUrl;
   $('#download-image').setAttribute('download', 'strgo-' + image.id);
+  const panorama = panoramaPath(image.id);
+  $('#panorama-image').hidden = !panorama;
+  if (panorama) $('#panorama-image').href = panorama;
   $('#image-dialog').showModal();
 }
 function renderImage(image, job) {

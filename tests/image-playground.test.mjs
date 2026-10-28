@@ -5,12 +5,12 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { parseHTML } from 'linkedom';
 import { icons } from '../src/image-playground/icons.js';
-import { requestedJob } from '../src/image-playground/hub-links.js';
+import { requestedJob, panoramaPath, panoramaDraft } from '../src/image-playground/hub-links.js';
 import { servePreview } from '../scripts/preview.mjs';
 
 const html = readFileSync(new URL('../dist/image-playground/index.html', import.meta.url), 'utf8');
 const source = readFileSync(new URL('../src/image-playground/app.js', import.meta.url), 'utf8')
-  .replace("import { requestedJob } from './hub-links.js';", '')
+  .replace("import { requestedJob, panoramaPath, panoramaDraft } from './hub-links.js';", '')
   .replace("import { icons } from './icons.js';", '')
   .replace("import { compressReferenceImage } from './reference-image.js';", '');
 const tick = async () => { for (let i = 0; i < 6; i++) await new Promise(resolve => setImmediate(resolve)); };
@@ -39,7 +39,7 @@ async function environment({ search = '', loggedIn = false, role = 'admin', stor
     readAsDataURL(file) { this.result = `data:${file.type};base64,UE5HLXRlc3Q=`; this.onload(); }
   }
   const sandbox = {
-    window, document, icons, requestedJob, URLSearchParams, AbortController, Event: dom.Event, FileReader: TestFileReader, crypto: { randomUUID }, location, compressReferenceImage: compress,
+    window, document, icons, requestedJob, panoramaPath, panoramaDraft, URLSearchParams, AbortController, Event: dom.Event, FileReader: TestFileReader, crypto: { randomUUID }, location, compressReferenceImage: compress,
     history: { replaceState(_, __, hash) { location.hash = hash; } },
     navigator: { clipboard: { async writeText(value) { writes.push(value); } } },
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; }, clearTimeout(id) { timers.delete(id); },
@@ -379,6 +379,7 @@ test('Saved images use authenticated paths, prompt content stays text, and libra
   assert.equal(env.document.querySelectorAll('img[onerror]').length, 0);
   assert.equal(env.document.querySelector('.job-prompt').textContent, prompt);
   env.click('.image-open'); assert.equal(env.document.querySelector('#image-dialog').open, true);
+  assert.equal(env.document.querySelector('#panorama-image').getAttribute('href'), panoramaPath(job.images[0].id));
   assert.equal(env.document.querySelector('#preview-prompt').textContent, prompt);
   assert.equal(env.document.querySelector('#download-image').getAttribute('href'), job.images[0].downloadUrl);
   env.click('#reuse-prompt'); assert.equal(env.document.querySelector('#prompt').value, prompt);
@@ -490,11 +491,21 @@ test('An unavailable API produces an explicit error and keeps the private worksp
 test('Portal image deep links reopen the requested job and reuse parameters without generating', async () => {
   const id = 'b'.repeat(32);
   const job = { id, userId:'owner', username:'creator', prompt:'Old lake prompt', size:'1024x1536', quality:'high', count:2, model:'configured-model', status:'complete', created:1700000000, error:'', images:[], hasReference:true };
-  const env = await environment({ loggedIn:true, search:'?reuse=' + id, initialJobs:[job] });
+  const env = await environment({ loggedIn:true, search:'?reuse=' + id + '&panorama=1', initialJobs:[job] });
   assert.equal(env.document.querySelector('#prompt').value, job.prompt);
   assert.equal(env.document.querySelector('#count').value, '2');
   assert.equal(env.document.querySelector('#quality').value, 'high');
   assert.ok(env.requests.some(r => r.url === '/api/image/jobs/' + id && r.method === 'GET'));
   assert.equal(env.requests.filter(r => r.method === 'POST' && r.url === '/api/image/jobs').length, 0);
+  env.close();
+});
+
+test('Panorama creation link prefills a 2:1 draft and waits for explicit generation', async () => {
+  const env = await environment({ loggedIn:true, search:'?panorama=1' });
+  assert.equal(env.document.querySelector('#size-width').value,'2048');
+  assert.equal(env.document.querySelector('#size-height').value,'1024');
+  assert.match(env.document.querySelector('#prompt').value,/等距柱状投影/);
+  assert.equal(env.document.querySelector('#custom-size-controls').hidden,false);
+  assert.equal(env.requests.some(r=>r.method==='POST' && r.url==='/api/image/jobs'),false);
   env.close();
 });

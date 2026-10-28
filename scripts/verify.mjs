@@ -58,6 +58,7 @@ if (rootBuilt && options.has('--browser')) {
   node('AI real HTTP browser regression', ['tests/ai-browser.mjs'], '', { STRGO_PYTHON: python });
   node('Workflow browser regression', ['tests/local-studio-browser.mjs']);
   node('Image browser regression', ['tests/image-browser.mjs']);
+  node('360 panorama browser regression', ['tests/panorama-browser.mjs']);
 }
 console.log('\nVerification results:');
 for (const result of results) console.log((result.passed ? 'PASS ' : 'FAIL ') + result.name);

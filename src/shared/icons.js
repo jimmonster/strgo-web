@@ -14,6 +14,8 @@ const paths = {
   star: '<path d="m12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z"/>',
   arrow: '<path d="M5 19 19 5M5 5h14v14"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
+  panorama: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5c4 2 10 2 14 0M5 17.5c4-2 10-2 14 0"/>',
+  fullscreen: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
   mark: '<circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-35 12 12)"/><path d="M5 4 19 20"/>',
 };
 const aliases = { studio:'image', overview:'catalog', workflow:'tasks', login:'arrow', classic:'hub', room:'hub', dance:'music', dreams:'spaces', nexus:'spaces', polyverse:'spaces', meow:'spaces', swarmera:'spaces', archive:'spaces', forum:'chat', projects:'assets', updates:'tasks', about:'hub', lab:'spaces', contact:'arrow' };

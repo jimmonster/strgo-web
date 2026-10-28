@@ -22,7 +22,8 @@
     "test:ai": "node --test tests/ai-workspace.test.mjs && python3 -m unittest discover -s tests -p \"test_ai_*.py\" -v",
     "test:admin:browser": "node tests/admin-browser.mjs",
     "test:ai:browser": "node tests/ai-browser.mjs",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "test:360:browser": "node tests/panorama-browser.mjs"
   },
   "dependencies": {
     "@studio-freight/lenis": "1.0.42",

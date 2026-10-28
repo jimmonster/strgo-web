@@ -8,9 +8,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def render(registry):
+    entries = registry['entries']
+    spaces = sum(e['group'] == '沉浸空间' for e in entries)
+    public = sum(e['group'] != '管理' for e in entries)
     lines = ['# 门户功能与视觉清单', '',
              '由 `content/app-registry.json` 生成；请修改源清单后执行 `python3 scripts/sync-hub-docs.py`。', '',
-             '共 26 个主入口、8 个沉浸空间。访客和成员可见 24 个入口；管理员额外可见 Workflow 与管理控制台。可见入口不表示已取得模块或模型授权。', '',
+             f'共 {len(entries)} 个主入口、{spaces} 个沉浸空间。访客和成员可见 {public} 个入口；管理员额外可见管理分类入口。可见入口不表示已取得模块或模型授权。', '',
              '| 编号 | 功能 | 路径基准 | 分类 | 访问条件 |', '| --- | --- | --- | --- | --- |']
     for item in registry['entries']:
         route = item['route']

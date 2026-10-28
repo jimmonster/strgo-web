@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN" data-strgo-ui="experience">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070b10">
+  <meta name="description" content="在 STRGO 探索 360° 校园全景，或导入本地与 AI 生图作品。">
+  <title>360° 全景 · STRGO</title>
+  <link rel="canonical" href="{{origin}}/360/">
+  <link rel="stylesheet" href="/hub/tokens.css?v={{asset_version}}">
+  <link rel="stylesheet" href="/shared/design-system.css?v={{asset_version}}">
+  <link rel="stylesheet" href="/360/style.css?v={{asset_version}}">
+</head>
+<body>
+  <a class="skip" href="#viewport">跳到全景画面</a>
+  <header class="topbar">
+    <a class="brand" href="/hub/" aria-label="返回统一主页">STRGO<span> / 360</span></a>
+    <strgo-navigation></strgo-navigation>
+  </header>
+  <main id="main">
+    <div class="intro"><div><p class="eyebrow">A DIFFERENT POINT OF VIEW</p><h1>转身，发现另一面。</h1></div><p>从校园的阳光出发，走进你的全景世界。</p></div>
+    <section class="viewer" id="viewer" aria-label="360° 全景浏览器">
+      <div class="viewport" id="viewport" tabindex="0" role="region" aria-label="全景画面" aria-describedby="gesture-hint keyboard-hint" aria-busy="true">
+        <img class="fallback" id="fallback" src="/assets/panoramas/campus.webp" alt="阳光下的大学校园广场全景" draggable="false">
+        <div class="scene-label"><span class="tag">360° / PANORAMA</span><span id="source-kind">校园全景</span></div>
+        <p class="gesture-hint" id="gesture-hint">拖动画面环顾四周 · 滚轮或双指缩放</p>
+        <span class="crosshair" aria-hidden="true"></span>
+      </div>
+      <div class="viewer-toolbar" role="group" aria-label="全景操作">
+        <div class="view-controls">
+          <button type="button" id="zoom-in" data-view-control aria-label="放大" title="放大" disabled>＋</button>
+          <output id="view-readout" aria-label="视野角度">75°</output>
+          <button type="button" id="zoom-out" data-view-control aria-label="缩小" title="缩小" disabled>−</button>
+          <button type="button" id="reset" data-view-control disabled><span aria-hidden="true">↺</span> <span>重置视角</span></button>
+        </div>
+        <button type="button" id="fullscreen" aria-pressed="false"><span data-fullscreen-label>全屏浏览</span> <span id="fullscreen-icon" aria-hidden="true"></span></button>
+      </div>
+    </section>
+    <div class="scene-meta"><div><h2 id="source-name" data-strgo-user-content>阳光下的大学校园广场</h2><p id="source-info">1774 × 887 · 2:1</p></div><span class="tag">EXPLORE / 001</span></div>
+    <div class="feedback-row"><p class="feedback" id="feedback" role="status" aria-live="polite">正在载入全景…</p><button type="button" id="retry" hidden>重试加载</button></div>
+    <section class="import-panel" aria-labelledby="import-heading">
+      <div><p class="eyebrow">YOUR NEXT HORIZON</p><h2 id="import-heading">把你的世界，带到这里。</h2><p>导入 2:1 等距柱状投影图片。普通照片不会自动变成全景。</p><p class="fine">JPG / PNG / WebP · 最大 40 MB · 本地图片仅在当前设备读取</p></div>
+      <div class="import-actions"><label class="primary file-button" for="panorama-file">导入本地图片<input type="file" id="panorama-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"></label><button type="button" id="open-ai">从 AI 作品导入</button><button type="button" id="campus">返回校园全景</button></div>
+    </section>
+    <p id="keyboard-hint" class="fine keyboard-hint">键盘：方向键旋转，＋ / − 缩放，R 重置，F 全屏，Esc 退出全屏。</p>
+  </main>
+  <footer><span>STRGO / SPACES</span><a href="/hub/#spaces">探索更多空间 ↗</a></footer>
+  <dialog id="ai-dialog" aria-labelledby="ai-heading">
+    <div class="dialog-head"><h2 id="ai-heading">选择 AI 生图作品</h2><button type="button" id="close-ai" aria-label="关闭作品选择">×</button></div>
+    <p>选择已有的 2:1 全景作品，或前往 AI 生图创作新全景。</p>
+    <div class="dialog-links"><a class="primary" href="/image-playground/?panorama=1">前往 AI 生图 ↗</a><a id="ai-login" href="/ai/login/?next=%2F360%2F" hidden>登录后查看作品 ↗</a></div>
+    <p id="ai-feedback" role="status"></p><div id="ai-items" class="ai-grid"></div>
+    <button type="button" id="ai-more" hidden>加载更多作品</button>
+  </dialog>
+  <noscript><p>请启用 JavaScript 以旋转全景。你仍可查看上方校园图片。</p></noscript>
+  <script type="module" src="/360/app.js?v={{asset_version}}"></script>
+</body>
+</html>

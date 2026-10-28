@@ -1,6 +1,6 @@
 {
   "version": "3.0",
-  "date": "2026-10-26",
+  "date": "2026-10-28",
   "baseline": "e1f0f5cef1c6389f9633bb6270ccd6ff509660e5",
   "groups": [
     "全部",
@@ -164,6 +164,17 @@
       "type": "archive",
       "access": "公开体验",
       "symbol": "✧"
+    },
+    {
+      "id": "S09",
+      "name": "360° 全景",
+      "en": "PANORAMA 360",
+      "group": "沉浸空间",
+      "route": "/360/",
+      "description": "环顾校园全景，或导入本地与 AI 生图作品。",
+      "type": "panorama",
+      "access": "公开体验",
+      "symbol": "◎"
     },
     {
       "id": "N01",

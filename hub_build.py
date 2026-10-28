@@ -70,7 +70,7 @@ def build_hub(root, output, config, context, replace):
         source = page.read_text(encoding='utf-8')
         route = page.relative_to(output).as_posix()
         tool = route.startswith(('ai/', 'admin/', 'forum/', 'image-playground/', 'local-studio/'))
-        experience = route.startswith(('home/', 'dance/', 'dreams/', 'nexus/', 'archive/'))
+        experience = route.startswith(('home/', 'dance/', 'dreams/', 'nexus/', 'archive/', '360/'))
         surface = 'tool' if tool else 'experience' if experience else 'hub' if route.startswith('hub/') or variant == 'hub' and route == 'index.html' else 'classic'
         if re.search(r'\bdata-strgo-ui="[^"]*"', source):
             source = re.sub(r'\bdata-strgo-ui="[^"]*"', 'data-strgo-ui="' + surface + '"', source, count=1)

@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from content_build import load_content, render_spaces, render_projects, render_author, render_recent, story_body, updates_body
 
 ROOT = Path(__file__).resolve().parent
-VENDORS = ('gsap.min.js', 'ScrollTrigger.min.js', 'lenis.min.js', 'confetti.min.js')
+VENDORS = ('gsap.min.js', 'ScrollTrigger.min.js', 'lenis.min.js', 'confetti.min.js', 'three.module.js')
 
 def validate(config):
     if config.get('HOME_VARIANT', 'classic') not in ('classic', 'hub'):
@@ -126,7 +126,7 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     digest = hashlib.sha256(compiled.encode())
     digest.update(Path(content_path).read_bytes())
     digest.update((ROOT / 'content/app-registry.json').read_bytes())
-    for directory in ('hub', 'shared'):
+    for directory in ('hub', 'shared', 'panorama'):
         for asset in sorted((ROOT / 'src' / directory).rglob('*')):
             if asset.is_file(): digest.update(asset.read_bytes())
     digest.update(json.dumps(config, ensure_ascii=False, sort_keys=True).encode())
@@ -276,11 +276,16 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     (output / 'updates').mkdir(exist_ok=True)
     (output / 'updates/index.html').write_text(re.sub(r'\{\{([a-z_]+)\}\}', replace, content_template), encoding='utf-8')
     content_paths.append('/updates/')
+    panorama_output = output / '360'
+    if panorama_output.exists(): shutil.rmtree(panorama_output)
+    shutil.copytree(ROOT / 'src/panorama', panorama_output)
+    panorama_page = panorama_output / 'index.html'
+    panorama_page.write_text(re.sub(r'\{\{([a-z_]+)\}\}', replace, panorama_page.read_text(encoding='utf-8')), encoding='utf-8')
     # The registry supplies both the portal and the shared application switcher.
     from hub_build import build_hub
     build_hub(ROOT, output, config, context, replace)
     (output / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nSitemap: {origin}/sitemap.xml\n', encoding='utf-8')
-    (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ''.join(f'<url><loc>{html.escape(origin + path)}</loc></url>' for path in ['/', '/hub/', '/classic/', '/home/', '/dance/', '/nexus/', '/terminal', *dream_paths, *content_paths]) + '</urlset>\n', encoding='utf-8')
+    (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ''.join(f'<url><loc>{html.escape(origin + path)}</loc></url>' for path in ['/', '/hub/', '/classic/', '/360/', '/home/', '/dance/', '/nexus/', '/terminal', *dream_paths, *content_paths]) + '</urlset>\n', encoding='utf-8')
     manifest = {'version': version, 'homeVariant': config['HOME_VARIANT'], 'mode': 'production' if not missing else 'offline-preview', 'vendors': enabled, 'missingVendors': missing}
     (output / 'build-manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     print(f'Built {output} for {origin} ({manifest["mode"]})')

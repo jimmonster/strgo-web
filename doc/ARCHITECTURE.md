@@ -7,6 +7,7 @@
 | 模块 | 源码 | 构建或运行方式 |
 | --- | --- | --- |
 | 主站、卧室、舞台、作品介绍 | `src/`、`content/`、`content_build.py`、`site.json` | `build.py` 生成根目录 `dist/` |
+| 360° 全景 | `src/panorama/`、`src/assets/panoramas/` | 根构建输出 `/360/`；本地 Three.js，无新后端 |
 | 生图工作台 | `src/image-playground/` | 随主站发布；请求 `/api/image/` |
 | 会员社区 | `src/forum/` | 随主站发布；共享账号 API |
 | 管理员创作台 | `src/local-studio/` | 随主站构建；独立 Workflow 域名与 Cookie |

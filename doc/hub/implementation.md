@@ -6,6 +6,7 @@
 | --- | --- |
 | `content/app-registry.json` | 功能名称、ID、路径、分组、访问说明、画面编号、视觉变量 |
 | `src/hub/` | 门户、目录、空间详情、账号偏好、任务和作品页面 |
+| `src/panorama/` | `/360/` 全景浏览、本地/AI 作品导入，目录使用 S09 |
 | `src/shared/site-navigation.js` / `.css` | 使用相同清单的内嵌应用切换器；独立 Shadow DOM、外部样式 |
 | `src/image-playground/hub-theme.css`、`hub-links.js` | 生图主题和安全的原任务深链 |
 | `image_service/hub.py` | 当前用户的只读聚合索引，无新的业务数据库 |
