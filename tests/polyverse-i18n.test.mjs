@@ -44,3 +44,14 @@ test('all experiment-specific controls have five-language labels',async()=>{
   }
  }finally{globalThis.innerWidth=oldWidth;globalThis.location=oldLocation;}
 });
+
+test('scene tour and local-work confirmation switch languages without changing the saved name',()=>{
+ const {document}=parseHTML(`<html data-strgo-ui="experience"><body><dialog><h2>A SCENE TOUR · 24 SECONDS</h2><h3>PURE GEOMETRY</h3><p>A universe built from nested cubes, light and mathematical form.</p><p class="dialog-copy"><span>Type the exact name to delete this work:</span> “<span data-strgo-user-content>PURE GEOMETRY</span>”. <span>This removes only this local record.</span></p><input value="PURE GEOMETRY"></dialog></body></html>`);
+ const oldDocument=globalThis.document,oldLocation=globalThis.location;globalThis.document=document;globalThis.location={pathname:'/polyverse/library/'};
+ try{
+  for(const [locale,stage] of [['zh-CN','纯粹几何'],['zh-TW','純粹幾何'],['en','PURE GEOMETRY'],['ja','純粋な幾何学'],['ko','순수 기하학']]){
+   setLocale(locale,{persist:false});localizeTree(document.body);assert.equal(document.querySelector('h3').textContent,stage);assert.equal(document.querySelector('[data-strgo-user-content]').textContent,'PURE GEOMETRY');assert.equal(document.querySelector('input').value,'PURE GEOMETRY');
+  }
+  setLocale('zh-CN',{persist:false});localizeTree(document.body);assert.match(document.querySelector('.dialog-copy').textContent,/输入作品完整名称以删除/);assert.match(document.querySelector('.dialog-copy').textContent,/只会删除此本地记录/);
+ }finally{setLocale('zh-CN',{persist:false});globalThis.document=oldDocument;globalThis.location=oldLocation;}
+});

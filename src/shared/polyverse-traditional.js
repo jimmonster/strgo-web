@@ -438,5 +438,20 @@ export const polyverseTraditional = {
   "Play all animation": "播放全部動畫",
   "Simulation Workbench": "模擬工作台",
   "WebGL context lost. Restoring when available.": "WebGL 上下文已丟失，恢復可用時將自動恢復。",
-  "POLYVERSE — Beyond Dimension": "POLYVERSE — 超越維度"
+  "POLYVERSE — Beyond Dimension": "POLYVERSE — 超越維度",
+  "PURE GEOMETRY": "純粹幾何",
+  "A SCENE TOUR · 24 SECONDS": "場景導覽 · 24 秒",
+  "A PROCEDURAL SCENE TOUR · 场景导览": "程序化場景導覽",
+  "PAUSE TOUR": "暫停導覽",
+  "PLAY TOUR": "繼續導覽",
+  "REPLAY": "重新播放",
+  "SKIP TOUR": "跳過導覽",
+  "A universe built from nested cubes, light and mathematical form.": "由嵌套立方體、光與數學形態構成的宇宙。",
+  "Three-dimensional trajectories, sampled from a fixed-step gravitational simulation.": "從固定步長的引力模擬中採樣得到的三維軌跡。",
+  "Each tetrahedron becomes four smaller tetrahedra. A recursive structure you can explore.": "每個四面體分成四個更小的四面體，構成可探索的遞迴結構。",
+  "Real four-dimensional coordinates, rotated and projected into three-dimensional space.": "將真實的四維座標旋轉並投影到三維空間。",
+  "Analytical first and second derivatives": "解析一階與二階導數",
+  "Type the exact name to delete this work:": "輸入作品完整名稱以刪除：",
+  "Choose a new name for this work:": "為此作品選擇新名稱：",
+  "This removes only this local record.": "這只會刪除此本地記錄。"
 };
