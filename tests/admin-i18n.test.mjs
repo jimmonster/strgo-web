@@ -57,9 +57,10 @@ test('AI administration translates forms while keeping names, values and errors 
     <main id="main"><div class="page-heading"><h1>管理控制台</h1></div><div class="admin-tabs"><button>成员与权限</button></div>
       <div id="admin-content"><div class="panel-title"><h2>模型连接</h2><span>3 个连接</span></div>
         <table><tbody><tr><td class="model-name">配置模型连接</td><td data-strgo-ui-copy>对话 / 音乐</td><td data-strgo-ui-copy>2 次 / 60 秒</td></tr></tbody></table>
+        <div class="request-row"><span data-strgo-user-content>未填写说明</span><span data-strgo-ui-copy>未填写说明</span></div>
         <section id="model-editor"><h2>配置模型连接</h2><label>连接名称<input value="配置模型连接"></label><select><option value="node" data-strgo-user-content>配置模型连接</option></select><p class="error">配置模型连接</p></section>
         <form id="member-form"><h3>可使用模型</h3><label><span data-strgo-user-content>可使用模型</span></label></form>
-      </div></main><dialog><div id="dialog-content"><h2><span>授权给</span> <span data-strgo-user-content>授权给</span></h2><p class="error">授权给</p></div></dialog></body></html>`);
+      </div></main><dialog><div id="dialog-content"><h2><span>授权给</span> <span data-strgo-user-content>授权给</span></h2><label><span data-strgo-ui-copy>实际费用（CNY）</span><input value="12.3456"></label><p class="error">授权给</p></div></dialog></body></html>`);
   const oldDocument=globalThis.document,oldLocation=globalThis.location;globalThis.document=document;globalThis.location={pathname:'/admin/ai/'};
   try {
     setLocale('en',{persist:false});localizeTree(document.body);localizeTree(document.querySelector('title'));
@@ -69,6 +70,7 @@ test('AI administration translates forms while keeping names, values and errors 
     assert.equal(document.querySelector('.admin-tabs button').textContent,'Members and access');
     assert.equal(document.querySelector('.panel-title span').textContent,'3 connections');
     assert.equal(document.querySelector('.model-name').textContent,'配置模型连接');
+    assert.equal(document.querySelector('.request-row [data-strgo-user-content]').textContent,'未填写说明');assert.equal(document.querySelector('.request-row [data-strgo-ui-copy]').textContent,'No description provided');
     assert.equal(document.querySelector('td[data-strgo-ui-copy]').textContent,'Chat / Music');
     assert.equal(document.querySelectorAll('td[data-strgo-ui-copy]')[1].textContent,'2 chats / 60 seconds');
     assert.equal(document.querySelector('#model-editor h2').textContent,'Configure model connection');
@@ -78,6 +80,7 @@ test('AI administration translates forms while keeping names, values and errors 
     assert.equal(document.querySelector('#member-form h3').textContent,'Available models');
     assert.equal(document.querySelector('#member-form [data-strgo-user-content]').textContent,'可使用模型');
     assert.equal(document.querySelector('#dialog-content h2').textContent,'Grant access to 授权给');
+    assert.equal(document.querySelector('#dialog-content label span').textContent,'Actual cost (CNY)');assert.equal(document.querySelector('#dialog-content label input').value,'12.3456');
     assert.equal(document.querySelector('#dialog-content .error').textContent,'授权给');
   } finally {setLocale('zh-CN',{persist:false});globalThis.document=oldDocument;globalThis.location=oldLocation;}
 });

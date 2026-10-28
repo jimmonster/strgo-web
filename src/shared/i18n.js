@@ -139,6 +139,8 @@ export function translate(source, locale = getLocale()) {
       value={en:`Copy manually: ${m[1]}`,'zh-TW':`可以手動複製：${m[1]}`,ja:`手動でコピー：${m[1]}`,ko:`직접 복사: ${m[1]}`}[locale];
     } else if (isLegacyPage() && (m = text.match(/^联系 (.+) ↗$/))) {
       value={en:`Contact ${m[1]} ↗`,'zh-TW':`聯繫 ${m[1]} ↗`,ja:`${m[1]} に連絡 ↗`,ko:`${m[1]}에게 연락 ↗`}[locale];
+    } else if (isAiAdminPage() && (m = text.match(/^实际费用（([A-Z]{3})）$/))) {
+      value={en:`Actual cost (${m[1]})`,'zh-TW':`實際費用（${m[1]}）`,ja:`実際の費用（${m[1]}）`,ko:`실제 비용 (${m[1]})`}[locale];
     } else if (isAiAdminPage() && (m = text.match(/^(对话|—) \/ (音乐|—)$/))) {
       value=`${translate(m[1],locale)} / ${translate(m[2],locale)}`;
     } else if (isAiAdminPage() && (m = text.match(/^(\d+) 次 \/ (\d+) 秒$/))) {
@@ -175,6 +177,14 @@ export function translate(source, locale = getLocale()) {
       value={en:`Apply built-in inspiration (${m[1]})`,'zh-TW':`一鍵套用預裝靈感（${m[1]} 個）`,ja:`プリセットのアイデアを適用（${m[1]} 件）`,ko:`기본 영감 적용 (${m[1]}개)`}[locale];
     } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (m = text.match(/^✧ 本次占用 (\d+) 秒额度$/))) {
       value={en:`✧ Uses ${m[1]} seconds of allowance`,'zh-TW':`✧ 本次佔用 ${m[1]} 秒額度`,ja:`✧ 今回は ${m[1]} 秒の利用枠を使用`,ko:`✧ 이번 작업에 ${m[1]}초 한도 사용`}[locale];
+    } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (text === '秒' || text === '次')) {
+      const seconds=text==='秒';value={en:seconds?'sec':'requests','zh-TW':text,ja:seconds?'秒':'回',ko:seconds?'초':'회'}[locale];
+    } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (m = text.match(/^(\d+) 秒$/))) {
+      value={en:`${m[1]} seconds`,'zh-TW':`${m[1]} 秒`,ja:`${m[1]} 秒`,ko:`${m[1]}초`}[locale];
+    } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (m = text.match(/^费用上限 ([A-Z]{3}) ([\d.]+)$/))) {
+      const prefix={en:'Cost cap','zh-TW':'費用上限',ja:'費用上限',ko:'비용 상한'}[locale];if(prefix)value=`${prefix} ${m[1]} ${m[2]}`;
+    } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (m = text.match(/^([\s\S]+) · (本地|在线 API)( · 不可用)?$/))) {
+      const local=m[2]==='本地', labels={en:[local?'Local':'Online API','Unavailable'],'zh-TW':[local?'本地':'線上 API','不可用'],ja:[local?'ローカル':'オンライン API','利用不可'],ko:[local?'로컬':'온라인 API','사용 불가']};if(labels[locale])value=`${m[1]} · ${labels[locale][0]}${m[3]?` · ${labels[locale][1]}`:''}`;
     } else if (((globalThis.location?.pathname || '').startsWith('/ai/') || isAiAdminPage()) && (m = text.match(/^今日剩余 (\d+) (秒|次)$/))) {
       const seconds=m[2]==='秒';value={en:`${m[1]} ${seconds?'seconds':'requests'} left today`,'zh-TW':`今日剩餘 ${m[1]} ${m[2]}`,ja:`本日の残り ${m[1]} ${seconds?'秒':'回'}`,ko:`오늘 ${m[1]}${seconds?'초':'회'} 남음`}[locale];
     } else if ((globalThis.location?.pathname || '').startsWith('/ai/') && (m = text.match(/^(删除对话|删除|播放) (.+)$/))) {
@@ -229,7 +239,7 @@ function eligible(element) {
   if (isAiAdminPage() && element.closest('#admin-content .error, #dialog-content .error')) return false;
   const forumCopy = (globalThis.location?.pathname || '').startsWith('/forum/') && element.closest('[data-strgo-ui-copy]') && element.closest('#posts, #comments-list, #notifications-list, #detail-content');
   const imageCopy = (globalThis.location?.pathname || '').startsWith('/image-playground/') && element.closest('[data-strgo-ui-copy]') && element.closest('#current-output, #library-list, #inspiration-list');
-  const aiCopy = (globalThis.location?.pathname || '').startsWith('/ai/') && element.closest('[data-strgo-ui-copy]') && element.closest('#main, #dialog-content');
+  const aiCopy = ((globalThis.location?.pathname || '').startsWith('/ai/') || isAiAdminPage()) && element.closest('[data-strgo-ui-copy]') && element.closest('#main, #dialog-content, .sidebar .account');
   const staticToast = !!element.closest('#toast[data-strgo-static]');
   if ((element.closest(protectedContent) && !forumCopy && !imageCopy && !aiCopy) || (!isNexusPage() && !isPolyversePage() && !staticToast && element.closest('#dialog-title, #toast'))) return false;
   const html = document.documentElement;
@@ -241,9 +251,9 @@ function eligible(element) {
   if (surface === 'experience') return isArchivePage() || isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance)\/?$/.test(path);
   if (path.startsWith('/forum/')) return staticToast || !!element.closest('.skip, .topbar, #auth-view, #workspace, .mobile-bottom, dialog');
   if (path.startsWith('/image-playground/')) return staticToast || !!element.closest('.skip, .topbar, #auth-view, #workspace, #image-dialog');
-  if (path.startsWith('/ai/')) return staticToast || aiCopy || !!element.closest('.skip, #app .initial-loading, .sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .overview-heading, #main .overview-cards, #main .history, #main .music-composer > .panel-title, #music-form, .settings-grid, .settings-panel, #access-form') || (!!document.querySelector('#login-form, #access-form') && !!element.closest('#dialog-content'));
+  if (path.startsWith('/ai/')) return staticToast || aiCopy || !!element.closest('.skip, #app .initial-loading, .service-banner, .sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .overview-heading, #main .overview-cards, #main .recent-panel > .panel-title, #main .quota-card, #main .history, #main .music-composer > .panel-title, #main .music-results > .panel-title, #music-form, .settings-grid, .settings-panel, #access-form') || (!!document.querySelector('#login-form, #access-form') && !!element.closest('#dialog-content'));
   if (isSiteAdminPage()) return !!element.closest('.skip, .layout aside, .workspace > header, .workspace > footer, #main, #feedback[data-strgo-static]');
-  if (isAiAdminPage()) return staticToast || !!element.closest('.skip, #app .initial-loading, .sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .admin-tabs, #main > section > .empty, #main > section > button, #admin-content .panel-title, #admin-content thead, #admin-content .info-note, #admin-content .empty, #admin-content [data-strgo-ui-copy], #admin-content > section > h2, #admin-content .admin-lower > section > h2, #admin-content .reconcile-panel > p, #admin-content .table-wrap + p, #admin-content button, #model-editor, #node-form, #budget-form, #member-form, #dialog-content, #dialog > .dialog-x');
+  if (isAiAdminPage()) return staticToast || aiCopy || !!element.closest('.skip, #app .initial-loading, .sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .admin-tabs, #main > section > .empty, #main > section > button, #admin-content .panel-title, #admin-content thead, #admin-content .info-note, #admin-content .empty, #admin-content [data-strgo-ui-copy], #admin-content > section > h2, #admin-content .admin-lower > section > h2, #admin-content .reconcile-panel > p, #admin-content .table-wrap + p, #admin-content button, #model-editor, #node-form, #budget-form, #member-form, #dialog-content, #dialog > .dialog-x');
   if (path.startsWith('/admin/')) return staticToast || !!element.closest('.layout aside, .workspace > header, .workspace > footer');
   return false;
 }
@@ -275,7 +285,8 @@ export function localizeTree(node) {
     if (node.matches(protectedContent)) {
       if ((globalThis.location?.pathname || '').startsWith('/forum/') && node.matches('#posts, #comments-list, #notifications-list, #detail-content, .post-author')) for (const copy of node.querySelectorAll('[data-strgo-ui-copy]')) localizeTree(copy);
       if ((globalThis.location?.pathname || '').startsWith('/image-playground/') && node.matches('#current-output, #library-list, #inspiration-list')) for (const copy of node.querySelectorAll('[data-strgo-ui-copy]')) localizeTree(copy);
-      if ((globalThis.location?.pathname || '').startsWith('/ai/') && node.matches('#music-results, #conversation-list')) for (const copy of node.querySelectorAll('[data-strgo-ui-copy]')) localizeTree(copy);
+      if ((globalThis.location?.pathname || '').startsWith('/ai/') && node.matches('#music-results, #conversation-list, #music-form select[name="model_id"]')) for (const copy of node.querySelectorAll('[data-strgo-ui-copy]')) localizeTree(copy);
+      if (((globalThis.location?.pathname || '').startsWith('/ai/') || isAiAdminPage()) && node.matches('.sidebar .account')) for (const copy of node.querySelectorAll('[data-strgo-ui-copy]')) localizeTree(copy);
       return;
     }
     for (const attribute of ['aria-label', 'placeholder', 'alt', 'title']) if (node.hasAttribute(attribute)) updateValue(node, attribute);

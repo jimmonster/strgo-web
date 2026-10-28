@@ -15,6 +15,13 @@ test('AI account settings translate labels without changing account or model nam
  finally{setLocale('zh-CN',{persist:false});globalThis.document=oldDocument;globalThis.location=oldLocation;}
 });
 
+test('AI sidebar translates fixed account labels but never rewrites a matching username',()=>{
+ const {document}=parseHTML('<html data-strgo-ui="tool"><body><aside class="sidebar"><a class="account"><span class="account-avatar">A</span><span><span data-strgo-user-content>账号与使用权限</span><small data-strgo-ui-copy>账号与使用权限</small></span></a></aside></body></html>');
+ const oldDocument=globalThis.document,oldLocation=globalThis.location;globalThis.document=document;
+ try{for(const path of ['/ai/','/admin/ai/']){globalThis.location={pathname:path};setLocale('en',{persist:false});localizeTree(document.body);assert.equal(document.querySelector('[data-strgo-user-content]').textContent,'账号与使用权限');assert.equal(document.querySelector('small').textContent,'Account and access');setLocale('zh-CN',{persist:false});localizeTree(document.body);assert.equal(document.querySelector('small').textContent,'账号与使用权限');}}
+ finally{setLocale('zh-CN',{persist:false});globalThis.document=oldDocument;globalThis.location=oldLocation;}
+});
+
 test('dynamic statuses translate in forum, image and music UI while user content stays intact',()=>{
  const oldDocument=globalThis.document,oldLocation=globalThis.location;
  try{
@@ -56,5 +63,17 @@ test('AI list controls switch language without translating titles, server errors
   assert.equal(document.querySelector('textarea').value,'今日剩余 3 次');
   setLocale('ja',{persist:false});localizeTree(document.body);assert.match(document.querySelector('#top-quota').textContent,/3 回/);assert.match(document.querySelector('audio').getAttribute('aria-label'),/已完成/);
   setLocale('zh-CN',{persist:false});localizeTree(document.body);assert.equal(document.querySelector('#music-results span').textContent,'已完成');assert.equal(document.querySelector('audio').getAttribute('aria-label'),'播放 已完成');
+ }finally{setLocale('zh-CN',{persist:false});globalThis.document=oldDocument;globalThis.location=oldLocation;}
+});
+
+test('AI music confirmation translates labels while preserving model names, work titles and exact cost',()=>{
+ const {document}=parseHTML(`<html data-strgo-ui="tool"><body><main id="main"><form id="music-form"><select name="model_id"><option value="model-1" data-strgo-ui-copy>生成时长 · 本地 · 不可用</option><option value="" data-strgo-ui-copy>暂无已授权的音乐模型</option></select><button type="button">60 秒</button></form><section class="quota-card"><strong>5<small>次</small></strong><a>查看权限与额度</a></section></main><dialog><div id="dialog-content"><h2 data-strgo-ui-copy>让这段灵感，被听见。</h2><span data-strgo-ui-copy>作品名称</span><strong data-strgo-user-content>生成时长</strong><strong data-strgo-ui-copy>60 秒</strong><strong data-strgo-ui-copy>费用上限 CNY 12.3456</strong><span data-strgo-ui-copy>作品默认仅自己可见。</span></div></dialog></body></html>`);
+ const oldDocument=globalThis.document,oldLocation=globalThis.location;globalThis.document=document;globalThis.location={pathname:'/ai/music/'};
+ try{
+  setLocale('en',{persist:false});localizeTree(document.body);
+  const options=document.querySelectorAll('option');assert.equal(options[0].textContent,'生成时长 · Local · Unavailable');assert.equal(options[0].getAttribute('value'),'model-1');assert.equal(options[1].textContent,'No authorized music models');
+  assert.equal(document.querySelector('#music-form button').textContent,'60 seconds');assert.equal(document.querySelector('.quota-card small').textContent,'requests');assert.equal(document.querySelector('.quota-card a').textContent,'View access and allowance');assert.equal(document.querySelector('#dialog-content h2').textContent,'Let this idea be heard.');assert.equal(document.querySelector('[data-strgo-user-content]').textContent,'生成时长');assert.equal(document.querySelectorAll('#dialog-content strong')[1].textContent,'60 seconds');assert.equal(document.querySelectorAll('#dialog-content strong')[2].textContent,'Cost cap CNY 12.3456');
+  setLocale('ja',{persist:false});localizeTree(document.body);assert.match(options[0].textContent,/生成时长/);assert.match(document.querySelectorAll('#dialog-content strong')[2].textContent,/CNY 12\.3456/);
+  setLocale('zh-CN',{persist:false});localizeTree(document.body);assert.equal(options[0].textContent,'生成时长 · 本地 · 不可用');assert.equal(document.querySelectorAll('#dialog-content strong')[2].textContent,'费用上限 CNY 12.3456');
  }finally{setLocale('zh-CN',{persist:false});globalThis.document=oldDocument;globalThis.location=oldLocation;}
 });
