@@ -28,4 +28,12 @@ test('deployment manifest fingerprints every file and references 28 actual direc
  assert.equal(manifest.routes.length,28);
  for(const f of manifest.files){const data=await readFile(new URL('../dist/'+f.path,import.meta.url));assert.equal(createHash('sha256').update(data).digest('hex'),f.sha256,f.path);}
 });
-test('STRGO build exposes clickable desktop card and mobile navigation, deploy preserves route',async()=>{const {document}=parseHTML(await readFile(new URL('../../../dist/index.html',import.meta.url),'utf8'));const deploy=await readFile(new URL('../../../deploy.sh',import.meta.url),'utf8');assert.equal(document.querySelector('.space-portal.portal-swarmera')?.getAttribute('href'),'/swarmera/');assert.equal(document.querySelector('.mobile-menu .nav-swarmera')?.getAttribute('href'),'/swarmera/');assert.ok(deploy.includes("include /etc/nginx/snippets/swarmera.conf;"));});
+test('STRGO hub and classic navigation expose SWARMERA, deploy preserves route',async()=>{
+ const registry=JSON.parse(await readFile(new URL('../../../dist/hub/registry.json',import.meta.url),'utf8'));
+ const {document}=parseHTML(await readFile(new URL('../../../dist/classic/index.html',import.meta.url),'utf8'));
+ const deploy=await readFile(new URL('../../../deploy.sh',import.meta.url),'utf8');
+ assert.equal(registry.entries.find(entry=>entry.id==='S07')?.route,'/swarmera/');
+ assert.equal(document.querySelector('.space-portal.portal-swarmera')?.getAttribute('href'),'/swarmera/');
+ assert.equal(document.querySelector('.mobile-menu .nav-swarmera')?.getAttribute('href'),'/swarmera/');
+ assert.ok(deploy.includes("include /etc/nginx/snippets/swarmera.conf;"));
+});
