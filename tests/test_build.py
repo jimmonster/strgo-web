@@ -54,7 +54,7 @@ class BuildTests(unittest.TestCase):
             self.assertIn('https://strgo.com/forum/', page)
             self.assertIn('noindex,nofollow', page)
             self.assertIn('viewport-fit=cover', page)
-            self.assertGreaterEqual((output / 'index.html').read_text(encoding='utf-8').count('href="/forum/"'), 3)
+            self.assertGreaterEqual((output / 'classic/index.html').read_text(encoding='utf-8').count('href="/forum/"'), 3)
             for asset in ('styles.css', 'app.js'):
                 self.assertTrue((output / 'forum' / asset).is_file())
             self.assertIn('href="/forum/"', (output / 'image-playground/index.html').read_text(encoding='utf-8'))
@@ -76,7 +76,7 @@ class BuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             config_file = Path(directory) / 'site.json'; config_file.write_text(json.dumps(self.config))
             output = builder.build(config_path=config_file, output=Path(directory) / 'dist')
-            page = (output / 'index.html').read_text()
+            page = (output / 'classic/index.html').read_text()
             self.assertNotIn('</script><script>alert', page)
             self.assertIn('\\u003c/script\\u003e', page)
     def test_invalid_contact_timezone_and_contribution_data_are_rejected(self):
@@ -98,7 +98,7 @@ class BuildTests(unittest.TestCase):
                 for asset in re.findall(r'(?:src|href)="(/assets/[^"?]+)', page):
                     self.assertTrue((output / asset.lstrip('/')).is_file(), asset)
                 self.assertIn('href="/"', page)
-            home = (output / 'index.html').read_text()
+            home = (output / 'classic/index.html').read_text()
             for route in ('home', 'dance', 'terminal'): self.assertIn(f'href="/{route}"', home)
 
     def test_ai_workspace_routes_and_reusable_module_assets(self):
@@ -114,7 +114,7 @@ class BuildTests(unittest.TestCase):
                 self.assertTrue((output / (imported[0] or imported[1]).lstrip('/')).is_file())
             for asset in (output / 'ai/static').glob('*.svg'):
                 ET.parse(asset)
-            self.assertIn('href="/ai/"', (output / 'index.html').read_text())
+            self.assertIn('href="/ai/"', (output / 'classic/index.html').read_text())
             self.assertFalse(list((output / 'ai').rglob('*.py')))
             self.assertFalse(list((output / 'ai').rglob('*.sqlite3')))
 
@@ -122,7 +122,7 @@ class BuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = builder.build(output=directory)
             page = (output / 'image-playground/index.html').read_text()
-            home = (output / 'index.html').read_text()
+            home = (output / 'classic/index.html').read_text()
             self.assertIn('https://strgo.com/image-playground/', page)
             self.assertIn('noindex,nofollow', page)
             self.assertEqual((home.count('href="/image-playground/"')), 3)
@@ -134,7 +134,7 @@ class BuildTests(unittest.TestCase):
     def test_polyverse_route_is_exposed_in_desktop_mobile_and_space_navigation(self):
         with tempfile.TemporaryDirectory() as directory:
             output = builder.build(output=directory)
-            home = (output / 'index.html').read_text()
+            home = (output / 'classic/index.html').read_text()
             self.assertGreaterEqual(home.count('href="/polyverse/"'), 3)
             self.assertIn('data-label="POLYVERSE"', home)
             self.assertIn('POLYVERSE / 多维几何宇宙', home)
@@ -180,7 +180,7 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(canonical, [origin + '/nexus/'])
             locations = ET.parse(output / 'sitemap.xml').findall('.//{*}loc')
             self.assertIn(origin + '/nexus/', [item.text for item in locations])
-            home = Markup((output / 'index.html').read_text()).tags
+            home = Markup((output / 'classic/index.html').read_text()).tags
             self.assertGreaterEqual(sum(tag == 'a' and attrs.get('href') == '/nexus/' for tag, attrs in home), 3)
             for route in ('home', 'dance', 'terminal'):
                 self.assertIn('href="/nexus/"', (output / route / 'index.html').read_text())
@@ -246,7 +246,7 @@ class BuildTests(unittest.TestCase):
                     target = (module.parent / ref).resolve()
                     self.assertTrue(target.is_relative_to(root), ref)
                     self.assertTrue(target.is_file(), ref)
-            home = (output / 'index.html').read_text()
+            home = (output / 'classic/index.html').read_text()
             self.assertIn('href="/dreams/"', home)
             self.assertIn('href="/dreams/"', (root / '404.html').read_text())
             dream_home = Markup((root / 'index.html').read_text()).tags

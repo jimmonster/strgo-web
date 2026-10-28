@@ -66,6 +66,50 @@ test('all space covers render with their registered accessible labels', async ()
   } finally { delete globalThis.window; }
 });
 
+test('root hub opens its registered spaces and preserves classic root anchors', async () => {
+  const builtRegistry = JSON.parse(await readFile(new URL('../dist/hub/registry.json', import.meta.url), 'utf8'));
+  const html = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
+  const source = (await readFile(new URL('../dist/hub/app.js', import.meta.url), 'utf8')).replace(/^import .*$/gm, '');
+  function mount(initialHash = '') {
+    const { document, window: dom } = parseHTML(html);
+    const window = new dom.EventTarget();
+    window.STRGO = builtRegistry;
+    window.localStorage = { getItem:()=>null, setItem:()=>{} };
+    window.scrollTo = () => {};
+    document.querySelector('#main').focus = () => {};
+    const modal = document.querySelector('#modal');
+    modal.close = () => { modal.open = false; };
+    modal.showModal = () => { modal.open = true; };
+    let currentHash = initialHash, redirected = null;
+    const location = { pathname: '/', get hash() { return currentHash; },
+      set hash(value) { currentHash = value && !value.startsWith('#') ? '#' + value : value; },
+      replace(value) { redirected = value; }, assign() {} };
+    const context = vm.createContext({ window, document, location, esc, icon, readPreferences, writePreferences,
+      filterEntries, allowedAction, startOrbit:()=>()=>{}, art:()=>'', URLSearchParams, AbortController,
+      Date, setTimeout, clearTimeout, matchMedia:()=>({matches:false,addEventListener(){}}),
+      requestJSON:()=>new Promise(()=>{}) });
+    vm.runInContext(source, context);
+    return { document, window, dom, location, get redirected() { return redirected; } };
+  }
+
+  const page = mount();
+  assert.equal(page.redirected, null);
+  const panorama = page.document.querySelector('.space-card[data-open="S09"]');
+  assert.ok(panorama);
+  panorama.dispatchEvent(new page.dom.Event('click', { bubbles:true, cancelable:true }));
+  assert.equal(page.location.hash, '#space-panorama');
+  page.window.dispatchEvent(new page.dom.Event('hashchange'));
+  assert.equal(page.document.querySelector('a.entry-link').getAttribute('href'), '/360/');
+
+  for (const hash of ['home','projects','stack','lab','contact']) {
+    assert.equal(mount('#'+hash).redirected, '/classic/#'+hash);
+  }
+  const alreadyOpen = mount();
+  alreadyOpen.location.hash = '#projects';
+  alreadyOpen.window.dispatchEvent(new alreadyOpen.dom.Event('hashchange'));
+  assert.equal(alreadyOpen.redirected, '/classic/#projects');
+});
+
 test('account revalidation clears private UI and discards an old account response', async () => {
   const { document, window: dom } = parseHTML(await readFile(new URL('../src/hub/index.html', import.meta.url), 'utf8'));
   const window = new dom.EventTarget();

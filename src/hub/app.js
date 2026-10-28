@@ -204,7 +204,7 @@ document.addEventListener('keydown', event => {
 });
 $('.skip').addEventListener('click', event => { event.preventDefault(); main.focus(); });
 modal.addEventListener('click', event => { if (event.target === modal) modal.close(); });
-window.addEventListener('hashchange', () => { listSource = listState = 'all'; render(); window.scrollTo(0,0); main.focus({preventScroll:true}); });
+window.addEventListener('hashchange', () => { if (redirectLegacyRoot()) return; listSource = listState = 'all'; render(); window.scrollTo(0,0); main.focus({preventScroll:true}); });
 window.addEventListener('resize', restartOrbit);
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', restartOrbit);
 document.addEventListener('visibilitychange', () => {
@@ -217,5 +217,9 @@ window.addEventListener('pagehide', () => { stopOrbit(); collectionRequest?.abor
 window.addEventListener('pageshow', event => { if (event.persisted) refreshSession(); });
 window.addEventListener('storage', event => { if (event.key === 'strgo:hub:v1:' + (state.user?.id || 'guest')) { Object.assign(state, readPreferences(storage,state.user?.id,E)); render(); } });
 // Legacy root hash links must be handled client-side: fragments never reach Nginx.
-if (location.pathname === '/' && D.homeVariant === 'hub' && ['projects','stack','lab','contact'].includes(location.hash.slice(1))) location.replace(D.classicRoute + location.hash);
-else { render(); refreshSession(); }
+function redirectLegacyRoot() {
+  if (location.pathname !== '/' || D.homeVariant !== 'hub' || !['home','projects','stack','lab','contact'].includes(location.hash.slice(1))) return false;
+  location.replace(D.classicRoute + location.hash);
+  return true;
+}
+if (!redirectLegacyRoot()) { render(); refreshSession(); }

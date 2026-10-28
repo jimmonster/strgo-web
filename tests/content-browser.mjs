@@ -16,7 +16,7 @@ try {
   origin = origin.replace(/\/$/, '');
   browser = await chromium.launch({ executablePath: process.env.STRGO_CHROME || '/opt/google/chrome/chrome', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const screenshots = [
-    ['/#spaces', '#spaces', 'guide'], ['/#stack', '#stack', 'author'],
+    ['/classic/#spaces', '#spaces', 'guide'], ['/classic/#stack', '#stack', 'author'],
     ...content.projects.map(project => [`/projects/${project.slug}/`, '.content-main', project.slug]),
     ['/updates/', '.content-main', 'updates']
   ];
@@ -25,7 +25,7 @@ try {
     const page = await context.newPage(); const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
-    await page.goto(origin + '/');
+    await page.goto(origin + '/classic/');
     await page.waitForFunction(() => window.StrgoApp);
     assert.deepEqual(await page.evaluate(() => window.StrgoApp.diagnostics.failed), []);
     assert.equal(await page.locator('[data-space-id]:visible').count(), 8);
@@ -74,7 +74,7 @@ try {
     await page.locator('[data-lab-spectrum]').click(); assert.equal(await page.locator('[data-lab-spectrum]').getAttribute('aria-pressed'), 'true');
     for (const [path, selector, name] of screenshots) {
       const response = await page.goto(origin + path); if (response) assert.ok(response.ok());
-      if (path.startsWith('/#')) await page.waitForFunction(() => window.StrgoApp);
+      if (path.startsWith('/classic/#')) await page.waitForFunction(() => window.StrgoApp);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, `${width} ${path} overflow`);
       await capture(page.locator(selector), `${width}-${name}.png`);
     }
@@ -87,7 +87,7 @@ try {
   }
   // Keep one normal-motion check for the existing pinned gallery after filtering.
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  const page = await context.newPage(); await page.goto(origin + '/');
+  const page = await context.newPage(); await page.goto(origin + '/classic/');
   await page.waitForFunction(() => window.StrgoApp);
   await page.locator('[data-space-filter="tools"]').click(); await page.locator('[data-space-filter="all"]').click();
   await page.waitForTimeout(350);

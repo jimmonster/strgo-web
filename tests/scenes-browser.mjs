@@ -12,6 +12,7 @@ try {
   browser = await chromium.launch({ executablePath: process.env.STRGO_CHROME || '/opt/google/chrome/chrome', headless: true,
     args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   let origin = process.env.STRGO_TEST_URL;
+  const localPreview = !origin;
   if (!origin) {
     const directory = resolve(root, 'dist');
     server = createServer(async (request, response) => {
@@ -36,9 +37,10 @@ try {
     const mobile = viewport.width < 768 || viewport.height < 500;
     const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile });
     const page = await context.newPage(); const errors = [];
+    if (localPreview) await page.route('**/api/image/session', route => route.fulfill({ json: { user: null } }));
     page.on('pageerror', error => errors.push(error.message));
     page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
-    await page.goto(origin + '/');
+    await page.goto(origin + '/classic/');
     for (const route of ['terminal', 'home', 'dance']) assert.ok(await page.locator(`a[href="/${route}"]`).count());
     for (const route of ['home', 'dance']) {
       await page.goto(`${origin}/${route}`); await page.waitForFunction(() => document.body.dataset.state === 'ready');

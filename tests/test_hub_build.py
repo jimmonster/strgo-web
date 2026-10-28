@@ -11,11 +11,15 @@ from hub_build import load_registry, build_hub
 
 
 class HubBuildTests(unittest.TestCase):
-    def test_default_home_is_preserved_and_switching_is_reversible(self):
+    def test_default_home_is_hub_and_classic_switching_is_reversible(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
             build.build(output=output)
-            classic = (output / 'index.html').read_text()
+            homepage = (output / 'index.html').read_text()
+            self.assertIn('/hub/app.js', homepage)
+            self.assertIn('rel="canonical" href="https://strgo.com/"', homepage)
+            self.assertIn('rel="canonical" href="https://strgo.com/hub/"', (output / 'hub/index.html').read_text())
+            classic = (output / 'classic/index.html').read_text()
             self.assertIn('floating-navbar', classic)
             self.assertIn('/hub/', classic)
             for route in ['hub', 'classic', 'ai/tasks', 'ai/assets', 'home', 'dance', 'nexus', 'terminal']:
@@ -35,12 +39,12 @@ class HubBuildTests(unittest.TestCase):
             workflow_catalog = json.loads((output / 'local-studio/_strgo/registry.json').read_text())
             self.assertTrue(all(e['route'].startswith('https://') for e in workflow_catalog['entries']))
             self.assertTrue((output / 'dreams/_strgo/fonts/space-grotesk-latin.woff2').is_file())
-            build.build(output=output, home_variant='hub')
-            self.assertIn('/hub/app.js', (output / 'index.html').read_text())
-            self.assertIn('floating-navbar', (output / 'classic/index.html').read_text())
             self.assertEqual(json.loads((output / 'build-manifest.json').read_text())['homeVariant'], 'hub')
             build.build(output=output, home_variant='classic')
-            self.assertEqual((output / 'index.html').read_text(), classic)
+            self.assertIn('floating-navbar', (output / 'index.html').read_text())
+            self.assertEqual(json.loads((output / 'build-manifest.json').read_text())['homeVariant'], 'classic')
+            build.build(output=output, home_variant='hub')
+            self.assertEqual((output / 'index.html').read_text(), homepage)
 
     def test_dream_sync_rebases_shared_assets_and_root_build_does_not_duplicate_chrome(self):
         with tempfile.TemporaryDirectory() as temporary:

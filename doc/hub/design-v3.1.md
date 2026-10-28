@@ -4,13 +4,13 @@
 
 ## 1. 目标与信息架构
 
-新增 `/hub/`，把创作、空间、社区内容和个人工作区集中到一个入口。`/home` 仍是阳光卧室。默认根首页保持经典版，同时生成 `/classic/`；以后通过构建配置切换根首页，无须迁移任务或作品。
+统一门户把创作、空间、社区内容和个人工作区集中到一个入口。默认根首页 `/` 使用门户，`/hub/` 保留同一门户入口，经典主页位于 `/classic/`，`/home` 仍是阳光卧室。切换首页无须迁移任务或作品。
 
 页面顺序：星环首屏 → 生图/对话/音乐/终端 → 最近访问与收藏 → 八个空间 → 社区、作品介绍、记录、关于、实验、联系 → 个人工作区。管理员额外出现 Workflow 和管理后台。功能名称、分组、路径和权限标签来自唯一的 [功能清单](../../content/app-registry.json)，对应 [自动生成的文档表](registry.md)。
 
 | 编号 | 页面与生产路径 | 本版行为 |
 | --- | --- | --- |
-| P01 | `/hub/`；选择 hub 后也为 `/` | 动态轨道球、工具入口、收藏、最近访问、空间封面 |
+| P01 | `/`、`/hub/` | 动态轨道球、工具入口、收藏、最近访问、空间封面 |
 | P02 | `/hub/#catalog` | 按名称、英文、说明、路径搜索；分类和收藏筛选 |
 | P03 | `/image-playground/`、`/ai/music/`、`/ai/chat/` | 连接原业务页面；共用深色/薄荷绿视觉和功能切换，保留参考图、灵感、音乐草稿与助手 |
 | P04 | `/ai/tasks/`、`/hub/#tasks` | 当前账号的图像、音乐、对话任务，筛选、游标分页与来源操作 |
@@ -78,9 +78,9 @@ Workflow 使用独立 host-only Cookie，在管理员入口新标签打开；不
 
 ## 6. 新旧主页切换
 
-`site.json` 默认 `"HOME_VARIANT": "classic"`，`/hub/` 和 `/classic/` 始终生成。将配置改为 `hub`，或运行 `python3 build.py --require-vendor --home-variant hub`，即可构建以门户为根首页的产物；回滚改回 `classic` 后重新构建。
+`site.json` 默认 `"HOME_VARIANT": "hub"`，根首页 `/` 和 `/hub/` 均生成门户；`/classic/` 始终生成经典主页。回滚时将配置改为 `classic`，或构建时指定 `python3 build.py --require-vendor --home-variant classic`。
 
-原 `/#projects`、`/#stack`、`/#lab`、`/#contact` 在 hub 根首页由客户端白名单映射到 `/classic/` 的对应 hash。门户清单中的内容链接始终使用 `/classic/#...`。hash 不发送到服务器，因此不能只靠 Nginx 重定向。既有独立路由不改名。
+原 `/#home`、`/#projects`、`/#stack`、`/#lab`、`/#contact` 在 hub 根首页由客户端白名单映射到 `/classic/` 的对应 hash，包括首页已打开时的 hash 变化。门户清单中的内容链接始终使用 `/classic/#...`。hash 不发送到服务器，因此不能只靠 Nginx 重定向。既有独立路由不改名。
 
 本轮提交源码和文档到 GitHub。构建成功不等于生产部署，也不等于真实模型和终端服务器验收通过。测试范围和尚未验证项见 [验收记录](acceptance.md)。
 

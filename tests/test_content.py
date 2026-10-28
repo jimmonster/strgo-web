@@ -27,7 +27,7 @@ class ContentTests(unittest.TestCase):
     def test_stories_are_independent_and_use_consistent_public_content_and_local_assets(self):
         with tempfile.TemporaryDirectory() as directory:
             output = self.build_fixture(directory)
-            homepage = (output / 'index.html').read_text()
+            homepage = (output / 'classic/index.html').read_text()
             data = json.loads(re.search(r'<script type="application/json" id="site-config">(.*?)</script>', homepage, re.S)[1])
             locations = [item.text for item in ET.parse(output / 'sitemap.xml').findall('.//{*}loc')]
             for project in data['projects']:
@@ -59,7 +59,7 @@ class ContentTests(unittest.TestCase):
         self.content['updates'] = [example]
         with tempfile.TemporaryDirectory() as directory:
             output = self.build_fixture(directory)
-            home = (output / 'index.html').read_text()
+            home = (output / 'classic/index.html').read_text()
             updates = (output / 'updates/index.html').read_text()
             self.assertNotIn('id="updates"', home)
             self.assertNotIn(example['title'], home + updates)
@@ -74,7 +74,7 @@ class ContentTests(unittest.TestCase):
         self.content['updates'][1]['link'] = {'href': '/#spaces', 'label': '空间'}
         with tempfile.TemporaryDirectory() as directory:
             output = self.build_fixture(directory)
-            home = (output / 'index.html').read_text()
+            home = (output / 'classic/index.html').read_text()
             updates = (output / 'updates/index.html').read_text()
             pattern = r'data-update-id="fixture-(\d)"'
             self.assertEqual(re.findall(pattern, home), ['4', '3', '2'])
@@ -96,7 +96,7 @@ class ContentTests(unittest.TestCase):
         self.content['author']['now'] = {'text': 'PRIVATE CURRENT ACTIVITY', 'confirmed': False}
         with tempfile.TemporaryDirectory() as directory:
             output = self.build_fixture(directory)
-            home = (output / 'index.html').read_text()
+            home = (output / 'classic/index.html').read_text()
             story = (output / 'projects/galactic-frontier/index.html').read_text()
             self.assertNotIn('PRIVATE', home + story)
             self.assertNotIn('id="experience-title"', story)

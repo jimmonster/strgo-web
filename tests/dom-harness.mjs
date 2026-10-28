@@ -2,7 +2,7 @@ import { parseHTML } from 'linkedom';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 export function createEnvironment({ mobile = false, reduced = false } = {}) {
-  const { window: domWindow, document } = parseHTML(readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8'));
+  const { window: domWindow, document } = parseHTML(readFileSync(new URL('../dist/classic/index.html', import.meta.url), 'utf8'));
   // Linkedom's default window proxies Node globals; isolate timers and navigator.
   const window = new domWindow.EventTarget();
   window.document = document; window.HTMLElement = domWindow.HTMLElement; window.Event = domWindow.Event;

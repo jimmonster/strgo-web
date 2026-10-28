@@ -111,7 +111,7 @@ test('Private route builds independently, hides authenticated controls and expos
   const result = {};
   await servePreview({ url: '/image-playground?from=home', method: 'GET' }, { writeHead(status, headers) { Object.assign(result, { status, headers }); }, end() {} });
   assert.equal(result.status, 308); assert.equal(result.headers.Location, '/image-playground/?from=home');
-  const home = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
+  const home = readFileSync(new URL('../dist/classic/index.html', import.meta.url), 'utf8');
   assert.equal((home.match(/href="\/image-playground\/"/g) || []).length, 3);
   assert.doesNotMatch(source, /localStorage|sessionStorage/);
   const env = await environment();
