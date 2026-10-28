@@ -27,6 +27,7 @@ function el(tag, className = '', text = '') {
   if (text) node.textContent = text;
   return node;
 }
+function uiEl(tag, className = '', text = '') { const node = el(tag, className, text); node.setAttribute('data-strgo-ui-copy', ''); return node; }
 function message(id, text, kind = '') {
   const target = $(id);
   target.textContent = text;
@@ -93,6 +94,7 @@ function setConfig(config) {
   $('#api-key').required = !config?.hasKey;
   $('#api-key').placeholder = config?.hasKey ? '已加密保存；留空保留原密钥' : '输入 API Key';
   $('#key-status').textContent = config?.hasKey ? '密钥已加密保存；更换接口地址时需重新输入密钥。' : '密钥加密存储，保存后不回显。';
+  $('#model-label').toggleAttribute('data-strgo-static', !config?.model);
   $('#model-label').textContent = config?.model || '尚未配置模型';
   updateGenerateButton();
   if (!state.storageReady) message('#generation-message', '服务器存储尚未就绪，请联系管理员检查硬盘和目录权限。', 'error');
@@ -146,9 +148,11 @@ function setStorage(ready, backup, storage = {}) {
   const label = storage.label || 'ECS 硬盘';
   $('#storage-status').className = 'storage-status ' + (ready ? 'ready' : 'offline');
   $('#storage-status').replaceChildren(el('span', 'status-dot'), document.createTextNode(ready ? label + '已就绪' : '服务器存储未就绪'));
+  $('#storage-description').toggleAttribute('data-strgo-static', !storage.label);
   $('#storage-description').textContent = label + ' · 私有访问';
   $('#disk-state').textContent = ready ? '已就绪，写入时校验' : '请检查存储目录';
   $('#storage-note').textContent = '生成后自动保存至' + label;
+  $('#backup-state').toggleAttribute('data-strgo-user-content', !!backup?.error);
   $('#backup-state').textContent = backup?.error || (backup?.last ? '最近备份 ' + new Date(Number(backup.last) * 1000).toLocaleString('zh-CN') : '等待首次备份');
 }
 async function unlock() {
@@ -422,14 +426,14 @@ async function refreshInspirations(append = false) {
   const list = el('div', 'inspiration-list'); state.inspirations.forEach(item => list.append(renderInspiration(item)));
   if (!state.inspirations.length) {
     const empty = el('div', 'empty-state'); const symbol = icon('lightbulb'); symbol.className = 'empty-icon';
-    empty.append(symbol, el('h3', '', '把喜欢的画面描述留在灵感库。'), el('p', '', '在创作区写下提示词，点击“保存灵感”即可随时复用。'));
+    empty.append(symbol, uiEl('h3', '', '把喜欢的画面描述留在灵感库。'), uiEl('p', '', '在创作区写下提示词，点击“保存灵感”即可随时复用。'));
     $('#inspiration-list').replaceChildren(empty);
   } else $('#inspiration-list').replaceChildren(list);
   $('#load-more-inspirations').hidden = !result.hasMore;
 }
 function emptyLibrary() {
   const node = el('div', 'empty-state'); const symbol = icon('images'); symbol.className = 'empty-icon';
-  node.append(symbol, el('h3', '', '这里会留下你的每一次创作。'), el('p', '', state.favoriteOnly ? '还没有符合条件的收藏。' : '生成图片后，可在这里查找和下载。'));
+  node.append(symbol, uiEl('h3', '', '这里会留下你的每一次创作。'), uiEl('p', '', state.favoriteOnly ? '还没有符合条件的收藏。' : '生成图片后，可在这里查找和下载。'));
   return node;
 }
 function renderCurrent() {
@@ -437,7 +441,7 @@ function renderCurrent() {
   if (job) $('#current-output').replaceChildren(renderJob(job));
   else {
     const empty = el('div', 'empty-state'); const symbol = icon('image-plus'); symbol.className = 'empty-icon';
-    empty.append(symbol, el('h3', '', '下一幅画，从一句话开始。'), el('p', '', '写下画面描述，开始创作。'));
+    empty.append(symbol, uiEl('h3', '', '下一幅画，从一句话开始。'), uiEl('p', '', '写下画面描述，开始创作。'));
     $('#current-output').replaceChildren(empty);
   }
 }

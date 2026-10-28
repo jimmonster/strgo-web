@@ -42,6 +42,7 @@ test('MEOW search can find translated cat breeds and product names', () => {
   try {
     for(const term of ['布偶猫','布偶貓','Ragdoll','ラグドール','랙돌']) assert.ok(filterCats(new URLSearchParams({q:term})).some(c=>c.id==='luna'),term);
     for(const term of ['云朵猫窝','雲朵貓窩','Cloud cat bed','雲の猫ベッド','구름 고양이 침대'])assert.ok(search(term).some(p=>p.id==='cloud-bed'),term);
+    for(const term of ['角色创作与资源说明','角色創作與資源說明','Character creation and assets','キャラクター制作と素材について','캐릭터 제작 및 리소스 설명'])assert.ok(search(term).some(p=>p.id==='about'),term);
   } finally {globalThis.window=previousWindow;globalThis.location=previousLocation;}
 });
 

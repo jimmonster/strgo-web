@@ -53,7 +53,7 @@ test('site administration translates controls without changing account names, co
 });
 
 test('AI administration translates forms while keeping names, values and errors intact', () => {
-  const {document}=parseHTML(`<html data-strgo-ui="tool"><head><title>AI 创作空间 — STRGO</title></head><body>
+  const {document}=parseHTML(`<html data-strgo-ui="tool"><head><title>AI 创作空间 — STRGO</title></head><body><div id="app"><div class="initial-loading">正在打开创作空间…</div></div>
     <main id="main"><div class="page-heading"><h1>管理控制台</h1></div><div class="admin-tabs"><button>成员与权限</button></div>
       <div id="admin-content"><div class="panel-title"><h2>模型连接</h2><span>3 个连接</span></div>
         <table><tbody><tr><td class="model-name">配置模型连接</td><td data-strgo-ui-copy>对话 / 音乐</td><td data-strgo-ui-copy>2 次 / 60 秒</td></tr></tbody></table>
@@ -64,6 +64,7 @@ test('AI administration translates forms while keeping names, values and errors 
   try {
     setLocale('en',{persist:false});localizeTree(document.body);localizeTree(document.querySelector('title'));
     assert.equal(document.querySelector('title').textContent,'AI Workspace — STRGO');
+    assert.equal(document.querySelector('.initial-loading').textContent,'Opening the creative workspace…');
     assert.equal(document.querySelector('.page-heading h1').textContent,'Administration console');
     assert.equal(document.querySelector('.admin-tabs button').textContent,'Members and access');
     assert.equal(document.querySelector('.panel-title span').textContent,'3 connections');
