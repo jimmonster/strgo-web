@@ -66,3 +66,9 @@ python3 scripts/sync-hub-docs.py --check
 Windows 本机执行正式 vendor 准备及 `build.py --require-vendor` 构建成功；根 Node **153 项全部通过**；全景 Python 构建测试通过，分别验证 classic/hub 两种主页输出；门户文档同步检查通过。Chrome **15 组**回归通过，包含条目持久化、编辑、删除、账号隔离、权限拒绝和事务回滚，页面脚本错误为 **0**。桌面列表与 375 px 手机编辑弹窗已截图检查，修复缩略图溢出覆盖标题的问题。
 
 全仓 Python 共运行 **238 项**，**226 项通过、8 项平台跳过、4 项错误**。错误来自未改动的部署测试：`test_build` 两项 Bash/Nginx 配置测试在本机 Bash 退出并产生输出解码错误；`test_deploy_ecs` 两项在清理临时 SQLite 文件时触发 Windows 文件占用错误。未将这四项记为通过，需在 Linux CI 验证。AI 图片接口使用模拟账号与作品响应，未调用收费模型、写入线上数据或部署生产。
+
+### 当日后续：修复 Windows 验证错误
+
+两项 Nginx/Bash 测试补齐 POSIX 平台条件，避免 Windows 把 WSL 启动器误判为可用 Bash；这两项在 Windows 明确跳过，在 Linux CI 保留执行。SQLite 测试数据连接现在按“提交或回滚 → 关闭连接”的顺序释放，不再依赖垃圾回收或忽略临时目录清理错误。新增回归确认部署预检无论正常返回还是拒绝未完成任务，都会立即关闭只读连接。
+
+通过设置 `STRGO_PYTHON` 为本机 Python 路径运行 `node scripts/verify.mjs --root`，正式 vendor 准备、生产构建、根 Node **153 项**及根 Python 回归均成功。Python 共 **239 项**，其中 **229 项通过、10 项平台跳过、0 项错误/失败**；跳过项未计为通过。先前四项错误已消除，两项 Bash 配置生成仍需 Linux CI 执行；没有修改生产部署流程或发布线上服务。本次完整日志保存在忽略目录 `artifacts/windows-root-verification.log`。

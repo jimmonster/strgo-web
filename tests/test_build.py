@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from html.parser import HTMLParser
+import os
 from pathlib import Path
 import re
 import shutil
@@ -185,7 +186,8 @@ class BuildTests(unittest.TestCase):
             for route in ('home', 'dance', 'terminal'):
                 self.assertIn('href="/nexus/"', (output / route / 'index.html').read_text())
 
-    @unittest.skipUnless(shutil.which('bash'), 'Nginx config generation requires Bash; Linux CI runs this check.')
+    # Windows may expose a WSL launcher as bash.exe without a usable Linux shell.
+    @unittest.skipUnless(os.name == 'posix' and shutil.which('bash'), 'Nginx config generation requires POSIX Bash; Linux CI runs this check.')
     def test_deployed_nginx_redirect_preserves_nexus_query_and_strict_csp(self):
         script = (ROOT / 'deploy.sh').read_text()
         function = re.search(r'^render_content_config\(\) \{.*?^\}', script, re.M | re.S).group()
@@ -255,7 +257,7 @@ class BuildTests(unittest.TestCase):
             self.assertIn("chapterPath: ''", (root / 'src/config.js').read_text())
             self.assertFalse((root / 'dreams').exists(), 'Published chapters must avoid /dreams/dreams/ nesting')
             self.assertFalse((output / 'dream').exists(), 'The latest requested public route is /dreams/')
-    @unittest.skipUnless(shutil.which('bash'), 'DREAMS Nginx config generation requires Bash; Linux CI runs this check.')
+    @unittest.skipUnless(os.name == 'posix' and shutil.which('bash'), 'DREAMS Nginx config generation requires POSIX Bash; Linux CI runs this check.')
     def test_dream_nginx_route_keeps_query_error_page_and_csp(self):
         script = (ROOT / 'deploy.sh').read_text()
         function = re.search(r'^render_content_config\(\) \{.*?^\}', script, re.M | re.S).group()

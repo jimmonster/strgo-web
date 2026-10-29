@@ -94,6 +94,10 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 
 Windows明确跳过Bash配置生成、创建符号链接与POSIX0600文件权限检查；这些在Linux CI执行。文件内容、持久化恢复、路径边界及业务断言仍在Windows运行。不能将跳过项记为通过。2026-10-23最终本机根Node91项通过，根Python204项中200项通过、4项平台跳过；终端Python31项中30项通过、1项平台跳过。Linux CI已实际跑通两个job，含终端Rust20项；提交与结果见 [审查记录](PROJECT-REVIEW.md)。
 
+Nginx 配置生成测试同时检查 `os.name == 'posix'` 和 Bash 是否存在。Windows 上的 `bash.exe` 可能只是未配置 Linux 环境的 WSL 启动器，不能仅凭命令存在就运行 POSIX 测试；Linux CI 继续执行这些检查。
+
+SQLite 测试数据使用 `with closing(sqlite3.connect(path)) as db, db:`，退出时先提交或回滚，再关闭连接。单独使用 `with sqlite3.connect(...)` 不会关闭文件，Windows 上会导致临时目录清理失败。部署预检还验证正常返回及拒绝未完成任务后都会释放只读连接，不依赖垃圾回收或忽略清理错误。
+
 
 ## 共享视觉与独立应用打包
 

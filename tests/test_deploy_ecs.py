@@ -1,10 +1,12 @@
 import hashlib
+from contextlib import closing
 from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from scripts.deploy_ecs import DeploymentError, ensure_idle, read_env, terminal_manifest, validate_configuration
 
@@ -26,7 +28,8 @@ class ECSDeployTests(unittest.TestCase):
 
     def database(self):
         path = self.root / 'playground.sqlite3'
-        with sqlite3.connect(path) as db:
+        # Connection.__exit__ commits/rolls back, but does not close the file.
+        with closing(sqlite3.connect(path)) as db, db:
             db.execute('CREATE TABLE jobs(status TEXT)')
             db.execute('CREATE TABLE local_jobs(status TEXT)')
             db.execute('CREATE TABLE ai_tasks(state TEXT)')
@@ -53,25 +56,25 @@ class ECSDeployTests(unittest.TestCase):
                                       ('local_jobs', 'status', 'running'),
                                       ('ai_tasks', 'state', 'RECONCILING')]:
             with self.subTest(table=table):
-                with sqlite3.connect(path) as db:
+                with closing(sqlite3.connect(path)) as db, db:
                     db.execute(f'INSERT INTO {table}({column}) VALUES(?)', (status,))
                 before = path.read_bytes()
                 with self.assertRaisesRegex(DeploymentError, table):
                     ensure_idle(path)
                 self.assertEqual(path.read_bytes(), before)
-                with sqlite3.connect(path) as db:
+                with closing(sqlite3.connect(path)) as db, db:
                     db.execute(f'DELETE FROM {table}')
 
     def test_completed_jobs_and_old_schema_are_allowed_without_migration(self):
         path = self.database()
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             db.execute("INSERT INTO jobs VALUES('complete')")
             db.execute("INSERT INTO local_jobs VALUES('succeeded')")
             db.execute("INSERT INTO ai_tasks VALUES('SUCCEEDED')")
         before = path.read_bytes()
         ensure_idle(path)
         self.assertEqual(path.read_bytes(), before)
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             db.execute('DROP TABLE local_jobs')
             db.execute('DROP TABLE ai_tasks')
         before = path.read_bytes()
@@ -83,6 +86,23 @@ class ECSDeployTests(unittest.TestCase):
         with self.assertRaises(DeploymentError):
             ensure_idle(path)
         self.assertFalse(path.exists())
+
+    def test_preflight_releases_database_connection_on_success_and_failure(self):
+        path = self.database()
+        for pending in (False, True):
+            with self.subTest(pending=pending):
+                if pending:
+                    with closing(sqlite3.connect(path)) as db, db:
+                        db.execute("INSERT INTO jobs VALUES('queued')")
+                connection = sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)
+                with closing(connection), patch('scripts.deploy_ecs.sqlite3.connect', return_value=connection):
+                    if pending:
+                        with self.assertRaisesRegex(DeploymentError, 'jobs'):
+                            ensure_idle(path)
+                    else:
+                        ensure_idle(path)
+                    with self.assertRaises(sqlite3.ProgrammingError):
+                        connection.execute('SELECT 1')
 
     @unittest.skipUnless(shutil.which('sha256sum'), 'requires Linux sha256sum')
     def test_terminal_manifest_matches_publisher_and_rejects_tampering(self):
