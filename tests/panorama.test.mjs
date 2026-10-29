@@ -6,6 +6,14 @@ import { panoramaDraft, panoramaPath } from '../src/image-playground/hub-links.j
 import { panoramaCopy } from '../src/shared/panorama-copy.js';
 import { filterEntries } from '../src/shared/catalog.js';
 import { translate } from '../src/shared/i18n.js';
+import { itemText, MAX_TITLE_LENGTH, MAX_CONTENT_LENGTH } from '../src/panorama/store.js';
+
+test('saved panorama titles and content validate without interpreting user text', () => {
+  assert.deepEqual(itemText('  <script>my title</script>  ', ' hello\n世界 '), { name: '<script>my title</script>', content: 'hello\n世界' });
+  assert.deepEqual(itemText('a'.repeat(MAX_TITLE_LENGTH), 'x'.repeat(MAX_CONTENT_LENGTH)), { name: 'a'.repeat(MAX_TITLE_LENGTH), content: 'x'.repeat(MAX_CONTENT_LENGTH) });
+  for (const name of ['', '  ', 'a'.repeat(MAX_TITLE_LENGTH + 1)]) assert.throws(() => itemText(name));
+  assert.throws(() => itemText('title', 'x'.repeat(MAX_CONTENT_LENGTH + 1)));
+});
 
 test('panorama angles wrap continuously, clamp at poles and reject nonfinite inputs', () => {
   assert.deepEqual(normalizeView({ yaw: -721, pitch: 100, fov: 0 }), { yaw: 359, pitch: 85, fov: 35 });

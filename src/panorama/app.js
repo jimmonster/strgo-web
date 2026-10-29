@@ -2,6 +2,7 @@ import { DEFAULT_VIEW, MIN_FOV, MAX_FOV, normalizeView, dragView, pinchView, val
 import { requestJSON } from '../shared/catalog.js';
 import { setupI18n, translate as t } from '../shared/i18n.js';
 import { icon } from '../shared/icons.js';
+import { setupItems } from './items.js';
 
 setupI18n();
 const $ = selector => document.querySelector(selector);
@@ -13,6 +14,13 @@ let view = { ...DEFAULT_VIEW }, engine, initializing, current, loadController, r
 let feedback = '正在载入全景…', feedbackError = false, retrySource = campus, immersive = false;
 let libraryController, librarySerial = 0, libraryOwner, nextCursor = null, libraryBusy = false, privateOwner;
 const pointers = new Map();
+const savedItems = setupItems({
+  open: source => load(source),
+  updated: item => {
+    if (current?.itemId === item.id) { current.name = item.name; current.content = item.content; updateLabels(); }
+  },
+  removed: item => { if (current?.itemId === item.id || retrySource?.itemId === item.id) load(campus); }
+});
 
 function status(text, error = false) {
   feedback = text; feedbackError = error;
@@ -22,6 +30,8 @@ function updateLabels() {
   if (current) {
     $('#source-name').textContent = current.kind === 'campus' ? t(campus.name) : current.name;
     $('#source-kind').textContent = t({ campus: '校园全景', local: '本地图片', ai: 'AI 生图作品' }[current.kind]);
+    $('#source-content').textContent = current.content || '';
+    $('#source-content').hidden = !current.content;
   }
   $('#feedback').textContent = t(feedback);
   $('#feedback').classList.toggle('error', feedbackError);
@@ -69,15 +79,23 @@ function decodeImage(blob, signal) {
 async function load(source) {
   const ticket = version.next(); loadController?.abort();
   const controller = new AbortController(); loadController = controller;
-  retrySource = source.kind === 'local' ? campus : source;
+  retrySource = source;
+  $('#save-current').hidden = true;
   viewport.setAttribute('aria-busy', 'true'); $('#retry').hidden = true; status('正在载入全景…');
   try {
     const renderer = await initialize();
     let blob, owner;
+    if (source.readFile) {
+      const file = await source.readFile();
+      if (!file) throw new Error('条目不存在，请刷新列表。');
+      source.file = file;
+    }
+    controller.signal.throwIfAborted();
     if (source.kind === 'ai') {
       const session = await requestJSON('/api/image/session', { signal: controller.signal });
       if (!session.user) throw new Error('请先登录，再导入 AI 生图作品。');
       owner = session.user.id;
+      if (source.owner && source.owner !== owner) throw new Error('账号已变化，请重新选择作品。');
       if (document.hidden) throw new DOMException('Aborted', 'AbortError');
     }
     if (source.file) { validateFile(source.file); blob = source.file; }
@@ -101,6 +119,16 @@ async function load(source) {
     $('#source-info').textContent = `${image.naturalWidth} × ${image.naturalHeight} · 2:1`;
     setReady(true); setView(DEFAULT_VIEW); updateLabels(); status('全景已就绪。');
     viewport.dataset.source = source.kind;
+    if (source.kind !== 'campus' && !source.itemId) {
+      try { await savedItems.remember(source, image, owner, controller.signal); if (version.isCurrent(ticket)) updateLabels(); }
+      catch (error) {
+        if (error.name === 'AbortError') throw error;
+        if (version.isCurrent(ticket)) {
+          status('图片已打开，但尚未保存。可重试保存。', true);
+          $('#save-current').hidden = false;
+        }
+      }
+    }
   } catch (error) {
     if (!version.isCurrent(ticket) || disposed || error.name === 'AbortError') return;
     status(error.name === 'TimeoutError' ? '图片加载超时，请重试。' : error.message, true);
@@ -118,6 +146,7 @@ $('#panorama-file').addEventListener('change', event => {
 });
 $('#campus').addEventListener('click', () => load(campus));
 $('#retry').addEventListener('click', () => load(retrySource));
+$('#save-current').addEventListener('click', () => { if (current && !current.itemId) load(current); });
 $('#reset').addEventListener('click', () => setView(DEFAULT_VIEW));
 $('#zoom-in').addEventListener('click', () => zoom(-5));
 $('#zoom-out').addEventListener('click', () => zoom(5));
@@ -203,7 +232,7 @@ async function fetchLibrary(append = false) {
       const image = document.createElement('img'); image.src = assetPath(item.id); image.alt = ''; image.loading = 'lazy';
       const title = document.createElement('span'); title.textContent = item.title || t('未命名作品'); title.setAttribute('data-strgo-user-content', '');
       button.append(image, title);
-      button.addEventListener('click', () => { const source = { kind: 'ai', url: assetPath(item.id), name: item.title || t('AI 生图作品') }; dialog.close(); load(source); });
+      button.addEventListener('click', () => { const source = { kind: 'ai', url: assetPath(item.id), name: item.title || t('AI 生图作品'), content: '', owner: libraryOwner }; dialog.close(); load(source); });
       $('#ai-items').append(button);
     }
     nextCursor = result.next_cursor; $('#ai-more').hidden = !nextCursor;
@@ -228,15 +257,17 @@ function clearPrivate() {
     version.next(); loadController?.abort(); privateOwner = null; current = null;
     engine?.clear(); setReady(false); $('#fallback').hidden = false; viewport.dataset.source = 'campus';
     $('#source-name').textContent = t(campus.name); $('#source-kind').textContent = t('校园全景'); $('#source-info').textContent = '1774 × 887 · 2:1';
+    $('#source-content').textContent = ''; $('#source-content').hidden = true; $('#save-current').hidden = true;
     retrySource = campus; status('正在载入全景…'); return true;
   }
   return false;
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { if (dialog.open) dialog.close(); clearPrivate(); pointers.clear(); viewport.classList.remove('dragging'); }
-  else { if (!current) load(campus); engine?.resize(); }
+  if (document.hidden) { if (dialog.open) dialog.close(); clearPrivate(); savedItems.clearPrivate(); pointers.clear(); viewport.classList.remove('dragging'); }
+  else { if (!current) load(campus); engine?.resize(); savedItems.refreshAccount(); }
 });
 window.addEventListener('focus', async () => {
+  savedItems.refreshAccount();
   if (!privateOwner && !dialog.open) return;
   const owner = privateOwner || libraryOwner;
   try {
@@ -245,10 +276,10 @@ window.addEventListener('focus', async () => {
   } catch { if (dialog.open) dialog.close(); if (clearPrivate()) load(campus); }
 });
 window.addEventListener('pagehide', event => {
-  if (dialog.open) dialog.close(); clearPrivate();
-  if (!event.persisted) { disposed = true; version.next(); loadController?.abort(); engine?.dispose(); }
+  if (dialog.open) dialog.close(); clearPrivate(); savedItems.clearPrivate();
+  if (!event.persisted) { disposed = true; version.next(); loadController?.abort(); engine?.dispose(); savedItems.dispose(); }
 });
-window.addEventListener('pageshow', event => { if (event.persisted && !current) load(campus); });
+window.addEventListener('pageshow', event => { if (event.persisted) { if (!current) load(campus); savedItems.refreshAccount(); } });
 window.addEventListener('strgo:localechange', updateLabels);
 setView(DEFAULT_VIEW);
 const imageId = requestedImage(location.search);

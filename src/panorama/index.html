@@ -36,11 +36,20 @@
         <button type="button" id="fullscreen" aria-pressed="false"><span data-fullscreen-label>全屏浏览</span> <span id="fullscreen-icon" aria-hidden="true"></span></button>
       </div>
     </section>
-    <div class="scene-meta"><div><h2 id="source-name" data-strgo-user-content>阳光下的大学校园广场</h2><p id="source-info">1774 × 887 · 2:1</p></div><span class="tag">EXPLORE / 001</span></div>
+    <div class="scene-meta"><div><h2 id="source-name" data-strgo-user-content>阳光下的大学校园广场</h2><p id="source-info">1774 × 887 · 2:1</p><p id="source-content" data-strgo-user-content hidden></p></div><span class="tag">EXPLORE / 001</span></div>
     <div class="feedback-row"><p class="feedback" id="feedback" role="status" aria-live="polite">正在载入全景…</p><button type="button" id="retry" hidden>重试加载</button></div>
+    <button type="button" id="save-current" hidden>重试保存</button>
     <section class="import-panel" aria-labelledby="import-heading">
-      <div><p class="eyebrow">YOUR NEXT HORIZON</p><h2 id="import-heading">把你的世界，带到这里。</h2><p>导入 2:1 等距柱状投影图片。普通照片不会自动变成全景。</p><p class="fine">JPG / PNG / WebP · 最大 40 MB · 本地图片仅在当前设备读取</p></div>
+      <div><p class="eyebrow">YOUR NEXT HORIZON</p><h2 id="import-heading">把你的世界，带到这里。</h2><p>导入 2:1 等距柱状投影图片。普通照片不会自动变成全景。</p><p class="fine">JPG / PNG / WebP · 最大 40 MB · 导入后自动保存为新条目</p></div>
       <div class="import-actions"><label class="primary file-button" for="panorama-file">导入本地图片<input type="file" id="panorama-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"></label><button type="button" id="open-ai">从 AI 作品导入</button><button type="button" id="campus">返回校园全景</button></div>
+    </section>
+    <section class="items-panel" aria-labelledby="items-heading">
+      <div class="items-heading"><h2 id="items-heading" tabindex="-1">我的全景条目</h2><button type="button" id="refresh-items">刷新列表</button></div>
+      <p class="fine">条目保存在当前浏览器，刷新后仍可打开。清除网站数据会移除条目，暂不跨设备同步。</p>
+      <p class="fine">AI 条目仅当前账号可见，打开时检查原作品权限；删除条目不会删除 AI 原作品。</p>
+      <p id="items-feedback" class="feedback" role="status" aria-live="polite"></p>
+      <p id="items-empty" class="fine">还没有全景条目，导入图片即可创建。</p>
+      <div id="saved-items" class="saved-grid"></div>
     </section>
     <p id="keyboard-hint" class="fine keyboard-hint">键盘：方向键旋转，＋ / − 缩放，R 重置，F 全屏，Esc 退出全屏。</p>
   </main>
@@ -51,6 +60,22 @@
     <div class="dialog-links"><a class="primary" href="/image-playground/?panorama=1">前往 AI 生图 ↗</a><a id="ai-login" href="/ai/login/?next=%2F360%2F" hidden>登录后查看作品 ↗</a></div>
     <p id="ai-feedback" role="status"></p><div id="ai-items" class="ai-grid"></div>
     <button type="button" id="ai-more" hidden>加载更多作品</button>
+  </dialog>
+  <dialog id="item-dialog" aria-labelledby="item-heading">
+    <h2 id="item-heading">编辑条目</h2>
+    <form id="item-form">
+      <label class="item-field" for="item-title"><span>标题</span><input id="item-title" name="title" required maxlength="160" data-strgo-user-content></label>
+      <label class="item-field" for="item-content"><span>内容</span><textarea id="item-content" name="content" rows="5" maxlength="5000" data-strgo-user-content></textarea></label>
+      <p id="item-error" class="feedback error" role="alert"></p>
+      <div class="dialog-actions"><button type="button" id="cancel-item">取消</button><button type="submit" id="save-item" class="primary">保存修改</button></div>
+    </form>
+  </dialog>
+  <dialog id="delete-dialog" aria-labelledby="delete-heading">
+    <h2 id="delete-heading">删除条目</h2>
+    <p id="delete-name" data-strgo-user-content></p>
+    <p>确定删除此条目及其本地图片？此操作无法撤销。</p>
+    <p id="delete-error" class="feedback error" role="alert"></p>
+    <div class="dialog-actions"><button type="button" id="cancel-delete">取消</button><button type="button" id="confirm-delete" class="danger">确认删除</button></div>
   </dialog>
   <noscript><p>请启用 JavaScript 以旋转全景。你仍可查看上方校园图片。</p></noscript>
   <script type="module" src="/360/app.js?v={{asset_version}}"></script>
