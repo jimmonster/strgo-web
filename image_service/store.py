@@ -8,7 +8,7 @@ import threading
 import time
 import uuid
 
-from .presets import DEFAULT_PRESETS
+from .presets import DEFAULT_PRESETS, DEFAULT_PANORAMA_PRESETS
 from .local_studio import SCHEMA as LOCAL_STUDIO_SCHEMA
 from .security import Problem
 
@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS preset_inspirations (
  id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, prompt TEXT NOT NULL,
  sort_order INTEGER NOT NULL, created INTEGER NOT NULL, updated INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS preset_order ON preset_inspirations(sort_order,created,id);
+CREATE TABLE IF NOT EXISTS panorama_presets (
+ id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, prompt TEXT NOT NULL,
+ sort_order INTEGER NOT NULL, created INTEGER NOT NULL, updated INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS panorama_preset_order ON panorama_presets(sort_order,created,id);
 CREATE TABLE IF NOT EXISTS images (
  id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id), user_id TEXT NOT NULL REFERENCES users(id),
  object_key TEXT NOT NULL UNIQUE, mime TEXT NOT NULL, extension TEXT NOT NULL, bytes INTEGER NOT NULL,
@@ -101,13 +105,15 @@ class Store:
         os.chmod(self.path, 0o600)
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
-            if not db.execute("SELECT 1 FROM meta WHERE key='preset_inspirations_initialized'").fetchone():
-                now = int(time.time())
-                for index, preset in enumerate(DEFAULT_PRESETS):
-                    db.execute('INSERT INTO preset_inspirations VALUES(?,?,?,?,?,?,?)',
-                               (uuid.uuid4().hex, preset['title'], preset['description'], preset['prompt'], (index + 1) * 10, now, now))
-                # Keep this marker even when admins remove every preset.
-                db.execute("INSERT INTO meta VALUES('preset_inspirations_initialized','1')")
+            for table, defaults in (('preset_inspirations', DEFAULT_PRESETS), ('panorama_presets', DEFAULT_PANORAMA_PRESETS)):
+                marker = table + '_initialized'
+                if not db.execute('SELECT 1 FROM meta WHERE key=?', (marker,)).fetchone():
+                    now = int(time.time())
+                    for index, preset in enumerate(defaults):
+                        db.execute(f'INSERT INTO {table} VALUES(?,?,?,?,?,?,?)',
+                                   (uuid.uuid4().hex, preset['title'], preset['description'], preset['prompt'], (index + 1) * 10, now, now))
+                    # Keep this marker even when admins remove every preset.
+                    db.execute('INSERT INTO meta VALUES(?,?)', (marker, '1'))
 
     @contextlib.contextmanager
     def connect(self):

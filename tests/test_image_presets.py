@@ -6,7 +6,7 @@ import unittest
 from cryptography.fernet import Fernet
 
 from image_service.app import Service
-from image_service.presets import DEFAULT_PRESETS
+from image_service.presets import DEFAULT_PRESETS, DEFAULT_PANORAMA_PRESETS
 from image_service.store import Store
 from tests import test_image_service as fixtures
 from tests.test_image_service import FakeProvider, FakeStorage, ORIGIN
@@ -150,6 +150,73 @@ class PresetServiceTests(unittest.TestCase):
                 future.result(timeout=10)
         self.restart()
         self.assertEqual(len(self.presets()), 9)
+
+
+class PanoramaPresetTests(unittest.TestCase):
+    call = fixtures.ImageServiceTests.call
+    register = fixtures.ImageServiceTests.register
+    assert_problem = fixtures.ImageServiceTests.assert_problem
+    setUp = PresetServiceTests.setUp
+    tearDown = PresetServiceTests.tearDown
+    restart = PresetServiceTests.restart
+
+    def presets(self, session=None):
+        return self.call('GET', '/panorama-presets', session=session or self.admin)[1]['presets']
+
+    def test_panorama_templates_are_separate_and_members_read_admin_changes(self):
+        initial = self.presets()
+        self.assertEqual([p['prompt'] for p in initial], [p['prompt'] for p in DEFAULT_PANORAMA_PRESETS])
+        self.assertIn('2:1', initial[0]['prompt'])
+        self.assertIn('equirectangular', initial[0]['prompt'])
+        general = self.call('GET', '/preset-inspirations', session=self.admin)[1]['presets']
+        self.assertEqual(len(general), len(DEFAULT_PRESETS))
+        item = initial[0]
+        path = '/panorama-presets/' + item['id']
+        updated = self.call('PUT', path, {**item, 'prompt': 'Admin custom panorama instruction'}, self.admin)[1]
+        member = self.register('panoramareader')
+        self.assertEqual(self.presets(member)[0], updated)
+        self.assert_problem(409, lambda: self.call('PUT', path, item, self.admin))
+        self.assert_problem(404, lambda: self.call('GET', '/preset-inspirations/' + item['id'], session=self.admin))
+        self.assertEqual(self.call('GET', '/preset-inspirations', session=self.admin)[1]['presets'], general)
+
+    def test_panorama_mutations_require_admin_origin_and_csrf(self):
+        member = self.register('panoramamember')
+        item = self.presets()[0]
+        self.assert_problem(401, lambda: self.call('GET', '/panorama-presets'))
+        for method, path in [('POST', '/panorama-presets'), ('PUT', '/panorama-presets/' + item['id']), ('DELETE', '/panorama-presets/' + item['id'])]:
+            with self.subTest(method=method):
+                self.assert_problem(401, lambda: self.call(method, path, item))
+                self.assert_problem(403, lambda: self.call(method, path, item, member))
+                self.assert_problem(403, lambda: self.call(method, path, item, self.admin, {'X-CSRF-Token': 'wrong'}))
+                self.assert_problem(403, lambda: self.call(method, path, item, self.admin, {'Origin': 'https://other.example'}))
+        self.assertEqual(self.presets()[0], item)
+
+    def test_changes_and_empty_collection_survive_restart_and_backup(self):
+        item = self.presets()[0]
+        updated = self.call('PUT', '/panorama-presets/' + item['id'], {**item, 'title': 'Persistent panorama'}, self.admin)[1]
+        self.restart()
+        self.assertEqual(self.presets()[0], updated)
+        self.call('DELETE', '/panorama-presets/' + item['id'], session=self.admin)
+        self.restart()
+        self.assertEqual(self.presets(), [])
+        restored = Path(self.temp.name) / 'restored'
+        restored.mkdir()
+        (restored / 'playground.sqlite3').write_bytes(self.cipher.decrypt(self.store.backup_bytes()))
+        self.restart(Store(restored, self.cipher))
+        self.assertEqual(self.presets(), [])
+
+    def test_existing_database_adds_panorama_templates_without_overwriting_general_presets(self):
+        general = self.call('GET', '/preset-inspirations', session=self.admin)[1]['presets']
+        first = general[0]
+        changed = self.call('PUT', '/preset-inspirations/' + first['id'], {**first, 'prompt': 'Existing administrator edit'}, self.admin)[1]
+        with self.store.connect() as db:
+            db.execute('DROP TABLE panorama_presets')
+            db.execute("DELETE FROM meta WHERE key='panorama_presets_initialized'")
+        self.restart()
+        self.assertEqual(self.call('GET', '/preset-inspirations', session=self.admin)[1]['presets'][0], changed)
+        self.assertEqual(len(self.presets()), len(DEFAULT_PANORAMA_PRESETS))
+        self.restart()
+        self.assertEqual(len(self.presets()), len(DEFAULT_PANORAMA_PRESETS))
 
 
 if __name__ == '__main__':

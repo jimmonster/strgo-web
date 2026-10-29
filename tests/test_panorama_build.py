@@ -25,7 +25,7 @@ class PanoramaBuildTests(unittest.TestCase):
                     if asset.endswith('/'):
                         continue
                     self.assertTrue((output / asset.lstrip('/')).is_file(), asset)
-                for name in ('app.js', 'core.js', 'renderer.js', 'style.css', 'items.js', 'store.js'):
+                for name in ('app.js', 'core.js', 'renderer.js', 'style.css', 'items.js', 'store.js', 'generation.js'):
                     self.assertTrue((output / '360' / name).is_file())
                 image = (output / 'assets/panoramas/campus.webp').read_bytes()
                 self.assertEqual(image[:4], b'RIFF')

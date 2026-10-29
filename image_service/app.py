@@ -532,19 +532,23 @@ class Service:
                 db.execute('INSERT INTO configs VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET encrypted=excluded.encrypted', (user['id'], encrypted))
             self.dirty()
             return 200, self.config_public(user['id']), {}
-        preset_match = re.fullmatch(API + r'/preset-inspirations/([a-f0-9]{32})', path)
-        if path == API + '/preset-inspirations' or preset_match:
+        preset_route = re.fullmatch(API + r'/(preset-inspirations|panorama-presets)(?:/([a-f0-9]{32}))?', path)
+        if preset_route:
+            # Table names come exclusively from this fixed allowlist.
+            table = {'preset-inspirations': 'preset_inspirations', 'panorama-presets': 'panorama_presets'}[preset_route[1]]
+            preset_id = preset_route[2]
+            preset_match = bool(preset_id)
             if method != 'GET' and user['role'] != 'admin':
                 raise Problem(403, '仅管理员可管理预装灵感。')
             if method == 'GET':
                 with self.store.connect() as db:
                     if preset_match:
-                        row = db.execute('SELECT * FROM preset_inspirations WHERE id=?', (preset_match[1],)).fetchone()
+                        row = db.execute(f'SELECT * FROM {table} WHERE id=?', (preset_id,)).fetchone()
                         if not row:
                             raise Problem(404, '预装灵感不存在。')
                         return 200, preset_public(row), {}
                     search = query.get('search', [''])[0][:300]
-                    rows = db.execute("SELECT * FROM preset_inspirations WHERE instr(lower(title || ' ' || description || ' ' || prompt),lower(?))>0 ORDER BY sort_order,created,id", (search,)).fetchall()
+                    rows = db.execute(f"SELECT * FROM {table} WHERE instr(lower(title || ' ' || description || ' ' || prompt),lower(?))>0 ORDER BY sort_order,created,id", (search,)).fetchall()
                 return 200, {'presets': [preset_public(row) for row in rows]}, {}
             if (not preset_match and method == 'POST') or (preset_match and method == 'PUT'):
                 title, description, prompt = payload.get('title'), payload.get('description', ''), payload.get('prompt')
@@ -562,24 +566,24 @@ class Service:
                     db.execute('BEGIN IMMEDIATE')
                     now = int(time.time())
                     if preset_match:
-                        existing = db.execute('SELECT * FROM preset_inspirations WHERE id=?', (preset_match[1],)).fetchone()
+                        existing = db.execute(f'SELECT * FROM {table} WHERE id=?', (preset_id,)).fetchone()
                         if not existing:
                             raise Problem(404, '预装灵感不存在。')
                         if payload.get('updated') != existing['updated'] or type(payload.get('updated')) is not int:
                             raise Problem(409, '这条灵感已被更新，请刷新后重新编辑。')
                         preset_id = existing['id']
-                        db.execute('UPDATE preset_inspirations SET title=?,description=?,prompt=?,sort_order=?,updated=? WHERE id=?',
+                        db.execute(f'UPDATE {table} SET title=?,description=?,prompt=?,sort_order=?,updated=? WHERE id=?',
                                    (title.strip(), description.strip(), prompt.strip(), sort_order, max(now, existing['updated'] + 1), preset_id))
                     else:
                         preset_id = uuid.uuid4().hex
-                        db.execute('INSERT INTO preset_inspirations VALUES(?,?,?,?,?,?,?)',
+                        db.execute(f'INSERT INTO {table} VALUES(?,?,?,?,?,?,?)',
                                    (preset_id, title.strip(), description.strip(), prompt.strip(), sort_order, now, now))
-                    row = db.execute('SELECT * FROM preset_inspirations WHERE id=?', (preset_id,)).fetchone()
+                    row = db.execute(f'SELECT * FROM {table} WHERE id=?', (preset_id,)).fetchone()
                 self.dirty()
                 return (200 if preset_match else 201), preset_public(row), {}
             if preset_match and method == 'DELETE':
                 with self.store.connect() as db:
-                    deleted = db.execute('DELETE FROM preset_inspirations WHERE id=?', (preset_match[1],)).rowcount
+                    deleted = db.execute(f'DELETE FROM {table} WHERE id=?', (preset_id,)).rowcount
                 if not deleted:
                     raise Problem(404, '预装灵感不存在。')
                 self.dirty()

@@ -1,5 +1,7 @@
 """Isolated real-HTTP admin browser fixture; synthetic accounts, no models."""
 import argparse
+import base64
+import json
 import os
 from pathlib import Path
 import sys
@@ -20,6 +22,7 @@ def main():
     parser.add_argument('--demo', action='store_true', required=True)
     parser.add_argument('--origin', required=True)
     parser.add_argument('--with-ai', action='store_true')
+    parser.add_argument('--panorama', action='store_true')
     args = parser.parse_args()
     os.environ['IMAGE_ENV'] = 'development'
     with tempfile.TemporaryDirectory(prefix='strgo-admin-qa-') as directory:
@@ -30,6 +33,19 @@ def main():
             for identifier, name, role in [('a' * 32, 'admin-demo', 'admin'), ('b' * 32, 'member-demo', 'member')]:
                 db.execute('INSERT INTO users VALUES(?,?,?,?,?,?)', (identifier, name, hashed, role, now, now))
             db.execute('INSERT INTO forum_posts(id,user_id,title,body,category,created) VALUES(?,?,?,?,?,?)', ('c' * 32, 'b' * 32, '后台验收测试帖子', '这是一条临时测试内容。', 'general', now))
+        if args.panorama:
+            class PanoramaProvider(FakeProvider):
+                def generate(self, config, job):
+                    self.calls += 1
+                    data = (Path(__file__).resolve().parents[1] / 'src/assets/panoramas/campus.webp').read_bytes()
+                    return [{'b64_json': base64.b64encode(data).decode()} for _ in range(job['count'])]
+            service.provider = PanoramaProvider()
+            config = store.cipher.encrypt(json.dumps({'endpoint': 'https://images.example/v1/images/generations', 'model': 'panorama-fixture', 'apiKey': 'fixture-only-key'}).encode())
+            with store.connect() as db:
+                for user_id in ('a' * 32, 'b' * 32):
+                    db.execute('INSERT INTO configs VALUES(?,?)', (user_id, config))
+            service.worker = threading.Thread(target=service._loop, daemon=True)
+            service.worker.start()
         if args.with_ai:
             from tests.test_ai_workspace import AIWorkspaceTests, FakeAI
             service.ai.providers = FakeAI()

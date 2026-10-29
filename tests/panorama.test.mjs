@@ -7,6 +7,14 @@ import { panoramaCopy } from '../src/shared/panorama-copy.js';
 import { filterEntries } from '../src/shared/catalog.js';
 import { translate } from '../src/shared/i18n.js';
 import { itemText, MAX_TITLE_LENGTH, MAX_CONTENT_LENGTH } from '../src/panorama/store.js';
+import { panoramaPrompt } from '../src/panorama/generation.js';
+
+test('panorama generation appends the selected server template and validates the combined prompt', () => {
+  assert.equal(panoramaPrompt('  校园喷泉  ', '  360° panorama, equirectangular  '), '校园喷泉\n\n360° panorama, equirectangular');
+  for (const [scene, template] of [['', 'template'], ['x'.repeat(4001), 'template'], ['scene', ''], ['scene', 'x'.repeat(8000)]]) {
+    assert.throws(() => panoramaPrompt(scene, template));
+  }
+});
 
 test('saved panorama titles and content validate without interpreting user text', () => {
   assert.deepEqual(itemText('  <script>my title</script>  ', ' hello\n世界 '), { name: '<script>my title</script>', content: 'hello\n世界' });

@@ -3,6 +3,7 @@ import { requestJSON } from '../shared/catalog.js';
 import { setupI18n, translate as t } from '../shared/i18n.js';
 import { icon } from '../shared/icons.js';
 import { setupItems } from './items.js';
+import { setupGeneration } from './generation.js';
 
 setupI18n();
 const $ = selector => document.querySelector(selector);
@@ -20,6 +21,15 @@ const savedItems = setupItems({
     if (current?.itemId === item.id) { current.name = item.name; current.content = item.content; updateLabels(); }
   },
   removed: item => { if (current?.itemId === item.id || retrySource?.itemId === item.id) load(campus); }
+});
+setupGeneration({
+  captureSelection: () => version.value,
+  showResult: async (source, selection) => {
+    if (selection !== undefined && selection !== version.value) return false;
+    const shown = await load(source);
+    if (shown) { viewport.scrollIntoView({ block: 'center' }); viewport.focus({ preventScroll: true }); }
+    return shown;
+  }
 });
 
 function status(text, error = false) {
@@ -129,6 +139,7 @@ async function load(source) {
         }
       }
     }
+    return version.isCurrent(ticket);
   } catch (error) {
     if (!version.isCurrent(ticket) || disposed || error.name === 'AbortError') return;
     status(error.name === 'TimeoutError' ? '图片加载超时，请重试。' : error.message, true);
