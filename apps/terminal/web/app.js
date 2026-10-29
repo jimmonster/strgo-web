@@ -18,6 +18,7 @@
   const secrets = [];
   const messages = new Map();
   const CHAT_HINT = '回车换行，点发送执行 · Ctrl+Enter 快速发送';
+  const DIRECT_HINT = '支持中文输入 · 回车换行，点发送执行 · 也可点终端直接输入';
   const encoder = new TextEncoder();
 
   function status(text, state = 'idle') { $('status').textContent = text; $('status').dataset.state = state; notify('status', { text, state }); }
@@ -43,7 +44,7 @@
     $('secret-input').disabled = !ready;
     $('command-editor').disabled = !ready;
     $('direct-mode').disabled = !terminal;
-    $('expand-editor').disabled = !ready || direct || $('mobile-input').type === 'password';
+    $('expand-editor').disabled = !ready || $('mobile-input').type === 'password';
     $('session-connect').disabled = socket !== null;
     for (const button of $('keys').querySelectorAll('button')) {
       if (!['font-size', 'more-keys', 'copy-selection'].includes(button.id)) button.disabled = !ready;
@@ -80,6 +81,9 @@
     fit = new window.FitAddon.FitAddon();
     terminal.loadAddon(fit); terminal.open($('terminal'));
     terminal.attachCustomKeyEventHandler?.(event => {
+      // Let the IME finish selecting text before xterm handles Enter or shortcuts.
+      // Returning false here does not prevent the browser's composition events.
+      if (event.isComposing) return false;
       if ((event.ctrlKey || event.metaKey) && event.key?.toLowerCase() === 'c' && terminal.hasSelection?.()) {
         if (event.type === 'keydown') copyText(terminal.getSelection());
         return false;
@@ -90,7 +94,6 @@
       const text = event.clipboardData?.getData('text/plain');
       if (text === undefined) return;
       event.preventDefault(); event.stopImmediatePropagation();
-      if (direct) setDirect(false);
       insertText(text);
       connectionMessage('粘贴内容已放入编辑区，请检查后点发送。');
     }, true);
@@ -143,7 +146,7 @@
   function activeEditor() { return $('mobile-input').type === 'password' ? $('mobile-input') : $('command-editor'); }
   function editorFocus() { if (visible) activeEditor().focus({ preventScroll: true }); }
   function setExpanded(value) {
-    if (direct || mobileComposing || $('mobile-input').type === 'password') return;
+    if (mobileComposing || $('mobile-input').type === 'password') return;
     expanded = value;
     $('expand-editor').setAttribute('aria-expanded', String(expanded));
     $('expand-editor').textContent = expanded ? '收起 ↙' : '展开 ↗';
@@ -155,18 +158,17 @@
     direct = value; toggleCtrl(false);
     $('edit-mode').setAttribute('aria-pressed', String(!direct));
     $('direct-mode').setAttribute('aria-pressed', String(direct));
-    $('composer-body').hidden = direct && !document.body.classList.contains('compact-mobile');
-    $('secret-input').hidden = direct;
-    $('expand-editor').hidden = direct;
+    $('composer-body').hidden = false;
+    $('secret-input').hidden = workspaceMode;
+    $('expand-editor').hidden = false;
     document.body.classList.toggle('direct-input', direct);
     $('chat-log').hidden = direct;
-    $('editor-hint').textContent = direct ? '适合 vim / top / tmux · 点「键盘」开始输入' : CHAT_HINT;
+    $('editor-hint').textContent = direct ? DIRECT_HINT : CHAT_HINT;
     updateControls(); inputFocus(); scheduleFit();
   }
   function insertText(text) {
     if (!ready || mobileComposing || !text) return;
     if (text.length > 64 * 1024 || activeEditor().value.length + text.length > 64 * 1024) { connectionMessage('编辑区最多容纳 64 KB 字符，请分段发送。'); return; }
-    if (direct) setDirect(false);
     const editor = activeEditor(), start = editor.selectionStart ?? editor.value.length, end = editor.selectionEnd ?? start;
     editor.setRangeText(text, start, end, 'end'); growEditor(); editorFocus();
   }
@@ -406,7 +408,7 @@
     }
     if (button.id === 'keyboard-toggle') {
       if (document.activeElement === activeEditor() || $('terminal').contains(document.activeElement)) document.activeElement.blur();
-      else if (direct) terminal?.focus(); else editorFocus();
+      else editorFocus();
       return;
     }
     if (button.id === 'scroll-bottom') { latest(true); return; }
@@ -415,7 +417,7 @@
       if (mobileComposing) return;
       const key = button.dataset.key, editor = activeEditor();
       if (editKey(key)) return;
-      if (key === 'enter' && !direct && editor.value) { submitMobile(); return; }
+      if (key === 'enter' && editor.value) { submitMobile(); return; }
       if (key === 'tab' && !direct && editor.value) {
         if (!sendInput(editor.value)) return;
         editor.value = ''; growEditor();
@@ -429,7 +431,7 @@
     try {
       if (!navigator.clipboard?.readText) throw new Error('unavailable');
       insertText(await navigator.clipboard.readText());
-    } catch { connectionMessage('可长按输入框，使用系统菜单粘贴。'); if (direct) setDirect(false); editorFocus(); }
+    } catch { connectionMessage('可长按输入框，使用系统菜单粘贴。'); editorFocus(); }
   });
   const mobile = $('mobile-input'), editor = $('command-editor');
   $('secret-input').addEventListener('click', () => {
@@ -439,7 +441,7 @@
     mobile.hidden = !masked; editor.hidden = masked;
     $('secret-input').setAttribute('aria-pressed', String(masked));
     $('secret-input').textContent = masked ? '退出密码' : '密码模式';
-    $('editor-hint').textContent = masked ? '密码以圆点显示，不写入聊天记录或浏览器存储' : CHAT_HINT;
+    $('editor-hint').textContent = masked ? '密码以圆点显示，不写入聊天记录或浏览器存储' : direct ? DIRECT_HINT : CHAT_HINT;
     updateControls(); growEditor(); editorFocus();
   });
   for (const input of [mobile, editor]) {
@@ -462,7 +464,7 @@
     if (text !== undefined && !mobileComposing) { event.preventDefault(); insertText(text); }
   });
   function submitMobile() {
-    if (!ready || mobileComposing || direct) return;
+    if (!ready || mobileComposing) return;
     const input = activeEditor(), text = input.value, secret = input === mobile && mobile.type === 'password';
     if (!text && !secret) return;
     // Use xterm's bracketed paste handling, then send Enter to execute or submit.
@@ -543,7 +545,7 @@
     const keyboard = parentViewport ? parentViewport.keyboard : (visual?.scale || 1) === 1 && Math.max(window.innerHeight, document.documentElement.clientHeight || 0) - (visual?.height || window.innerHeight) > 100;
     document.body.classList.toggle('compact-mobile', compact);
     document.body.classList.toggle('keyboard-open', keyboard);
-    $('composer-body').hidden = direct && !compact;
+    $('composer-body').hidden = false;
     document.documentElement.style.setProperty('--viewport-height', `${height}px`);
     document.documentElement.style.setProperty('--viewport-top', `${embedded ? 0 : Math.max(0, Math.round(visual?.offsetTop || 0))}px`);
     if (nearBottom()) latest(); growEditor(); scheduleFit();

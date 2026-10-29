@@ -38,6 +38,7 @@
 | SWARMERA | [应用说明](../apps/swarmera/README.md)、[路由](../apps/swarmera/ROUTES.md)、[测试记录](../apps/swarmera/TEST-REPORT.md) |
 | NEXUS | [应用说明](../apps/nexus/README.md)、[资源](../apps/nexus/ASSETS.md) |
 | 终端 | [应用说明](../apps/terminal/README.md)、[当前账号版](../apps/terminal/ACCOUNT-TERMINAL.md)、[当前验证](../apps/terminal/ACCOUNT-VERIFICATION.md)、[iPhone](../apps/terminal/IPHONE-FULLSCREEN.md) |
+| 终端中文与免密 | [中文输入修复、阿里云本机 SSH 密钥配置与验证](TERMINAL-INPUT-SSH.md) |
 | 历史交付 | [验收记录](../ACCEPTANCE.md)、[场景交付](../SCENES-DELIVERY.md)、[V1 交付](../V1-DELIVERY.md) |
 
 文档应说明适用模块、操作目录、验证方式和未完成项。审查记录按当时实际结果书写；后续修复时更新状态和验证日期。
