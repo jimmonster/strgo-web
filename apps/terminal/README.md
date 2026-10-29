@@ -1,5 +1,7 @@
 # STRGO 账号终端
 
+**2026-10-24 中文输入与免密连接：** 终端模式保留中文编辑框和发送按钮，修复进入 Codex 等交互程序后的输入问题；增加同台阿里云服务器的一次性 SSH 密钥配置工具。使用、发布及浏览器验证见 [中文输入与本机 SSH 免密](../../doc/TERMINAL-INPUT-SSH.md)。当前源码已验证，尚未安装到线上服务。
+
 **iPhone 全屏优化：** 手机默认隐藏标题栏与状态说明，仅保留输出和单行输入，工具折叠到「＋」，窗口入口移到底部。键盘可见高度由外层页面统一处理，详见 [iPhone 全屏终端](IPHONE-FULLSCREEN.md)。
 
 **沙箱启动失败修复：** 若登录后出现「SSH 会话已结束，或沙箱暂时不可用」，且代理日志为 `Cannot start sandbox process: Permission denied`，见 [启动目录修复](SANDBOX-STARTUP-FIX.md)。在普通服务器终端执行 `bash /root/strgo-web/apps/terminal/repair-sandbox.sh`，无需重新安装生图服务。

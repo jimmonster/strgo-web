@@ -186,7 +186,11 @@
   $('mobile-logout').addEventListener('click', () => $('account-logout').click());
   $('new-terminal').addEventListener('click', () => create());
   $('empty-create').addEventListener('click', () => create());
-  $('new-ssh').addEventListener('click', () => create('ssh'));
+  $('new-ssh').addEventListener('click', () => {
+    const selected = windows.get(active);
+    const previous = selected?.mode === 'ssh' && selected.target ? selected : [...windows.values()].reverse().find(s => s.mode === 'ssh' && s.target);
+    create('ssh', previous ? { target: previous.target } : null);
+  });
   $('session-search').addEventListener('input', renderList);
   $('show-sessions').addEventListener('click', () => mobileList(!document.body.classList.contains('list-open')));
   $('sidebar-shade').addEventListener('click', () => mobileList(false));

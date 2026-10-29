@@ -72,7 +72,7 @@ fieldset { border:0; padding:0; margin:0; min-width:0; }
 #terminal { position:absolute; inset:10px; visibility:hidden; }
 .direct-input #terminal { visibility:visible; }
 .xterm { height:100%; padding:0; }
-.xterm-helper-textarea { font-size:16px!important; }
+.xterm-helper-textarea { font-size:16px!important; min-width:1px!important; min-height:1px!important; }
 .xterm-viewport { scrollbar-width:thin; scrollbar-color:#40514a #080d14; touch-action:pan-y; }
 .chat-log { position:absolute; inset:0; background:var(--bg); overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; padding:24px 20px; -webkit-overflow-scrolling:touch; }
 .chat-welcome { min-height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:20px 8px; }
@@ -238,9 +238,6 @@ noscript { display:block; padding:20px; color:var(--danger); }
 .compact-mobile .input-modes button { padding:3px 8px; }
 .compact-mobile .composer-body textarea { max-height:88px; }
 .compact-mobile .expanded .composer-body textarea { min-height:40px;max-height:180px; }
-.compact-mobile.direct-input #composer-body { display:flex!important; }
-.compact-mobile.direct-input #command-editor,.compact-mobile.direct-input #mobile-input,.compact-mobile.direct-input #submit-input { display:none!important; }
-.compact-mobile.direct-input #mobile-tools-toggle { margin-left:auto; }
 .compact-mobile .extra-keys { max-height:100px; }
 .compact-mobile .sidebar { flex:0 1 auto;min-height:0;max-height:55%;overflow:auto; }
 .compact-mobile.connected .sidebar,.compact-mobile.workspace-mode .sidebar { display:none; }

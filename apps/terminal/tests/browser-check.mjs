@@ -76,6 +76,37 @@ try {
     await page.locator('#direct-mode').click();
     assert.equal(await page.locator('body').evaluate(el => el.classList.contains('direct-input')), true);
     assert.equal(await page.locator('#chat-log').isHidden(), true);
+    assert.equal(await editor.isVisible(), true, 'IME composer remains available in terminal mode');
+    await page.evaluate(() => window.__terminalOutput('\x1b[?1049h\x1b[?2004h\x1b[2JCodex'));
+    await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('Codex'));
+    const cdp = await context.newCDPSession(page);
+    const packets = () => page.evaluate(() => window.__terminalPackets.filter(p => p.type === 'input').map(p => p.data).join(''));
+    const beforeComposition = await packets();
+    await editor.fill(''); await editor.focus();
+    await cdp.send('Input.imeSetComposition', { text: 'zhongwen', selectionStart: 8, selectionEnd: 8 });
+    await editor.dispatchEvent('keydown', { key: 'Enter', keyCode: 229, isComposing: true, ctrlKey: true });
+    await page.locator('#submit-input').click();
+    assert.equal(await packets(), beforeComposition, 'candidate selection must never submit input');
+    await cdp.send('Input.insertText', { text: '中文“你好”🐉' });
+    assert.equal(await editor.inputValue(), '中文“你好”🐉');
+    await page.locator('#submit-input').click();
+    assert.equal(await packets(), beforeComposition + '\x1b[200~中文“你好”🐉\x1b[201~\r');
+    assert.equal(await page.locator('#terminal').isVisible(), true);
+    assert.equal(await page.locator('#chat-log').isHidden(), true);
+    assert.equal(await editor.inputValue(), '');
+    await page.screenshot({ path: fileURLToPath(new URL(`${viewport.width}-terminal-ime.png`, artifacts)) });
+    // Exercise the xterm native IME path too, with browser-generated composition events.
+    const nativeInput = page.locator('.xterm-helper-textarea');
+    await nativeInput.focus();
+    const beforeNative = await packets();
+    await cdp.send('Input.imeSetComposition', { text: 'nihao', selectionStart: 5, selectionEnd: 5 });
+    await nativeInput.dispatchEvent('keydown', { key: 'Enter', keyCode: 13, isComposing: true });
+    assert.equal(await packets(), beforeNative, 'IME Enter must not reach the remote program');
+    await cdp.send('Input.insertText', { text: '你好' });
+    await page.waitForFunction(before => window.__terminalPackets.filter(p => p.type === 'input').map(p => p.data).join('') !== before, beforeNative);
+    assert.equal(await packets(), beforeNative + '你好');
+    await cdp.detach();
+    await page.evaluate(() => window.__terminalOutput('\x1b[?1049l'));
     await page.locator('#edit-mode').click();
     if (mobile) {
       await page.locator('#mobile-tools-toggle').click();
@@ -91,7 +122,7 @@ try {
       await page.screenshot({ path: fileURLToPath(new URL(`${viewport.width}-keyboard.png`, artifacts)) });
     }
     assert.deepEqual(errors, []);
-    console.log(`${viewport.width} × ${viewport.height}: chat, input, password and terminal switch passed`);
+    console.log(`${viewport.width} × ${viewport.height}: chat, password, terminal and native/composer Chinese IME passed`);
     await context.close();
   }
 } finally { await browser.close(); }
