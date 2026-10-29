@@ -2,5 +2,7 @@
   "gsap": "3.13.0",
   "@studio-freight/lenis": "1.0.42",
   "canvas-confetti": "1.9.3",
-  "three": "0.160.1"
+  "three": "0.160.1",
+  "three-spatial": "0.178.0",
+  "@sparkjsdev/spark": "0.1.10"
 }

@@ -16,6 +16,20 @@ test('panorama generation appends the selected server template and validates the
   }
 });
 
+test('fixed viewpoint rendering has a narrowly scoped production frame and WASM policy', async () => {
+  const deploy = await readFile(new URL('../deploy.sh', import.meta.url), 'utf8');
+  const policies = [...deploy.matchAll(/add_header Content-Security-Policy "([^"]+)"/g)].map(match => match[1]);
+  assert.equal(policies.length, 2);
+  assert.match(policies[0], /frame-src 'self'/);
+  assert.doesNotMatch(policies[0], /wasm-unsafe-eval|unsafe-inline/);
+  assert.match(policies[1], /worker-src 'self' blob:/);
+  assert.match(policies[1], /connect-src 'self' data:/);
+  assert.match(policies[1], /frame-ancestors 'self'/);
+  assert.match(policies[1], /script-src 'self' 'wasm-unsafe-eval'/);
+  assert.doesNotMatch(policies[1], /'unsafe-eval'|'unsafe-inline'/);
+  assert.match(deploy, /location = \/360\/fixed-render\.html/);
+});
+
 test('saved panorama titles and content validate without interpreting user text', () => {
   assert.deepEqual(itemText('  <script>my title</script>  ', ' hello\n世界 '), { name: '<script>my title</script>', content: 'hello\n世界' });
   assert.deepEqual(itemText('a'.repeat(MAX_TITLE_LENGTH), 'x'.repeat(MAX_CONTENT_LENGTH)), { name: 'a'.repeat(MAX_TITLE_LENGTH), content: 'x'.repeat(MAX_CONTENT_LENGTH) });

@@ -40,6 +40,13 @@ def main():
                     data = (Path(__file__).resolve().parents[1] / 'src/assets/panoramas/campus.webp').read_bytes()
                     return [{'b64_json': base64.b64encode(data).decode()} for _ in range(job['count'])]
             service.provider = PanoramaProvider()
+            from tests.test_panorama_tours import FakeWorld
+            from tests.panorama_world_fixture import room_bytes
+            class PanoramaWorldProvider(FakeWorld):
+                def asset(self, url):
+                    self.downloads += 1
+                    return room_bytes()
+            service.panorama_tours.provider = PanoramaWorldProvider()
             config = store.cipher.encrypt(json.dumps({'endpoint': 'https://images.example/v1/images/generations', 'model': 'panorama-fixture', 'apiKey': 'fixture-only-key'}).encode())
             with store.connect() as db:
                 for user_id in ('a' * 32, 'b' * 32):

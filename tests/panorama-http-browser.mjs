@@ -32,6 +32,7 @@ export async function checkPanoramaHTTP({ browser, origin, directory }) {
     await adminPage.waitForFunction(()=>document.querySelector('#panorama-preset-form').hidden);
     page=await member.newPage(); const errors=[]; page.on('pageerror',error=>errors.push(error.message));
     page.on('requestfailed', request => network.push({url:request.url(),error:request.failure()?.errorText}));
+    page.on('response', async response => { if (response.url().endsWith('/splat') || /\/api\/image\/assets\//.test(response.url())) network.push({kind:response.url().endsWith('/splat')?'splat':'image',status:response.status(),length:response.headers()['content-length'],done:String(await response.finished().catch(error=>error.message))}); });
     await page.goto(origin+'/360/'); await page.locator('#open-generation').click();
     await page.waitForSelector('[data-select-panorama-preset]');
     const preset=await (await member.request.get(origin+'/api/image/panorama-presets')).json();
@@ -49,11 +50,27 @@ export async function checkPanoramaHTTP({ browser, origin, directory }) {
     assert.ok(jobs.jobs[0].prompt.endsWith(template)); assert.equal(jobs.jobs[0].size,'2048x1024');
     // The viewer has fetched, decoded and rendered the actual authenticated image.
     assert.equal(await page.locator('#viewport canvas').isVisible(),true);
+    await page.locator('#open-fixed-generation').click();
+    await page.waitForFunction(()=>!document.querySelector('#generate-fixed-panorama').disabled);
+    await page.locator('#fixed-scene').fill('同一个院落的三个固定机位');
+    await page.locator('#generate-fixed-panorama').click();
+    await page.waitForFunction(()=>!document.querySelector('#fixed-camera-bar').hidden || !document.querySelector('#fixed-error').hidden,null,{timeout:90000});
+    assert.equal(await page.locator('#fixed-error').isVisible(),false,await page.locator('#fixed-error').textContent());
+    assert.equal(await page.locator('[data-fixed-camera]').count(),3);
+    const tours=await (await member.request.get(origin+'/api/image/panorama-tours')).json();
+    assert.equal(tours.projects.length,1); assert.equal(tours.projects[0].status,'ready');
+    const foreign=await admin.request.get(origin+tours.projects[0].splatUrl);
+    assert.equal(foreign.status(),404);
+    assert.equal((await (await member.request.get(origin+'/api/image/jobs')).json()).jobs.length,1);
+    await page.locator('[data-fixed-camera="2"]').click();
+    await page.waitForFunction(()=>document.querySelector('#source-name').textContent.endsWith('机位 3'));
     assert.deepEqual(errors,[]);
     await page.evaluate(()=>window.scrollTo(0,0)); await page.screenshot({path:directory+'generation-real-http.png',fullPage:true});
   } catch (error) {
     await page?.screenshot({path:directory+'generation-http-failure.png',fullPage:true}).catch(()=>{});
-    throw new Error(error.message.split('Call log:')[0]+'\n'+JSON.stringify(network)+'\n'+stderr.slice(-2000));
+    const feedback=await page?.locator('#feedback').textContent().catch(()=>null);
+    const fixed=await page?.locator('#fixed-status').textContent().catch(()=>null);
+    throw new Error(error.message.split('Call log:')[0]+'\n'+JSON.stringify({network,feedback,fixed})+'\n'+stderr.slice(-2000));
   } finally {
     await admin?.close(); await member?.close(); fixture.stdin.end();
     await Promise.race([exit,new Promise(resolve=>setTimeout(resolve,5000))]);

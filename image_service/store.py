@@ -10,6 +10,7 @@ import uuid
 
 from .presets import DEFAULT_PRESETS, DEFAULT_PANORAMA_PRESETS
 from .local_studio import SCHEMA as LOCAL_STUDIO_SCHEMA
+from .panorama_tours import SCHEMA as PANORAMA_TOURS_SCHEMA
 from .security import Problem
 
 
@@ -85,7 +86,7 @@ class Store:
         self._backup_lock = threading.Lock()
         with self.connect() as db:
             from .admin import SCHEMA as ADMIN_SCHEMA
-            db.executescript(SCHEMA + LOCAL_STUDIO_SCHEMA + ADMIN_SCHEMA)
+            db.executescript(SCHEMA + LOCAL_STUDIO_SCHEMA + ADMIN_SCHEMA + PANORAMA_TOURS_SCHEMA)
             db.execute('BEGIN IMMEDIATE')
             columns = {row['name'] for row in db.execute('PRAGMA table_info(users)')}
             if 'updated' not in columns:

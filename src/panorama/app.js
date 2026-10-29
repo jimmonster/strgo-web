@@ -4,6 +4,7 @@ import { setupI18n, translate as t } from '../shared/i18n.js';
 import { icon } from '../shared/icons.js';
 import { setupItems } from './items.js';
 import { setupGeneration } from './generation.js';
+import { setupFixedTours } from './fixed.js';
 
 setupI18n();
 const $ = selector => document.querySelector(selector);
@@ -22,7 +23,7 @@ const savedItems = setupItems({
   },
   removed: item => { if (current?.itemId === item.id || retrySource?.itemId === item.id) load(campus); }
 });
-setupGeneration({
+const generationViewer = {
   captureSelection: () => version.value,
   showResult: async (source, selection) => {
     if (selection !== undefined && selection !== version.value) return false;
@@ -30,7 +31,22 @@ setupGeneration({
     if (shown) { viewport.scrollIntoView({ block: 'center' }); viewport.focus({ preventScroll: true }); }
     return shown;
   }
-});
+};
+setupGeneration(generationViewer);
+const fixedTours = setupFixedTours({ ...generationViewer, readCurrent: async () => {
+  if (!current || !ready) throw new Error('请先打开一张全景。');
+  const source = current, ticket = version.value;
+  const verify = async () => {
+    if (source.kind === 'ai' && (await requestJSON('/api/image/session')).user?.id !== privateOwner) throw new Error('账号已变化，请重新选择作品。');
+    if (document.hidden || ticket !== version.value) throw new DOMException('Aborted', 'AbortError');
+  };
+  await verify();
+  const response = source.file ? null : await fetch(source.url, { credentials: 'same-origin', cache: 'no-store' });
+  if (response && !response.ok) throw new Error('作品无法读取，请确认登录状态和访问权限。');
+  const blob = source.file || await response.blob();
+  await verify();
+  return { blob, name: source.name };
+} });
 
 function status(text, error = false) {
   feedback = text; feedbackError = error;
@@ -39,7 +55,7 @@ function status(text, error = false) {
 function updateLabels() {
   if (current) {
     $('#source-name').textContent = current.kind === 'campus' ? t(campus.name) : current.name;
-    $('#source-kind').textContent = t({ campus: '校园全景', local: '本地图片', ai: 'AI 生图作品' }[current.kind]);
+    $('#source-kind').textContent = t(current.tourId ? '固定机位全景' : { campus: '校园全景', local: '本地图片', ai: 'AI 生图作品' }[current.kind]);
     $('#source-content').textContent = current.content || '';
     $('#source-content').hidden = !current.content;
   }
@@ -127,9 +143,10 @@ async function load(source) {
     renderer.setImage(image); current = source; privateOwner = owner;
     $('#fallback').hidden = true;
     $('#source-info').textContent = `${image.naturalWidth} × ${image.naturalHeight} · 2:1`;
-    setReady(true); setView(DEFAULT_VIEW); updateLabels(); status('全景已就绪。');
+    setReady(true); setView(source.preserveView ? view : DEFAULT_VIEW); updateLabels(); status('全景已就绪。');
+    fixedTours.selectionChanged(source);
     viewport.dataset.source = source.kind;
-    if (source.kind !== 'campus' && !source.itemId) {
+    if (source.kind !== 'campus' && !source.itemId && !source.skipSave) {
       try { await savedItems.remember(source, image, owner, controller.signal); if (version.isCurrent(ticket)) updateLabels(); }
       catch (error) {
         if (error.name === 'AbortError') throw error;

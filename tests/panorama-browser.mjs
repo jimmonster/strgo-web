@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { startPreview } from '../scripts/preview.mjs';
 import { checkPanoramaHTTP } from './panorama-http-browser.mjs';
+import { checkFixedPanoramas } from './panorama-fixed-browser.mjs';
 
 const directory = fileURLToPath(new URL('../artifacts/panorama/', import.meta.url));
 await mkdir(directory, { recursive: true });
@@ -446,6 +447,7 @@ try {
   await retryPage.unroute('**/assets/panoramas/campus.webp'); await retryPage.locator('#retry').click(); await ready(retryPage);
   assert.equal(await retryPage.locator('#viewport').getAttribute('data-source'),'campus');
   await recovery.close(); check('a failed default texture load can be retried successfully');
+  for (const description of await checkFixedPanoramas({browser,origin:preview.origin,directory})) check(description);
   await checkPanoramaHTTP({browser,origin:preview.origin,directory});
   check('real HTTP/SQLite accounts, administrator template edits, CSRF, queued generation and authenticated images complete the same-page panorama flow without an external model');
   assert.deepEqual(errors,[]);

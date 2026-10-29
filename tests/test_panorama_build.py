@@ -9,6 +9,14 @@ import build
 
 
 class PanoramaBuildTests(unittest.TestCase):
+    def test_internal_fixed_renderer_has_no_injected_application_navigation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = build.build(output=directory, require_vendor=True)
+            source = (output / '360/fixed-render.html').read_text(encoding='utf-8')
+            self.assertIn('fixed-render-frame.js', source)
+            self.assertNotIn('experience-navigation', source)
+            self.assertNotIn('design-system.css', source)
+
     def test_panorama_routes_assets_chrome_and_sitemap_are_built_for_both_homes(self):
         for variant in ('classic', 'hub'):
             with self.subTest(variant=variant), tempfile.TemporaryDirectory() as temporary:

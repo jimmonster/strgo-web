@@ -35,13 +35,33 @@
         </div>
         <button type="button" id="fullscreen" aria-pressed="false"><span data-fullscreen-label>全屏浏览</span> <span id="fullscreen-icon" aria-hidden="true"></span></button>
       </div>
+      <nav id="fixed-camera-bar" class="fixed-camera-bar" aria-label="固定机位" hidden><div id="fixed-camera-buttons"></div><button type="button" id="download-fixed-panorama">下载当前机位全景</button></nav>
     </section>
     <div class="scene-meta"><div><h2 id="source-name" data-strgo-user-content>阳光下的大学校园广场</h2><p id="source-info">1774 × 887 · 2:1</p><p id="source-content" data-strgo-user-content hidden></p></div><span class="tag">EXPLORE / 001</span></div>
     <div class="feedback-row"><p class="feedback" id="feedback" role="status" aria-live="polite">正在载入全景…</p><button type="button" id="retry" hidden>重试加载</button></div>
     <button type="button" id="save-current" hidden>重试保存</button>
     <section class="import-panel" aria-labelledby="import-heading">
       <div><p class="eyebrow">YOUR NEXT HORIZON</p><h2 id="import-heading">把你的世界，带到这里。</h2><p>导入 2:1 等距柱状投影图片。普通照片不会自动变成全景。</p><p class="fine">JPG / PNG / WebP · 最大 40 MB · 导入后自动保存为新条目</p></div>
-      <div class="import-actions"><button type="button" id="open-generation" class="primary" aria-expanded="false" aria-controls="generation-panel">文生图</button><label class="file-button" for="panorama-file">导入本地图片<input type="file" id="panorama-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"></label><button type="button" id="open-ai">导入已有 AI 作品</button><button type="button" id="campus">返回校园全景</button></div>
+      <div class="import-actions"><button type="button" id="open-fixed-generation" class="primary" aria-expanded="false" aria-controls="fixed-generation-panel">生成固定机位全景</button><button type="button" id="open-generation" aria-expanded="false" aria-controls="generation-panel">文生图</button><label class="file-button" for="panorama-file">导入本地图片<input type="file" id="panorama-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"></label><button type="button" id="open-ai">导入已有 AI 作品</button><button type="button" id="campus">返回校园全景</button></div>
+    </section>
+    <section id="fixed-generation-panel" class="generation-panel" aria-labelledby="fixed-generation-heading" hidden>
+      <div class="items-heading"><h2 id="fixed-generation-heading">一个空间，多个机位</h2><button type="button" id="close-fixed-generation">收起</button></div>
+      <p class="fine">输入文字或上传示例图，生成同一个空间的固定机位全景，点击机位即可切换。</p>
+      <p id="fixed-status" class="feedback" role="status" aria-live="polite"></p>
+      <div class="generation-links"><a id="fixed-login" href="/ai/login/?next=%2F360%2F" hidden>登录后生成全景 ↗</a><button type="button" id="fixed-connect">刷新连接</button></div>
+      <div id="fixed-workspace" hidden>
+        <form id="fixed-generation-form">
+          <label class="item-field" for="fixed-scene"><span>描述空间（有示例图时可留空）</span><textarea id="fixed-scene" rows="3" maxlength="4000" data-strgo-user-content></textarea></label>
+          <div class="generation-actions"><label class="file-button" for="fixed-reference">上传示例图<input id="fixed-reference" type="file" accept="image/*"></label><button type="button" id="fixed-use-current">以当前全景为示例</button><button type="button" id="fixed-remove-reference" hidden>移除示例图</button></div>
+          <div id="fixed-reference-preview" class="fixed-reference-preview" hidden><img id="fixed-reference-image" alt="示例图预览"><p id="fixed-reference-info" class="fine" data-strgo-user-content></p></div>
+          <label class="item-field" for="fixed-camera-count"><span>固定机位数量</span><select id="fixed-camera-count"><option value="3">3</option><option value="5">5</option></select></label>
+          <p class="fine">所有机位来自同一次空间生成，保持共同的结构和遮挡关系。空间模型单独计费；不会逐机位调用生图。</p>
+          <div class="generation-actions"><button type="submit" id="generate-fixed-panorama" class="primary" disabled>生成固定机位全景</button><span id="fixed-quota" class="fine"></span></div>
+        </form>
+        <p id="fixed-error" class="feedback error" role="alert" hidden data-strgo-user-content></p>
+        <div class="generation-actions"><button type="button" id="fixed-refresh-job" hidden>刷新生成状态</button><button type="button" id="fixed-open-project" hidden>打开固定机位</button></div>
+        <h3 id="fixed-projects-heading">我的固定机位项目</h3><div id="fixed-projects" class="fixed-projects"></div>
+      </div>
     </section>
     <section id="generation-panel" class="generation-panel" aria-labelledby="generation-heading" hidden>
       <div class="items-heading"><h2 id="generation-heading">文字变成全景</h2><button type="button" id="close-generation">收起</button></div>

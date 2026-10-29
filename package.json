@@ -26,6 +26,7 @@
     "test:360:browser": "node tests/panorama-browser.mjs"
   },
   "dependencies": {
+    "@sparkjsdev/spark": "0.1.10",
     "@studio-freight/lenis": "1.0.42",
     "@types/three": "0.160.0",
     "canvas-confetti": "1.9.3",
@@ -36,7 +37,8 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "tailwind-merge": "2.6.0",
-    "three": "0.160.1"
+    "three": "0.160.1",
+    "three-spatial": "npm:three@0.178.0"
   },
   "devDependencies": {
     "linkedom": "0.18.12",

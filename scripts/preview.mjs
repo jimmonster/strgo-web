@@ -12,6 +12,33 @@ const mounts = [
 ];
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.xml': 'application/xml', '.txt': 'text/plain' };
 
+// Only idempotent private binary GETs use this bounded read/retry. Complete
+// framing is verified before forwarding headers; a broken upstream connection
+// must never turn into a truncated image or a second generation POST.
+export async function readPreviewBinary(path, headers, port = 8092) {
+  const maximum = 32 * 1024 * 1024;
+  const forwarded = new Headers(headers);
+  for (const name of ['connection', 'keep-alive', 'transfer-encoding', 'content-length']) forwarded.delete(name);
+  forwarded.set('accept-encoding', 'identity');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const result = await fetch(`http://127.0.0.1:${port}${path}`, { headers: forwarded, redirect: 'error', signal: AbortSignal.timeout(180000) });
+      const expected = result.headers.has('content-length') ? Number(result.headers.get('content-length')) : null;
+      if (expected !== null && (!Number.isSafeInteger(expected) || expected < 0 || expected > maximum)) { await result.body?.cancel(); throw new Error('Binary response too large'); }
+      const chunks = []; let bytes = 0;
+      for await (const chunk of result.body) {
+        bytes += chunk.length; if (bytes > maximum) throw new Error('Binary response too large');
+        chunks.push(chunk);
+      }
+      const encoded = result.headers.get('content-encoding');
+      if (!encoded && expected !== null && bytes !== expected) throw new Error('Incomplete binary response');
+      const responseHeaders = { ...Object.fromEntries(result.headers), 'content-length': String(bytes) };
+      for (const name of ['connection', 'keep-alive', 'transfer-encoding', 'content-encoding']) delete responseHeaders[name];
+      return { status: result.status, headers: responseHeaders, body: Buffer.concat(chunks, bytes) };
+    } catch (error) { if (attempt === 1) throw error; }
+  }
+}
+
 // Local preview mirrors the existing independent-app mounts without modifying
 // those apps, the production build, Nginx, or any running service.
 export async function servePreview(request, response) {
@@ -23,12 +50,21 @@ export async function servePreview(request, response) {
         response.end(JSON.stringify({ error: '本地账号服务未启动，请按 IMAGE-PLAYGROUND.md 启动 API。' }));
         return;
       }
+      if (request.method === 'GET' && /^\/api\/image\/(?:assets\/[a-f0-9]{32}|panorama-tours\/[a-f0-9]{32}\/splat)(?:\?|$)/.test(request.url)) {
+        try {
+          const result = await readPreviewBinary(request.url, { ...request.headers, 'x-real-ip': request.socket.remoteAddress });
+          if (!response.destroyed) { response.writeHead(result.status, result.headers); response.end(result.body); }
+        } catch {
+          if (!response.destroyed) { response.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); response.end(JSON.stringify({ error: '本地私有文件读取中断，请重试加载。' })); }
+        }
+        return;
+      }
       const upstream = httpRequest({ hostname: '127.0.0.1', port: 8092, path: request.url, method: request.method, headers: { ...request.headers, 'x-real-ip': request.socket.remoteAddress } }, result => {
         response.writeHead(result.statusCode, result.headers);
         result.pipe(response);
       });
       upstream.setTimeout(180000, () => upstream.destroy());
-      upstream.on('error', () => { if (!response.headersSent) response.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); response.end(JSON.stringify({ error: '无法连接本地图片 API 服务。' })); });
+      upstream.on('error', () => { if (response.headersSent) { response.destroy(); return; } response.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); response.end(JSON.stringify({ error: '无法连接本地图片 API 服务。' })); });
       request.pipe(upstream);
       return;
     }

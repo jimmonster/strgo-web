@@ -53,7 +53,7 @@ POLYVERSE 生产构建使用 `BASE_PATH=/polyverse/`，MEOW 使用 `MEOW_BASE=/m
 | 改动范围 | 在对应目录执行 |
 | --- | --- |
 | 主站构建与公共交互 | 根目录 `npm run build:production`、`npm test` |
-| 360° 全景与图片导入 | 根构建后 `npm run test:360:browser`；交互、导入、AI 权限和小屏回归见 [全景模块](PANORAMA-360.md) |
+| 360° 全景与图片导入 | 根构建后 `npm run test:360:browser`；固定机位另运行 `python3 -m unittest tests.test_panorama_tours -v`；见 [全景模块](PANORAMA-360.md) 和 [固定机位](PANORAMA-FIXED-VIEWS.md) |
 | 路由、作品内容 | 根目录 `npm run test:content:browser`；结合内容维护文档 |
 | 生图 | 根目录 `npm run test:image`、`npm run test:image:browser` |
 | 论坛与共享账号 | 根目录 `python3 -m unittest tests.test_forum_service tests.test_terminal_account -v` |

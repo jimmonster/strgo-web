@@ -70,6 +70,8 @@ class Service:
         self.backup_due = threading.Event()
         from .ai_service import AIService
         self.ai = AIService(self, start_worker=start_worker)
+        from .panorama_tours import PanoramaTours
+        self.panorama_tours = PanoramaTours(self)
         self.recover()
         self.worker = threading.Thread(target=self._loop, name='image-jobs', daemon=True) if start_worker else None
         if self.worker:
@@ -104,6 +106,10 @@ class Service:
                     queued = db.execute("SELECT id FROM jobs WHERE status='queued' AND deleted=0 ORDER BY created LIMIT 3").fetchall()
                 for job in queued:
                     self._submit('job:' + job['id'], self.run_job, job['id'])
+                with self.store.connect() as db:
+                    tours = db.execute("SELECT id FROM panorama_tours WHERE status='queued' ORDER BY created LIMIT 3").fetchall()
+                for tour in tours:
+                    self._submit('tour:' + tour['id'], self.panorama_tours.start, tour['id'])
                 if time.time() >= retry_after:
                     with self.store.connect() as db:
                         pending = db.execute("SELECT id FROM images WHERE state='pending' ORDER BY created LIMIT 20").fetchall()
@@ -469,6 +475,8 @@ class Service:
             raise Problem(403, '登录校验失效，请刷新页面后重试。')
         if path.startswith(admin.PREFIX + '/'):
             return admin.dispatch(self, method, path, query, payload, user)
+        if path == '/api/image/panorama-tours' or path.startswith('/api/image/panorama-tours/'):
+            return self.panorama_tours.dispatch(user, method, path, payload)
         if path.startswith(API + '/forum/'):
             return forum.dispatch(self, method, path, query, payload, user)
         if path.startswith(API + '/hub/'):

@@ -167,7 +167,7 @@ render_content_config() {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'none'; base-uri 'none'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'" always;
+    add_header Content-Security-Policy "default-src 'none'; base-uri 'none'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'" always;
     add_header Cache-Control "no-cache" always;
     gzip on;
     gzip_vary on;
@@ -177,6 +177,14 @@ render_content_config() {
     location = /image-playground { return 308 /image-playground/\$is_args\$args; }
     location = /ai { return 308 /ai/\$is_args\$args; }
     location = /dreams { return 308 /dreams/\$is_args\$args; }
+    location = /360/fixed-render.html {
+        try_files \$uri =404;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Cache-Control "no-store" always;
+        add_header Content-Security-Policy "default-src 'none'; base-uri 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'self'; object-src 'none'; form-action 'none'" always;
+    }
     location /dreams/ {
         error_page 404 /dreams/404.html;
         try_files \$uri \$uri/ =404;

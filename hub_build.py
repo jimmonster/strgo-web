@@ -67,6 +67,10 @@ def build_hub(root, output, config, context, replace):
         shutil.copytree(output / 'shared', output / name / '_strgo', dirs_exist_ok=True)
         shutil.copy2(output / 'hub/tokens.css', output / name / '_strgo/tokens.css')
     for page in list(output.rglob('*.html')):
+        # An internal offscreen renderer is not an application page. Injecting
+        # navigation here creates private requests and unrelated font loads.
+        if page.relative_to(output).as_posix() == '360/fixed-render.html':
+            continue
         source = page.read_text(encoding='utf-8')
         route = page.relative_to(output).as_posix()
         tool = route.startswith(('ai/', 'admin/', 'forum/', 'image-playground/', 'local-studio/'))
