@@ -3043,14 +3043,25 @@ dialog label {
     padding-inline: 12px;
   }
   .quota-pill {
-    padding: 5px 7px;
-    font-size: 12px;
+    display: none;
   }
   .breadcrumb {
     font-size: 12px;
+    min-width: 0;
+    flex: 1;
+  }
+  .breadcrumb strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .top-actions {
     gap: 9px;
+    flex-shrink: 0;
+  }
+  .workspace-footer {
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .top-actions .account-avatar {
     width: 25px;

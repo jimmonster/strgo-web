@@ -25,7 +25,7 @@ try {
   });
   const executablePath = process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/opt/google/chrome/chrome', '/usr/bin/google-chrome'].find(existsSync);
   browser = await chromium.launch({ executablePath, headless: true });
-  page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: 'zh-CN' });
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(origin + '/admin/');
   await page.locator('#login').waitFor();
@@ -56,23 +56,28 @@ try {
   await page.click('[data-view=forum]'); await page.locator('[data-op=pin]').click();
   await page.getByRole('button', { name: '取消置顶', exact: true }).waitFor();
   await page.locator('[data-op=delete]').click(); await page.locator('.empty').waitFor();
-  for (const width of [320, 390, 768, 1440]) {
-    await page.setViewportSize({ width, height: 900 });
-    for (const view of ['overview', 'users', 'invites', 'forum', 'policy', 'tasks', 'audit']) {
-      await page.click(`[data-view=${view}]`);
-      await page.waitForFunction(() => !document.querySelector('#main').textContent.includes('正在读取'));
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, `${width} ${view} overflow`);
+  for (const locale of ['zh-CN', 'zh-TW', 'en', 'ja', 'ko']) {
+    await page.locator('strgo-navigation select').selectOption(locale);
+    assert.equal(await page.locator('html').getAttribute('lang'), locale);
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const view of ['overview', 'users', 'invites', 'forum', 'policy', 'tasks', 'audit']) {
+        await page.click(`[data-view=${view}]`);
+        await page.locator('#main > :nth-child(2)').waitFor();
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, `${locale} ${width} ${view} overflow`);
+      }
+      await page.screenshot({ path: directory + `audit-${locale}-${width}.png`, fullPage: true });
+      results.push({ locale, width, views: 7, overflow: false });
     }
-    await page.screenshot({ path: directory + `audit-${width}.png`, fullPage: true });
-    results.push({ width, views: 7, overflow: false });
   }
+  await page.locator('strgo-navigation select').selectOption('zh-CN');
   const auditRows = await page.locator('tbody tr').count(); assert.ok(auditRows >= 6);
   await page.click('#logout'); await page.locator('#login').waitFor();
   await page.fill('[name=username]', 'member-demo'); await page.fill('[name=password]', 'admin-demo-only-2026'); await page.click('#login button');
   await page.getByRole('heading', { name: '需要管理员权限' }).waitFor();
   assert.deepEqual(errors, []);
   await writeFile(directory + 'report.json', JSON.stringify({ passed: true, api: 'real temporary HTTP/SQLite; no models', results, errors }, null, 2));
-  console.log('Admin real HTTP browser checks passed: 4 widths × 7 views, login, account state, invites, policy, moderation, audit and member denial.');
+  console.log('Admin real HTTP browser checks passed: 5 locales × 4 widths × 7 views, login, account state, invites, policy, moderation, audit and member denial.');
 } catch (error) {
   if (page) {
     await page.screenshot({ path: directory + 'failure.png', fullPage: true }).catch(() => {});

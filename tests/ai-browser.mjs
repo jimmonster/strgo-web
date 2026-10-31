@@ -11,7 +11,7 @@ await mkdir(directory, { recursive: true }); process.env.STRGO_IMAGE_API = '1';
 const { server, origin } = await startPreview(0);
 const fixture = spawn(process.env.STRGO_PYTHON || 'python3', ['tests/admin-preview.py', '--demo', '--origin', origin, '--with-ai'], { cwd: root, env: { ...process.env, PYTHONUTF8: '1' }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 const exit = new Promise(resolve => fixture.once('exit', resolve));
-let browser, page, stderr = ''; const errors = [], sizes = [], failedResponses = [];
+let browser, page, stderr = ''; const errors = [], sizes = [], failedResponses = [], failedRequests = [];
 fixture.stderr.on('data', chunk => { stderr += chunk; });
 try {
   await new Promise((resolve, reject) => {
@@ -22,8 +22,9 @@ try {
   });
   const executablePath = process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/opt/google/chrome/chrome', '/usr/bin/google-chrome'].find(existsSync);
   browser = await chromium.launch({ executablePath, headless: true });
-  page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }); page.on('pageerror', error => errors.push(error.message));
+  page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: 'zh-CN' }); page.on('pageerror', error => errors.push(error.message));
   page.on('response', async response => { if (response.status() >= 400) failedResponses.push([new URL(response.url()).pathname, response.status(), await response.text().catch(() => '')]); });
+  page.on('requestfailed', request => failedRequests.push([new URL(request.url()).pathname, request.failure()?.errorText]));
   await page.goto(origin + '/ai/login/'); await page.locator('#login-form').waitFor();
   await page.fill('[name=username]', 'admin-demo'); await page.fill('[name=password]', 'admin-demo-only-2026'); await page.click('#login-form button[type=submit]');
   await page.locator('.overview-heading').waitFor();
@@ -75,7 +76,7 @@ try {
   await writeFile(directory + 'report.json', JSON.stringify({ passed: true, sizes, pages: 7, pagination: '106 tasks/assets across 24-item hub pages, 40 conversations, server search', api: 'real HTTP/SQLite; fake text/silent audio only', errors }, null, 2));
   console.log('AI real HTTP browser regression passed: pagination, search, streaming and 5 widths × 7 routes.');
 } catch (error) {
-  if (page) { await page.screenshot({ path: directory + 'failure.png', fullPage: true }).catch(() => {}); console.error(page.url(), errors, failedResponses.slice(-10)); console.error(await page.locator('body').innerText().catch(() => 'page unavailable')); }
+  if (page) { await page.screenshot({ path: directory + 'failure.png', fullPage: true }).catch(() => {}); console.error(page.url(), errors, failedResponses.slice(-10), failedRequests.slice(-10)); console.error(await page.locator('body').innerText().catch(() => 'page unavailable')); }
   console.error(stderr); throw error;
 } finally {
   await browser?.close(); fixture.stdin.end();

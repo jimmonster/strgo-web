@@ -133,3 +133,42 @@ Windows 跳过的 Bash 部署、符号链接与 POSIX 权限、Rust 项不记作
 新增离线回归 11 项通过，覆盖环境文件不执行 shell、存储/来源配置边界、三类队列未完成任务阻断、只读旧数据库及缺失数据库不被创建、终端清单与真实 sha256sum 校验/篡改拒绝、命令安装幂等及同名程序保留、任意目录执行、先拉取后启动新版程序、本地修改/拉取失败/未推送提交阻断与只读检查。Bash 语法与差异检查通过。完整 Linux CI 以本提交关联运行记录为准。
 
 未连接用户 ECS，未执行生产发布或真实终端构建。这里的验证覆盖发布入口和离线边界；既有模块发布回滚及 Docker/SSH 探针由用户在 ECS 运行命令时执行，整轮更新不是跨模块的整体事务。
+
+## 2026-10-31：GitHub 合入与 CI 排查
+
+基准为本地 HEAD 和远端 main 的 `26fad900f5c9fbef30a1edea73be20264d2af245`。本轮检查 Git 分支关系、GitHub PR/Actions/分支规则、失败日志，以及后台、AI 和全景的相关浏览器回归；不代表整仓生产验收。
+
+### 合入状态（排查时）
+
+- GitHub 只有 PR #1、#2，两者均已合并，没有打开的 PR。当前索引没有未解决的合并冲突。
+- 当前 `codex/360-item-library` 的 HEAD 与远端 main 完全一致。它相对同名远端分支显示 ahead 5，是该远端分支仍停留在 `9e0cad8`；这 5 个提交已经在 main 中，不是尚未合入的功能。`codex/feature-completion-admin` 的已提交内容也已包含在 main。
+- main 在另一个本地工作树中，仍停留在 `5add078`，落后远端 2 个提交。在该工作树验收时需先同步版本。本轮未移动其分支。
+- 用户原有的 11 个已暂存文件（大跨度机位样张及相关文档、脚本）和未跟踪的 `docs/` 保持原状；未提交的样张不在 main 中。
+
+### 失败原因与本地修复
+
+排查时最新的 [main CI](https://github.com/jimmonster/strgo-web/actions/runs/40867520167) 的 web job 在浏览器步骤失败；生产构建、根回归、独立应用检查通过，terminal job 成功。失败日志显示英文页面上的按钮为 `Disable account`，而 [后台脚本](../tests/admin-browser.mjs) 第 39 行等待中文 `停用账号`，30 秒后超时。首次五语言提交的 [CI](https://github.com/jimmonster/strgo-web/actions/runs/40436324815) 则先暴露 `320 overview overflow`。这两类问题均与合并冲突无关。
+
+| 优先级 | 触发条件、影响 | 本轮处理与证据 |
+| --- | --- | --- |
+| P2：浏览器语言依赖宿主环境 | CI 默认英文，后台和 AI 的中文文案定位不稳定；后台首先失败，后续脚本没有执行。 | [后台](../tests/admin-browser.mjs) 和 [AI](../tests/ai-browser.mjs) 显式设置 `locale: 'zh-CN'`；保留成员身份范围和管理员自身按钮禁用检查。AI 失败诊断补充请求失败信息。 |
+| P2：后台窄屏工具栏溢出 | 加入语言选择器后，320px 下工具栏将页面撑至约 373px。 | [后台样式](../src/admin/styles.css) 允许移动端 header 换行并限制操作区宽度。实际 Chrome 验证 5 种语言 × 4 种宽度 × 7 个管理页面通过；测试按实际内容节点等待加载完成，避免英文页面提前结束等待。 |
+| P2：AI 窄屏工具栏和页脚溢出 | 补验 AI 时复现 `320 /ai/ overflow`，语言选择器、额度和账号挤在同一行，页脚也无法容纳两段文字。 | [AI 样式](../src/ai-workspace/styles.css) 在最窄断点收起工具栏额度，允许面包屑收缩、省略长标题，并让页脚换行。完整 AI 验收仍受下述 HTTP 问题阻断，不能记为全部通过。 |
+| P2：一个浏览器失败掩盖其他结果 | [工作流](../.github/workflows/verify.yml) 在同一个 Bash 步骤中顺序执行三个脚本，首个失败直接退出。 | 改为依次运行后台、AI、全景并汇总退出码。实际执行从 YAML 提取的 Bash，验证全部成功返回 0，任意一组失败仍执行三组且最终返回 1，共 4 种情况通过。 |
+
+GitHub API 同时确认 main 的 `protected=false`，适用规则为空；当前没有必需 CI 检查阻止失败提交进入 main。本轮只读取配置，未变更保护规则。后续应先让新提交的 CI 通过，再按协作方式配置必需检查。
+
+### 实际验证与剩余项
+
+| 范围 | 结果与限制 |
+| --- | --- |
+| 正式构建 | 准备 vendor 后运行 `build.py --require-vendor`，通过。生成的 vendor 换行变化已清理。 |
+| 根 Node | Node 24.22.1 和 CI 同版本 Node 22.23.4 各执行全部 `tests/*.test.mjs`，均 157/157 通过，无跳过。Node 22 来自官方发行包并核对官方 SHA-256。 |
+| 后台浏览器 | 实际 Chrome + 临时 HTTP/SQLite，5 语言 × 4 宽度 × 7 页面，以及登录、成员停用/恢复、邀请码、额度、社区管理、审计和成员拒绝均通过。 |
+| 全景浏览器 | 完整 `tests/panorama-browser.mjs` 通过，包含固定机位、五语言、移动端、隐私与幂等，以及真实 HTTP/SQLite 的模板编辑、CSRF、生成和图片读取；模型为隔离夹具。 |
+| AI 浏览器 | 复核中跑通过 106 条任务/作品分页、40 条对话、搜索和流式回复，但完整脚本仍在 Windows 的任务/作品读取时出现 `ERR_CONTENT_LENGTH_MISMATCH` 或 `signal timed out`；Node 22、24 均有复现。直连临时 API 的诊断也遇到响应读取错误，根因未确定，不据此认定生产 API 故障。 |
+| 差异与工作区 | 本轮修改的脚本语法和 `git diff --check` 通过；按用户要求将本次 6 个文件单独提交并推送 main，保留原有暂存内容；未发布生产。 |
+
+本地预览代理的尝试性修复未通过完整回归，已全部撤回；`scripts/preview.mjs` 与 `tests/preview-api.test.mjs` 保持基准版本。本轮未改 Python API 或生成任务行为。原始日志、GitHub 快照和浏览器截图位于忽略的 `artifacts/review/`、`artifacts/admin/`、`artifacts/ai-browser/` 和 `artifacts/panorama/`。
+
+本次修复按用户要求直接推送远端 main；结果需以新提交对应的 Linux Actions 复核为准，不能沿用旧提交的 CI 结论。AI 的 Windows HTTP 读取问题仍待独立定位。本机未执行 Linux 全套、Rust、真实 GPU/收费模型、Docker/SSH 或生产发布。

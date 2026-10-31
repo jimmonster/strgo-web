@@ -40,15 +40,17 @@ jobs:
       - name: Application builds, integration and deployment helpers
         if: success() || failure()
         run: node scripts/verify.mjs --apps
-      - name: Admin real HTTP browser regression
+      - name: Admin, AI and panorama browser regressions
         if: success()
         env:
           STRGO_PYTHON: python3
           CHROME_PATH: /usr/bin/google-chrome
         run: |
-          node tests/admin-browser.mjs
-          node tests/ai-browser.mjs
-          node tests/panorama-browser.mjs
+          status=0
+          for test in admin-browser ai-browser panorama-browser; do
+            node "tests/$test.mjs" || status=1
+          done
+          exit "$status"
   terminal:
     runs-on: ubuntu-latest
     timeout-minutes: 20
