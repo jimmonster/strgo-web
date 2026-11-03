@@ -80,6 +80,7 @@ export class StrgoAssistant extends HTMLElement {
       area.innerHTML = this.messages.map((message, i) => `<article class="message ${message.role === 'user' ? 'user' : 'ai'}"><span class="avatar">${message.role === 'user' ? '我' : '✳'}</span><div><p class="message-name">${message.role === 'user' ? '你' : 'STRGO 助手'}</p><div class="message-content">${esc(message.content)}</div>${message.role === 'assistant' && message.state === 'SUCCEEDED' ? `<div class="message-actions"><button data-copy="${i}">复制</button>${this.context.scope === 'global' ? `<button data-transfer="${i}">带入音乐工作台 ↗</button>` : this.context.scope === 'image' ? `<button data-image="${i}">预览并应用提示词 ↗</button>` : ''}</div>` : message.state && !['SUCCEEDED', 'QUEUED', 'RUNNING'].includes(message.state) ? `<span class="partial">部分内容 · 不会自动加入后续上下文</span>${message.role === 'user' && message.task_id && ['FAILED','CANCELLED','INTERRUPTED'].includes(message.state) ? `<div class="message-actions"><button data-retry="${i}">编辑后重试</button></div>` : ''}` : ''}</div></article>`).join('');
       area.querySelectorAll('[data-retry]').forEach(button => { button.onclick = () => {
         if (this.busy || this.recoverRun) { this.notice('请先停止或恢复当前回复。'); return; }
+        if (this.pending) { this.notice('再次发送会使用原请求标识核对，不会重复创建任务。'); return; }
         const input = this.shadowRoot.querySelector('textarea');
         if (input.value.trim()) { this.notice('请先发送或清空当前输入。'); return; }
         const original = this.messages[Number(button.dataset.retry)];

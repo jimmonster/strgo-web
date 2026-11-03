@@ -103,6 +103,10 @@ test('retry preserves an unsent draft and requires a fresh explicit send with th
   const { assistant } = fixture(async function* () {});
   assistant.messages = [{ role: 'user', task_id: 'failed-run', content: '原始消息', state: 'FAILED' }]; assistant.renderMessages();
   const input = assistant.shadowRoot.querySelector('textarea'); input.value = '未发送的草稿';
+  assistant.pending = { body: { content: '结果不明的原请求' }, key: 'original-key' };
+  assistant.shadowRoot.querySelector('[data-retry]').onclick();
+  assert.equal(assistant.pending.key, 'original-key'); assert.equal(assistant.retryOf, undefined); assert.equal(input.value, '未发送的草稿');
+  assistant.pending = null;
   assistant.shadowRoot.querySelector('[data-retry]').onclick(); assert.equal(input.value, '未发送的草稿');
   input.value = ''; assistant.shadowRoot.querySelector('[data-retry]').onclick();
   assert.equal(input.value, '原始消息'); assert.equal(assistant.retryOf, 'failed-run');
