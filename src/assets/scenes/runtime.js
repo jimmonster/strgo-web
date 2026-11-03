@@ -1,22 +1,25 @@
 import * as T from '../vendor/three.module.js';
 import { SceneControls } from './controls.js';
 import { disposeScene } from './geometry.js';
+import { DanceAudio } from './audio.js';
 
 export async function start() {
   const mode = document.body.dataset.scene, dance = mode === 'dance';
   const canvas = document.querySelector('#scene-canvas'), status = document.querySelector('#scene-status');
   const errorUI = document.querySelector('#scene-error'), loading = document.querySelector('#scene-loading');
   const mobile = matchMedia('(max-width: 767px)').matches, reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const cleanup = []; let renderer, model, controls, frame = 0, destroyed = false, failed = false;
+  const cleanup = []; let renderer, model, controls, audio, frame = 0, destroyed = false, failed = false;
   const on = (element, name, listener, options) => { element.addEventListener(name, listener, options); cleanup.push(() => element.removeEventListener(name, listener, options)); };
   const destroy = () => {
     if (destroyed) return; destroyed = true; cancelAnimationFrame(frame); cleanup.splice(0).reverse().forEach(fn => fn());
-    controls?.destroy(); if (model) disposeScene(model.scene); renderer?.dispose(); renderer?.forceContextLoss();
+    controls?.destroy(); audio?.dispose(); if (model) disposeScene(model.scene); renderer?.dispose(); renderer?.forceContextLoss();
     if (window.StrgoScene) window.StrgoScene.disposed = true;
   };
   const fail = error => {
     if (destroyed) return; failed = true; loading.hidden = true; errorUI.hidden = false;
     document.querySelector('#scene-error-detail').textContent = error.message || '三维渲染暂时不可用，请重试。';
+    status.textContent = '三维场景暂时不可用，仍可使用导航。';
+    document.querySelectorAll('.scene-dock button, .scene-dock input').forEach(element => { element.disabled = true; });
     document.body.dataset.state = 'error'; destroy();
   };
   try {
@@ -26,6 +29,7 @@ export async function start() {
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
     const module = await (dance ? import('./dance.js') : import('./home.js'));
     model = module.createScene({ mobile });
+    if (dance) audio = new DanceAudio();
     const camera = new T.PerspectiveCamera(dance ? 43 : 42, 1, .1, 180);
     let playing = dance && !reducedMotion, autoCamera = dance && !reducedMotion, time = 0, last = 0, lastDraw = 0, dirty = true;
     const pauseButton = document.querySelector('[data-action="play"]'), autoButton = document.querySelector('[data-action="auto"]');
@@ -34,6 +38,8 @@ export async function start() {
       pauseButton.textContent = playing ? 'Ⅱ 暂停' : '▷ 播放'; pauseButton.setAttribute('aria-pressed', String(!playing));
       autoButton.textContent = autoCamera ? '自动运镜 · 开' : '恢复自动运镜'; autoButton.setAttribute('aria-pressed', String(autoCamera));
       document.body.dataset.playing = String(playing); document.body.dataset.autoCamera = String(autoCamera);
+      const soundButton = document.querySelector('[data-action="sound"]');
+      if (soundButton) { soundButton.textContent = audio.enabled ? '♫ 关闭声音' : '♫ 开启声音'; soundButton.setAttribute('aria-pressed', String(audio.enabled)); }
     }
     const requestDraw = () => { dirty = true; schedule(); };
     controls = new SceneControls(camera, canvas, model, requestDraw, () => { if (dance && autoCamera) { autoCamera = false; syncButtons(); status.textContent = '手动视角 · 可恢复自动运镜'; } });
@@ -66,7 +72,7 @@ export async function start() {
       if (playing || moving || dirty) schedule();
     }
     function schedule() { if (!frame && !destroyed && !document.hidden) frame = requestAnimationFrame(draw); }
-    on(document, 'visibilitychange', () => { last = 0; if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else requestDraw(); });
+    on(document, 'visibilitychange', () => { last = 0; audio?.sync(time, playing && !document.hidden); if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else requestDraw(); });
     on(canvas, 'webglcontextlost', event => { event.preventDefault(); fail(new Error('图形上下文已中断。请点击重试，重新加载场景。')); });
     on(window, 'pagehide', () => destroy());
     // Browser back/forward cache must recreate a context after pagehide disposal.
@@ -77,19 +83,34 @@ export async function start() {
       if (!dance) document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === 'room')));
     });
     if (dance) {
-      on(pauseButton, 'click', () => { playing = !playing; last = 0; syncButtons(); requestDraw(); status.textContent = playing ? '表演继续' : '表演与灯光已暂停 · 仍可拖动视角'; });
-      on(document.querySelector('[data-action="restart"]'), 'click', () => { time = 0; last = 0; requestDraw(); status.textContent = '已回到表演开场'; });
+      on(pauseButton, 'click', () => { playing = !playing; last = 0; audio.sync(time, playing); syncButtons(); requestDraw(); status.textContent = playing ? '表演继续' : '表演与灯光已暂停 · 仍可拖动视角'; });
+      on(document.querySelector('[data-action="restart"]'), 'click', () => { time = 0; last = 0; audio.sync(time, playing); requestDraw(); status.textContent = '已回到表演开场'; });
       on(autoButton, 'click', () => { autoCamera = !autoCamera; syncButtons(); requestDraw(); status.textContent = autoCamera ? '自动运镜已恢复' : '已切换手动视角'; });
+      const soundButton = document.querySelector('[data-action="sound"]'), volume = document.querySelector('#stage-volume');
+      if (soundButton) on(soundButton, 'click', async () => { soundButton.disabled = true; try { await audio.toggle(time, playing && !document.hidden); if (!destroyed) syncButtons(); } catch (error) { status.textContent = error.message; } finally { soundButton.disabled = false; } });
+      if (volume) on(volume, 'input', () => audio.setVolume(volume.value));
     } else {
       const buttons = document.querySelectorAll('[data-view]');
       buttons.forEach(button => on(button, 'click', () => {
         controls.setView(model.views[button.dataset.view]);
         buttons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-        status.textContent = button.dataset.view === 'garden' ? '阳台与窗外花园视角' : '卧室全景视角';
+        status.textContent = { garden: '阳台与窗外花园视角', desk: '电脑工作区视角', room: '卧室全景视角' }[button.dataset.view];
       }));
+      const computer = model.scene.getObjectByName('computer'), ray = new T.Raycaster();
+      const hitComputer = event => {
+        if (!computer) return false;
+        const bounds = canvas.getBoundingClientRect();
+        ray.setFromCamera(new T.Vector2((event.clientX - bounds.left) / bounds.width * 2 - 1, -(event.clientY - bounds.top) / bounds.height * 2 + 1), camera);
+        return ray.intersectObject(computer, false).length > 0;
+      };
+      let tap;
+      on(canvas, 'pointerdown', event => { if (tap || (event.button != null && event.button !== 0)) { tap = null; return; } tap = { id: event.pointerId, x: event.clientX, y: event.clientY }; });
+      on(canvas, 'pointermove', event => { if (tap && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 6) tap = null; canvas.style.cursor = hitComputer(event) ? 'pointer' : ''; });
+      on(canvas, 'pointercancel', () => { tap = null; });
+      on(canvas, 'pointerup', event => { const activate = tap && tap.id === event.pointerId && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) <= 6; tap = null; if (activate && hitComputer(event)) location.assign('/terminal/'); });
     }
     window.StrgoScene = {
-      mode, time, frames: 0, disposed: false, inspect: () => ({ ...model.inspect(), time, playing, autoCamera, geometries: renderer.info.memory.geometries, drawCalls: renderer.info.render.calls }),
+      mode, time, frames: 0, disposed: false, inspect: () => ({ ...model.inspect(), time, playing, autoCamera, sound: Boolean(audio?.enabled), volume: audio?.volume, geometries: renderer.info.memory.geometries, drawCalls: renderer.info.render.calls }),
       // Read-only snapshots make browser acceptance checks possible without exposing credentials or commands.
       snapshot: () => model.dancers?.map(d => ({ position: d.root.position.toArray(), arms: d.arms.map(a => a.upper.rotation.toArray().slice(0, 3)), torso: d.torso.rotation.toArray().slice(0, 3), legs: d.legs.map(l => l.thigh.quaternion.toArray()) })),
       destroy

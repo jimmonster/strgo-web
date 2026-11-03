@@ -131,7 +131,7 @@ export function createScene({ mobile = false } = {}) {
   return {
     scene, title: '日光卧室', target: [0, .8, -2.1], camera: { theta: .54, phi: .94, radius: 20.4 },
     limits: { theta: [-.15, 1.12], phi: [.62, 1.22], radius: [14, 28] },
-    views: { room: { target: [0, .8, -2.1], theta: .54, phi: .94, radius: 20.4 }, garden: { target: [.7, .8, -7], theta: .1, phi: 1.2, radius: 13.5 } },
+    views: { room: { target: [0, .8, -2.1], theta: .54, phi: .94, radius: 20.4 }, desk: { target: [-1.42, 1.5, -2.84], theta: .1, phi: 1.05, radius: 14 }, garden: { target: [.7, .8, -7], theta: .1, phi: 1.2, radius: 13.5 } },
     update() {}, inspect() { return { objects: ['bedroom', 'computer-area', 'computer', 'bed', 'balcony', 'garden'], sunlight: sun.position.toArray() }; }
   };
 }

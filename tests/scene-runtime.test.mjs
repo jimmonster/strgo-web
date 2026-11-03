@@ -7,32 +7,34 @@ import { parseHTML } from 'linkedom';
 import * as THREE from '../src/assets/vendor/three.module.js';
 import { SceneControls } from '../src/assets/scenes/controls.js';
 import { disposeScene } from '../src/assets/scenes/geometry.js';
+import { DanceAudio } from '../src/assets/scenes/audio.js';
 
 async function environment({ mode = 'dance', reduced = false, broken = false } = {}) {
-  const { document } = parseHTML(`<!doctype html><html><head></head><body data-scene="${mode}"><canvas id="scene-canvas"></canvas><div id="scene-loading"></div><div id="scene-error" hidden></div><p id="scene-error-detail"></p><p id="scene-status"></p><button data-action="play"></button><button data-action="restart"></button><button data-action="auto"></button><button data-action="reset-view"></button><span id="show-time"></span><progress id="show-progress"></progress><span id="show-section"></span><button data-view="room"></button><button data-view="garden"></button></body></html>`);
+  const { document } = parseHTML(`<!doctype html><html><head></head><body data-scene="${mode}"><canvas id="scene-canvas"></canvas><div id="scene-loading"></div><div id="scene-error" hidden></div><p id="scene-error-detail"></p><p id="scene-status"></p><button data-action="play"></button><button data-action="restart"></button><button data-action="auto"></button><button data-action="reset-view"></button><span id="show-time"></span><progress id="show-progress"></progress><span id="show-section"></span><button data-view="room"></button><button data-view="garden"></button><button data-view="desk"></button></body></html>`);
   // Geometry's optional canvas lettering is irrelevant to the timeline checks.
   const makeElement = document.createElement.bind(document);
   document.createElement = tag => { const element = makeElement(tag); if (tag === 'canvas') element.getContext = () => null; return element; };
   const canvas = document.querySelector('canvas'); canvas.focus = () => {}; canvas.setPointerCapture = () => {};
-  canvas.getBoundingClientRect = () => ({ width: 1100, height: 750 });
+  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1100, height: 750 });
   const frames = new Map(); let id = 0, renderer;
-  const globalKeys = ['document', 'window', 'matchMedia', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'devicePixelRatio'];
+  const globalKeys = ['document', 'window', 'matchMedia', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'devicePixelRatio', 'location'];
   const saved = Object.fromEntries(globalKeys.map(key => [key, globalThis[key]]));
-  const win = new EventTarget();
+  const win = new EventTarget(), navigations = [];
+  globalThis.location = { assign: value => navigations.push(value) };
   Object.assign(globalThis, { document, window: win, matchMedia: query => ({ matches: query.includes('reduced') ? reduced : false }), devicePixelRatio: 1,
     ResizeObserver: class { constructor(fn) { this.fn = fn; } observe() { this.fn(); } disconnect() { this.disconnected = true; } },
     requestAnimationFrame: fn => { const handle = ++id; frames.set(handle, fn); return handle; }, cancelAnimationFrame: id => frames.delete(id) });
   class Renderer {
     constructor() { if (broken) throw Error('WebGL unavailable'); this.shadowMap = {}; this.info = { memory: {}, render: {} }; this.draws = 0; renderer = this; }
-    setPixelRatio() {} setSize() {} render() { this.draws++; } dispose() { this.disposed = true; } forceContextLoss() { this.lost = true; }
+    setPixelRatio() {} setSize() {} render(scene, camera) { this.draws++; this.scene = scene; this.camera = camera; scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); } dispose() { this.disposed = true; } forceContextLoss() { this.lost = true; }
   }
   const source = readFileSync(new URL('../src/assets/scenes/runtime.js', import.meta.url), 'utf8')
     .replace(/^import .*;\r?\n/gm, '').replace('export async function start', 'async function start')
     .replaceAll("import('./dance.js')", `import('${new URL('../src/assets/scenes/dance.js', import.meta.url).href}')`)
     .replaceAll("import('./home.js')", `import('${new URL('../src/assets/scenes/home.js', import.meta.url).href}')`);
-  const start = new Function('T', 'SceneControls', 'disposeScene', `${source}\nreturn start;`)({ ...THREE, WebGLRenderer: Renderer }, SceneControls, disposeScene);
+  const start = new Function('T', 'SceneControls', 'disposeScene', 'DanceAudio', `${source}\nreturn start;`)({ ...THREE, WebGLRenderer: Renderer }, SceneControls, disposeScene, DanceAudio);
   const app = await start();
-  return { document, win, renderer, app, frames, click: action => document.querySelector(`[data-action="${action}"]`).dispatchEvent(new document.defaultView.Event('click')),
+  return { document, win, renderer, app, frames, navigations, click: action => document.querySelector(`[data-action="${action}"]`).dispatchEvent(new document.defaultView.Event('click')),
     tick(now) { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(fn => fn(now)); },
     restore() { app.destroy(); for (const key of globalKeys) if (saved[key] === undefined) delete globalThis[key]; else globalThis[key] = saved[key]; }
   };
@@ -68,5 +70,23 @@ test('Static bedroom stops rendering at rest and view presets request new draws'
     env.document.querySelector('[data-view="garden"]').dispatchEvent(new env.document.defaultView.Event('click'));
     assert.equal(env.frames.size, 1); env.tick(5000);
     assert.equal(env.document.querySelector('[data-view="garden"]').getAttribute('aria-pressed'), 'true');
+  } finally { env.restore(); }
+});
+
+
+test('the bedroom computer hotspot opens the existing terminal and a drag cannot navigate', async () => {
+  const env = await environment({ mode: 'home' });
+  try {
+    const computer = env.renderer.scene.getObjectByName('computer');
+    const point = computer.getWorldPosition(new THREE.Vector3()).project(env.renderer.camera);
+    const x = (point.x + 1) * 550, y = (1 - point.y) * 375;
+    const canvas = env.document.querySelector('canvas');
+    const pointer = (name, dx = 0) => { const event = new env.document.defaultView.Event(name); Object.assign(event, { pointerId: 1, clientX: x + dx, clientY: y, button: 0, pointerType: 'mouse' }); canvas.dispatchEvent(event); };
+    pointer('pointerdown'); pointer('pointerup'); assert.deepEqual(env.navigations, ['/terminal/']);
+    pointer('pointerdown'); pointer('pointermove', 50); pointer('pointermove'); pointer('pointerup');
+    assert.deepEqual(env.navigations, ['/terminal/']);
+    env.document.querySelector('[data-view="desk"]').click();
+    assert.equal(env.document.querySelector('[data-view="desk"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(env.document.querySelector('#scene-status').textContent, '电脑工作区视角');
   } finally { env.restore(); }
 });
