@@ -16,6 +16,7 @@ import { workflowTraditional } from './workflow-traditional.js';
 import { legacyCopy } from './legacy-copy.js';
 import { legacyTraditional } from './legacy-traditional.js';
 import { panoramaCopy } from './panorama-copy.js';
+import { completionCopy } from './completion-copy.js';
 
 export const LOCALE_KEY = 'strgo:locale:v1';
 export const SUPPORTED_LOCALES = ['zh-CN', 'zh-TW', 'en', 'ja', 'ko'];
@@ -65,11 +66,11 @@ export function setLocale(locale, { persist = true } = {}) {
 }
 
 export function translate(source, locale = getLocale()) {
-  if (typeof source !== 'string' || (locale === 'zh-CN' && !isMeowPage() && !isPolyversePage() && !isWorkflowPage())) return source;
+  if (typeof source !== 'string' || (locale === 'zh-CN' && !Object.hasOwn(completionCopy['zh-CN'], source.trim()) && !isMeowPage() && !isPolyversePage() && !isWorkflowPage())) return source;
   const match = source.match(/^(\s*)([\s\S]*?)(\s*)$/);
   const text = match[2];
   const dictionary = dictionaries[locale] || {};
-  let value = panoramaCopy[locale]?.[text] ?? (isWorkflowPage() ? workflowDictionaries[locale]?.[text] : undefined) ?? (isLegacyPage() ? legacyDictionaries[locale]?.[text] : undefined) ?? (isPolyversePage() ? polyverseDictionaries[locale]?.[text] : undefined) ?? (isMeowPage() ? meowDictionaries[locale]?.[text] : undefined) ?? (isNexusPage() ? nexusDictionaries[locale]?.[text] : undefined) ?? ((isSiteAdminPage() || isAiAdminPage()) ? adminDictionaries[locale]?.[text] : undefined) ?? dynamicDictionaries[locale]?.[text] ?? dictionary[text] ?? (locale === 'zh-TW' || locale === 'zh-CN' ? undefined : english[text]);
+  let value = completionCopy[locale]?.[text] ?? panoramaCopy[locale]?.[text] ?? (isWorkflowPage() ? workflowDictionaries[locale]?.[text] : undefined) ?? (isLegacyPage() ? legacyDictionaries[locale]?.[text] : undefined) ?? (isPolyversePage() ? polyverseDictionaries[locale]?.[text] : undefined) ?? (isMeowPage() ? meowDictionaries[locale]?.[text] : undefined) ?? (isNexusPage() ? nexusDictionaries[locale]?.[text] : undefined) ?? ((isSiteAdminPage() || isAiAdminPage()) ? adminDictionaries[locale]?.[text] : undefined) ?? dynamicDictionaries[locale]?.[text] ?? dictionary[text] ?? (locale === 'zh-TW' || locale === 'zh-CN' ? undefined : english[text]);
   // MEOW also has English source labels composed at runtime (for example,
   // gallery titles followed by an arrow), so let its patterns run in zh-CN.
   if (value === undefined && locale === 'zh-CN' && !isPolyversePage() && !isMeowPage()) return source;
@@ -102,6 +103,10 @@ export function translate(source, locale = getLocale()) {
       const action=translate(m[1],locale), single=!!m[2]; value={en:`${action} · Playing${single?' (single preview)':''}`,'zh-TW':`${action} · 播放中${single?'（單次預覽）':''}`,ja:`${action} · 再生中${single?'（1 回プレビュー）':''}`,ko:`${action} · 재생 중${single?' (1회 미리보기)':''}`}[locale];
     } else if (isMeowPage() && (m = text.match(/^idle · (已回到暂停状态|轻轻呼吸中)$/))) {
       value=`${{en:'Idle','zh-CN':'待机','zh-TW':'待機',ja:'待機',ko:'대기'}[locale]} · ${translate(m[1],locale)}`;
+    } else if (isMeowPage() && (m = text.match(/^删除清单中的全部 (\d+) 件商品？$/))) {
+      value={en:`Remove all ${m[1]} items from this list?`,'zh-TW':`刪除清單中的全部 ${m[1]} 件商品？`,ja:`リストの ${m[1]} 点をすべて削除しますか？`,ko:`목록의 상품 ${m[1]}개를 모두 지울까요?`}[locale];
+    } else if (isMeowPage() && (m = text.match(/^(.+) 数量$/)) && meowDictionaries[locale]?.[m[1]]) {
+      value=`${translate(m[1],locale)} · ${translate('数量',locale)}`;
     } else if (isMeowPage() && (m = text.match(/^(当前网址|导入未完成|无法生成图片)：(.+)$/))) {
       const labels={en:['Current URL','Import incomplete','Image creation failed'],'zh-TW':['當前網址','匯入未完成','無法生成圖片'],ja:['現在の URL','読み込み未完了','画像を作成できません'],ko:['현재 주소','가져오기 미완료','이미지를 만들 수 없습니다']}; const index=['当前网址','导入未完成','无法生成图片'].indexOf(m[1]); if(labels[locale])value=`${labels[locale][index]}: ${index===0?m[2]:translate(m[2],locale)}`;
     } else if (isMeowPage() && (m = text.match(/^认识 ([A-Za-z]+)$/))) {
@@ -140,6 +145,12 @@ export function translate(source, locale = getLocale()) {
       value={en:`Copy manually: ${m[1]}`,'zh-TW':`可以手動複製：${m[1]}`,ja:`手動でコピー：${m[1]}`,ko:`직접 복사: ${m[1]}`}[locale];
     } else if (isLegacyPage() && (m = text.match(/^联系 (.+) ↗$/))) {
       value={en:`Contact ${m[1]} ↗`,'zh-TW':`聯繫 ${m[1]} ↗`,ja:`${m[1]} に連絡 ↗`,ko:`${m[1]}에게 연락 ↗`}[locale];
+    } else if ((/^\/ai(?:\/|$)/.test(globalThis.location?.pathname || '') || isAiAdminPage()) && (m = text.match(/^已使用 (\d+) · 任务预占 (\d+)$/))) {
+      value={en:`Used ${m[1]} · Reserved ${m[2]}`,'zh-TW':`已使用 ${m[1]} · 任務預占 ${m[2]}`,ja:`使用済み ${m[1]} · 予約中 ${m[2]}`,ko:`사용 ${m[1]} · 예약 ${m[2]}`}[locale];
+    } else if ((/^\/ai(?:\/|$)/.test(globalThis.location?.pathname || '') || isAiAdminPage()) && (m = text.match(/^有效期：(.+)$/))) {
+      value={en:`Valid until: ${translate(m[1],locale)}`,'zh-TW':`有效期：${translate(m[1],locale)}`,ja:`有効期限：${translate(m[1],locale)}`,ko:`유효 기간: ${translate(m[1],locale)}`}[locale];
+    } else if ((/^\/ai(?:\/|$)/.test(globalThis.location?.pathname || '')) && (m = text.match(/^删除对话 (.+)$/))) {
+      value={en:`Delete conversation ${m[1]}`,'zh-TW':`刪除對話 ${m[1]}`,ja:`会話を削除 ${m[1]}`,ko:`대화 삭제 ${m[1]}`}[locale];
     } else if (isAiAdminPage() && (m = text.match(/^实际费用（([A-Z]{3})）$/))) {
       value={en:`Actual cost (${m[1]})`,'zh-TW':`實際費用（${m[1]}）`,ja:`実際の費用（${m[1]}）`,ko:`실제 비용 (${m[1]})`}[locale];
     } else if (isAiAdminPage() && (m = text.match(/^(对话|—) \/ (音乐|—)$/))) {
@@ -252,9 +263,9 @@ function eligible(element) {
   if (surface === 'experience') return isArchivePage() || isNexusPage() || isMeowPage() || isPolyversePage() || /^\/(?:home|dance|360)\/?$/.test(path);
   if (path.startsWith('/forum/')) return staticToast || !!element.closest('.skip, .topbar, #auth-view, #workspace, .mobile-bottom, dialog');
   if (path.startsWith('/image-playground/')) return staticToast || !!element.closest('.skip, .topbar, #auth-view, #workspace, #image-dialog');
-  if (path.startsWith('/ai/')) return staticToast || aiCopy || !!element.closest('.skip, #app .initial-loading, .service-banner, .sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .overview-heading, #main .overview-cards, #main .recent-panel > .panel-title, #main .quota-card, #main .history, #main .music-composer > .panel-title, #main .music-results > .panel-title, #music-form, .settings-grid, .settings-panel, #access-form') || (!!document.querySelector('#login-form, #access-form') && !!element.closest('#dialog-content'));
+  if (path.startsWith('/ai/')) return staticToast || aiCopy || !!element.closest('.skip, #app .initial-loading, .service-banner, .sidebar nav, .sidebar .brand-caption, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .overview-heading, #main .overview-cards, #main .recent-panel > .panel-title, #main .quota-card, #main .history, #main .music-composer > .panel-title, #main .music-results > .panel-title, #music-form, .settings-grid, .settings-panel, #access-form') || (!!document.querySelector('#login-form, #access-form') && !!element.closest('#dialog-content'));
   if (isSiteAdminPage()) return !!element.closest('.skip, .layout aside, .workspace > header, .workspace > footer, #main, #feedback[data-strgo-static]');
-  if (isAiAdminPage()) return staticToast || aiCopy || !!element.closest('.skip, #app .initial-loading, .sidebar nav, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .admin-tabs, #main > section > .empty, #main > section > button, #admin-content .panel-title, #admin-content thead, #admin-content .info-note, #admin-content .empty, #admin-content [data-strgo-ui-copy], #admin-content > section > h2, #admin-content .admin-lower > section > h2, #admin-content .reconcile-panel > p, #admin-content .table-wrap + p, #admin-content button, #model-editor, #node-form, #budget-form, #member-form, #dialog-content, #dialog > .dialog-x');
+  if (isAiAdminPage()) return staticToast || aiCopy || !!element.closest('.skip, #app .initial-loading, .sidebar nav, .sidebar .brand-caption, .back-home, .topbar, .workspace-footer, #main .page-heading, #main .admin-tabs, #main > section > .empty, #main > section > button, #admin-content .panel-title, #admin-content .admin-side > h2, #member-drawer [data-strgo-ui-copy], #admin-content thead, #admin-content .info-note, #admin-content .empty, #admin-content [data-strgo-ui-copy], #admin-content > section > h2, #admin-content .admin-lower > section > h2, #admin-content .reconcile-panel > p, #admin-content .table-wrap + p, #admin-content .reconcile-panel > .muted, #admin-content button, #model-editor, #node-form, #budget-form, #member-form, #dialog-content, #dialog > .dialog-x');
   if (path.startsWith('/admin/')) return staticToast || !!element.closest('.layout aside, .workspace > header, .workspace > footer');
   return false;
 }

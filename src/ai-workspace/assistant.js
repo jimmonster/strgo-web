@@ -6,6 +6,7 @@ export class StrgoAssistant extends HTMLElement {
   constructor() {
     super(); this.attachShadow({ mode: 'open' }); this.context = { scope: 'global' }; this.messages = []; this.models = []; this.busy = false; this.controller = null;
     this.locale = initialAssistantLocale(); this.localeRecords = new WeakMap(); this.version = 0;
+    this.authHandler = () => this.dispatchEvent(new CustomEvent('strgo:auth-required', { bubbles: true, composed: true }));
   }
   connectedCallback() {
     this.render();
@@ -14,7 +15,7 @@ export class StrgoAssistant extends HTMLElement {
     this.localeObserver = new MutationObserver(() => this.localize());
     this.localeObserver.observe(this.shadowRoot, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-label','title','placeholder'] });
   }
-  disconnectedCallback() { this.version++; this.controller?.abort(); this.localeObserver?.disconnect(); window.removeEventListener('strgo:localechange', this.localeHandler); }
+  disconnectedCallback() { this.version++; this.controller?.abort(); this.client?.removeEventListener?.('auth-required', this.authHandler); this.localeObserver?.disconnect(); window.removeEventListener('strgo:localechange', this.localeHandler); }
   localize() { localizeAssistant(this.shadowRoot, this.locale, this.localeRecords); }
   text(source) { return assistantText(source, this.locale); }
   renderNotice() { const el=this.shadowRoot.querySelector('.notice'); if(el) el.textContent=this.text(this.noticeSource || ''); }
@@ -24,7 +25,7 @@ export class StrgoAssistant extends HTMLElement {
   }
   async configure({ client, scope = 'global', formId, revision, conversationId, beforeSend, fullPage = false }) {
     const version = ++this.version;
-    this.controller?.abort(); this.client = client || new AIClient(); this.context = { scope, formId, revision, conversationId }; this.beforeSend = beforeSend; this.fullPage = fullPage;
+    this.controller?.abort(); this.client?.removeEventListener?.('auth-required', this.authHandler); this.client = client || new AIClient(); this.client.addEventListener?.('auth-required', this.authHandler); this.context = { scope, formId, revision, conversationId }; this.beforeSend = beforeSend; this.fullPage = fullPage;
     this.messages = []; this.busy = false; this.draft = null; this.pending = null; this.retryOf = null; this.recoverRun = null; this.activeRun = null; this.noticeSource = ''; this.models = []; this.render();
     if (!this.client.session) await this.client.refreshSession();
     if (version !== this.version) return;

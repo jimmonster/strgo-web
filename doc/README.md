@@ -12,6 +12,7 @@
 | [统一体验与社区功能](IMPECCABLE-UPGRADE.md) | Impeccable 视觉系统、跨应用导航、编辑/评论/通知与本轮验收 |
 | [架构与模块](ARCHITECTURE.md) | 主站、六个应用、共享后端、数据与发布边界 |
 | [开发指南](DEVELOPMENT.md) | 环境、构建、集成、测试与跨平台注意事项 |
+| [本轮功能补齐](FEATURE-COMPLETION-20261103.md) | 2026-11-03 的实际交付、验证与全站外部验收状态 |
 | [功能缺口与执行清单](FEATURE-BACKLOG.md) | 优先级、外部依赖、实施顺序及完成证据 |
 | [全站后台需求](ADMIN-SYSTEM.md) | 统一管理入口、账号治理、审计与验收 |
 | [GPU调度与恢复](GPU-SCHEDULING.md) | AI / Workflow中央互斥、卸载确认与人工恢复 |

@@ -111,3 +111,13 @@ test('retry preserves an unsent draft and requires a fresh explicit send with th
   assert.equal(body, undefined); await assistant.send();
   assert.equal(body.retry_of_run_id, 'failed-run'); assert.equal(body.quote_id, 'new-quote'); assert.equal(assistant.retryOf, null);
 });
+
+test('session expiry reaches the host login UI and removed assistants stop observing the client', async () => {
+  const client = new AIClient(); client.session = { user: null };
+  const assistant = new StrgoAssistant(); let required = 0;
+  assistant.addEventListener('strgo:auth-required', () => required++);
+  await assistant.configure({ client }); client.dispatchEvent(new Event('auth-required'));
+  assert.equal(required, 1);
+  assistant.disconnectedCallback(); client.dispatchEvent(new Event('auth-required'));
+  assert.equal(required, 1);
+});
