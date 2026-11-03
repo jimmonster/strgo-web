@@ -147,6 +147,37 @@ class AIWorkspaceTests(unittest.TestCase):
             fn()
         self.assertEqual(caught.exception.code, code)
 
+    def test_explicit_chat_retry_preserves_owner_conversation_and_idempotency(self):
+        original = self.chat()
+        self.call('POST', '/tasks/' + original['id'] + '/cancel', {})
+        payload = {'model_id': 'ollama', 'conversation_id': original['conversation_id'],
+                   'content': '重新构思一段歌词', 'retry_of_run_id': original['id']}
+        quote = self.call('POST', '/quotes/chat', payload)
+        body = {**payload, 'quote_id': quote['id']}
+        key = uuid7()
+        retried = self.call('POST', '/runs', body, key=key)
+        same = self.call('POST', '/runs', body, key=key)
+        self.assertEqual(retried['id'], same['id'])
+        self.assertNotEqual(retried['id'], original['id'])
+        self.assertEqual(retried['retry_of_run_id'], original['id'])
+        self.assertEqual(self.provider.calls, 0)
+        with self.store.connect() as db:
+            value = json.loads(db.execute('SELECT input FROM ai_tasks WHERE id=?', (retried['id'],)).fetchone()[0])
+            self.assertEqual([m['content'] for m in value['messages'] if m['role'] == 'user'], ['重新构思一段歌词'])
+        self.grant(self.stranger)
+        own = self.call('POST', '/conversations', {'scope': 'global'}, user=self.stranger)
+        self.problem('NOT_FOUND', lambda: self.call('POST', '/quotes/chat', {**payload, 'conversation_id': own['id']}, user=self.stranger))
+        another = self.call('POST', '/conversations', {'scope': 'global'})
+        self.problem('RETRY_SCOPE_MISMATCH', lambda: self.call('POST', '/quotes/chat', {**payload, 'conversation_id': another['id']}))
+
+    def test_active_and_successful_chat_runs_cannot_be_retried(self):
+        original = self.chat()
+        payload = {'model_id': 'ollama', 'conversation_id': original['conversation_id'],
+                   'content': '重试', 'retry_of_run_id': original['id']}
+        self.problem('RETRY_NOT_ALLOWED', lambda: self.call('POST', '/quotes/chat', payload))
+        self.advance(original['id'])
+        self.problem('RETRY_NOT_ALLOWED', lambda: self.call('POST', '/quotes/chat', payload))
+
     def form(self, **overrides):
         return self.call('POST', '/forms', {'kind': 'music', 'fields': {'title': '雨后的车站', 'prompt': '温暖的中文流行，钢琴与弦乐', 'lyrics': '[Verse]\n雨停在站台边', 'duration': 60, 'instrumental': False, 'tags': [], **overrides}})
 

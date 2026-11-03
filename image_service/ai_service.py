@@ -228,6 +228,8 @@ class AIService:
         result['asset'] = self.asset_public(asset) if asset else None
         if row['kind'] == 'music':
             result['parameters'] = json.loads(row['input']).get('fields')
+        elif retry_of := json.loads(row['input']).get('retry_of_run_id'):
+            result['retry_of_run_id'] = retry_of
         return result
 
     def asset_public(self, row):
@@ -281,6 +283,13 @@ class AIService:
         conversation = self.owned(db, 'ai_conversations', payload.get('conversation_id'), user['id'])
         content = text(payload.get('content'), '消息', 8000, True)
         value = {'conversation_id': conversation['id'], 'content': content, 'mode': payload.get('mode', 'chat'), 'local_only': local_only}
+        if 'retry_of_run_id' in payload:
+            previous = self.owned(db, 'ai_tasks', payload['retry_of_run_id'], user['id'])
+            if previous['kind'] != 'chat' or previous['conversation_id'] != conversation['id']:
+                fail(422, 'RETRY_SCOPE_MISMATCH', '仅可在原对话中重试该回复。')
+            if previous['state'] not in ('FAILED', 'CANCELLED', 'INTERRUPTED'):
+                fail(409, 'RETRY_NOT_ALLOWED', '仅可重试已失败、中断或取消的回复。')
+            value['retry_of_run_id'] = previous['id']
         if value['mode'] not in ('chat', 'music_draft'):
             fail(422, 'VALIDATION_ERROR', '助手操作无效。')
         if conversation['scope'] in ('music', 'image'):

@@ -17,7 +17,8 @@ export class APIError extends Error {
 export class AIClient extends EventTarget {
   constructor() { super(); this.csrf = ''; this.session = null; }
   async request(path, { method = 'GET', body, key, signal } = {}) {
-    const response = await fetch(API + path, { method, credentials: 'same-origin', signal, headers: {
+    const timeout = AbortSignal.timeout(20000);
+    const response = await fetch(API + path, { method, credentials: 'same-origin', signal: signal ? AbortSignal.any([signal, timeout]) : timeout, headers: {
       ...(method === 'GET' ? {} : { 'Content-Type': 'application/json', 'X-CSRF-Token': this.csrf }),
       ...(key ? { 'Idempotency-Key': key } : {})
     }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -36,20 +37,25 @@ export class AIClient extends EventTarget {
     let failures = 0;
     while (!signal?.aborted) {
       let finished = false;
+      const connection = new AbortController(); let idle;
+      const heartbeat = () => { clearTimeout(idle); idle = setTimeout(() => connection.abort(), 45000); };
       try {
-        const response = await fetch(`${API}/tasks/${id}/events?after_seq=${after}`, { credentials: 'same-origin', signal, headers: { Accept: 'text/event-stream' } });
+        heartbeat();
+        const response = await fetch(`${API}/tasks/${id}/events?after_seq=${after}`, { credentials: 'same-origin', signal: signal ? AbortSignal.any([signal, connection.signal]) : connection.signal, headers: { Accept: 'text/event-stream' } });
         if (response.status === 410) { const task = await this.request('/tasks/' + id, { signal }); yield { seq: after, type: 'snapshot', data: task }; return; }
         if (!response.ok) { let value; try { value = await response.json(); } catch {} throw new APIError(response.status, value); }
+        if (!response.headers.get('content-type')?.includes('text/event-stream') || !response.body) throw new APIError(502, null);
         const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
         try {
           while (true) {
-            const { value, done } = await reader.read(); buffer += decoder.decode(value, { stream: !done });
+            const { value, done } = await reader.read(); heartbeat(); buffer = (buffer + decoder.decode(value, { stream: !done })).replaceAll('\r\n', '\n');
+            if (buffer.length > 1024 * 1024) throw new Error('事件内容过长，请恢复已有回复。');
             let boundary;
             while ((boundary = buffer.indexOf('\n\n')) >= 0) {
               const block = buffer.slice(0, boundary); buffer = buffer.slice(boundary + 2);
               const lines = block.split('\n'), seq = Number(lines.find(v => v.startsWith('id:'))?.slice(3));
               const type = lines.find(v => v.startsWith('event:'))?.slice(6).trim();
-              if (!seq || seq <= after || !type) continue;
+              if (!Number.isSafeInteger(seq) || seq <= after || !type) continue;
               const data = JSON.parse(lines.filter(v => v.startsWith('data:')).map(v => v.slice(5).trimStart()).join('\n'));
               after = seq; failures = 0; yield { seq, type, data };
               if (type === 'state' && terminalStates.has(data.state)) finished = true;
@@ -58,10 +64,11 @@ export class AIClient extends EventTarget {
           }
         } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
       } catch (error) {
-        if (signal?.aborted || error.name === 'AbortError' || (error instanceof APIError && error.status < 500 && error.status !== 429)) throw error;
+        if (error instanceof APIError && error.status === 401) this.dispatchEvent(new Event('auth-required'));
+        if (signal?.aborted || (error instanceof APIError && error.status < 500 && error.status !== 429)) throw error;
         if (++failures > 5) throw error;
         yield { seq: after, type: 'connection', data: { state: 'reconnecting' } };
-      }
+      } finally { clearTimeout(idle); connection.abort(); }
       if (finished) return;
       try {
         const task = await this.request('/tasks/' + id, { signal });
