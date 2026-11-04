@@ -14,7 +14,8 @@ from content_build import load_content, render_spaces, render_projects, render_a
 
 ROOT = Path(__file__).resolve().parent
 VENDORS = ('gsap.min.js', 'ScrollTrigger.min.js', 'lenis.min.js', 'confetti.min.js', 'three.module.js',
-           'three-spatial.module.js', 'three.core.js', 'spark.module.js')
+           'three-spatial.module.js', 'three.core.js', 'spark.module.js',
+           'marked.esm.js', 'pdfjs/pdf.js', 'pdfjs/pdf.worker.js')
 
 def validate(config):
     if config.get('HOME_VARIANT', 'classic') not in ('classic', 'hub'):

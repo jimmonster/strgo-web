@@ -2,6 +2,8 @@
 
 ## 环境与入口
 
+论坛文档编辑器使用的 PDF.js 构建依赖要求 Node.js 22.13 或更新版本（也支持 Node.js 24）；CI 的 Node.js 22 会获取当前补丁版本。
+
 在仓库根目录工作。生产部署文档使用 Node.js 22、Python 3、Ubuntu/Debian、Bash、Nginx 和 systemd；终端另需 Rust 1.88 与 Docker。开发时建议使用 Python 3.12，后端完整验证优先在 Linux 或 WSL 中执行。
 
 Windows 可以运行静态构建和 Node 测试；部分部署测试、磁盘同步与权限操作依赖 Linux。请区分系统能力缺失与业务断言失败。

@@ -1,4 +1,4 @@
-import { copyFile, mkdir, writeFile, readFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -12,10 +12,19 @@ const assets = [
   ['canvas-confetti/dist/confetti.browser.js', 'confetti.min.js'],
   ['three/build/three.module.js', 'three.module.js'],
   ['three-spatial/build/three.module.js', 'three-spatial.module.js'],
-  ['three-spatial/build/three.core.js', 'three.core.js']
+  ['three-spatial/build/three.core.js', 'three.core.js'],
+  ['marked/lib/marked.esm.js', 'marked.esm.js'],
 ];
 for (const [source, target] of assets) await copyFile(path.join(root, 'node_modules', source), path.join(destination, target));
 const versions = {};
+// The .js suffix also works with the production Nginx JavaScript MIME map.
+const pdfDestination = path.join(destination, 'pdfjs');
+await mkdir(pdfDestination, { recursive: true });
+await copyFile(path.join(root, 'node_modules/pdfjs-dist/build/pdf.min.mjs'), path.join(pdfDestination, 'pdf.js'));
+await copyFile(path.join(root, 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs'), path.join(pdfDestination, 'pdf.worker.js'));
+for (const directory of ['cmaps', 'standard_fonts', 'wasm']) {
+  await cp(path.join(root, 'node_modules/pdfjs-dist', directory), path.join(pdfDestination, directory), { recursive: true });
+}
 // Keep the spatial renderer's newer Three.js isolated from the site's locked
 // 0.160 runtime. The hidden rendering frame uses only these local modules.
 const spark = await readFile(path.join(root, 'node_modules/@sparkjsdev/spark/dist/spark.module.js'), 'utf8');
@@ -29,7 +38,7 @@ await writeFile(path.join(destination, 'spark.module.js'), spark
   .replaceAll(parserProbe, 'return false;'));
 const sparkRequire = createRequire(path.join(root, 'node_modules/@sparkjsdev/spark/package.json'));
 await copyFile(path.join(path.dirname(sparkRequire.resolve('fflate/package.json')), 'LICENSE'), path.join(destination, 'fflate-LICENSE'));
-for (const name of ['gsap', '@studio-freight/lenis', 'canvas-confetti', 'three', 'three-spatial', '@sparkjsdev/spark']) {
+for (const name of ['gsap', '@studio-freight/lenis', 'canvas-confetti', 'three', 'three-spatial', '@sparkjsdev/spark', 'marked', 'pdfjs-dist']) {
   const pkg = JSON.parse(await readFile(path.join(root, 'node_modules', name, 'package.json'), 'utf8'));
   versions[name] = pkg.version;
   for (const license of ['LICENSE', 'LICENSE.txt', 'LICENSE.md']) {

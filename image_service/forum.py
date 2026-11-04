@@ -4,6 +4,7 @@ import time
 import uuid
 
 from .security import Problem
+from . import forum_attachments
 
 
 PREFIX = '/api/image/forum/posts'
@@ -124,6 +125,8 @@ def comments(service, method, match, query, payload, user):
 
 def dispatch(service, method, path, query, payload, user):
     # Service.dispatch has already verified the shared session, Origin and CSRF.
+    if path == forum_attachments.PREFIX or path.startswith(forum_attachments.PREFIX + '/'):
+        return forum_attachments.dispatch(service, method, path, query, payload, user)
     if path == NOTIFICATIONS or path.startswith(NOTIFICATIONS + '/'):
         return notifications(service, method, path, query, payload, user)
     reply_match = re.fullmatch(re.escape(PREFIX) + r'/([a-f0-9]{32})/comments(?:/([a-f0-9]{32}))?', path)
@@ -174,9 +177,11 @@ def dispatch(service, method, path, query, payload, user):
         service.store.rate_limit('forum-post:' + user['id'], 10, 300)
         post_id = uuid.uuid4().hex
         with service.store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             # Author and pin status are always assigned on the server.
             db.execute('INSERT INTO forum_posts(id,user_id,title,body,category,created) VALUES(?,?,?,?,?,?)',
                        (post_id, user['id'], title, body, category, int(time.time())))
+            forum_attachments.bind(db, body, user['id'], post_id)
             row = db.execute(SELECT + ' WHERE forum_posts.id=?', (post_id,)).fetchone()
         service.dirty()
         return 201, public_post(row, user), {}
@@ -209,6 +214,7 @@ def dispatch(service, method, path, query, payload, user):
                 category = payload.get('category')
                 if not isinstance(category, str) or category not in CATEGORIES:
                     raise Problem(400, '请选择有效分类。')
+                forum_attachments.bind(db, body, user['id'], row['id'])
                 db.execute('UPDATE forum_posts SET title=?,body=?,category=?,revision=revision+1,updated=? WHERE id=?',
                            (title, body, category, int(time.time()), row['id']))
                 result = public_post(db.execute(SELECT + ' WHERE forum_posts.id=?', (row['id'],)).fetchone(), user)
@@ -216,6 +222,7 @@ def dispatch(service, method, path, query, payload, user):
                 if row['user_id'] != user['id'] and user['role'] != 'admin':
                     raise Problem(403, '你只能删除自己发布的帖子。')
                 db.execute('UPDATE forum_posts SET deleted=1,pinned=0 WHERE id=?', (match[1],))
+                db.execute('DELETE FROM forum_attachments WHERE post_id=?', (match[1],))
                 result = {'ok': True}
         service.dirty()
         return 200, result, {}

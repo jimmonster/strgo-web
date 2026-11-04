@@ -71,6 +71,13 @@ CREATE TABLE IF NOT EXISTS forum_notifications (
  comment_id TEXT NOT NULL UNIQUE REFERENCES forum_comments(id),
  created INTEGER NOT NULL, read INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS forum_inbox ON forum_notifications(user_id,read,created DESC,id DESC);
+CREATE TABLE IF NOT EXISTS forum_attachments (
+ id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+ post_id TEXT REFERENCES forum_posts(id), name TEXT NOT NULL, mime TEXT NOT NULL,
+ bytes INTEGER NOT NULL, sha256 TEXT NOT NULL, content BLOB NOT NULL,
+ created INTEGER NOT NULL, request_id TEXT NOT NULL, UNIQUE(user_id,request_id));
+CREATE INDEX IF NOT EXISTS forum_attachment_owner ON forum_attachments(user_id,created);
+CREATE INDEX IF NOT EXISTS forum_attachment_post ON forum_attachments(post_id);
 '''
 
 

@@ -17,6 +17,7 @@ import { legacyCopy } from './legacy-copy.js';
 import { legacyTraditional } from './legacy-traditional.js';
 import { panoramaCopy } from './panorama-copy.js';
 import { completionCopy } from './completion-copy.js';
+import { forumEditorCopy } from './forum-editor-copy.js';
 
 export const LOCALE_KEY = 'strgo:locale:v1';
 export const SUPPORTED_LOCALES = ['zh-CN', 'zh-TW', 'en', 'ja', 'ko'];
@@ -70,6 +71,8 @@ export function translate(source, locale = getLocale()) {
   const match = source.match(/^(\s*)([\s\S]*?)(\s*)$/);
   const text = match[2];
   const dictionary = dictionaries[locale] || {};
+  const editorValue = forumEditorCopy[locale]?.[text];
+  if (editorValue !== undefined) return match[1] + editorValue + match[3];
   let value = completionCopy[locale]?.[text] ?? panoramaCopy[locale]?.[text] ?? (isWorkflowPage() ? workflowDictionaries[locale]?.[text] : undefined) ?? (isLegacyPage() ? legacyDictionaries[locale]?.[text] : undefined) ?? (isPolyversePage() ? polyverseDictionaries[locale]?.[text] : undefined) ?? (isMeowPage() ? meowDictionaries[locale]?.[text] : undefined) ?? (isNexusPage() ? nexusDictionaries[locale]?.[text] : undefined) ?? ((isSiteAdminPage() || isAiAdminPage()) ? adminDictionaries[locale]?.[text] : undefined) ?? dynamicDictionaries[locale]?.[text] ?? dictionary[text] ?? (locale === 'zh-TW' || locale === 'zh-CN' ? undefined : english[text]);
   // MEOW also has English source labels composed at runtime (for example,
   // gallery titles followed by an arrow), so let its patterns run in zh-CN.
@@ -246,10 +249,12 @@ function isHubPage() {
 function localizesTitle() { return isHubPage() || isWorkflowPage() || isLegacyPage() || isNexusPage() || isMeowPage() || isPolyversePage() || isSiteAdminPage() || isAiAdminPage() || /^\/ai(?:\/|$)/.test(location.pathname) || /^\/(?:home|dance|forum|image-playground)\/?$/.test(location.pathname); }
 
 function eligible(element) {
-  if (!element || element.closest('[data-strgo-user-content], [contenteditable]:not([contenteditable="false"]), .post-preview, .comment-body, .author-name')) return false;
+  if (!element) return false;
+  const forumPdfCopy = (globalThis.location?.pathname || '').startsWith('/forum/') && element.closest('[data-forum-pdf] [data-strgo-ui-copy]');
+  if (!forumPdfCopy && element.closest('[data-strgo-user-content], [contenteditable]:not([contenteditable="false"]), .post-preview, .comment-body, .author-name')) return false;
   if (isWorkflowPage() && element.closest('#jobs') && !element.closest('#jobs [data-strgo-ui-copy]')) return false;
   if (isAiAdminPage() && element.closest('#admin-content .error, #dialog-content .error')) return false;
-  const forumCopy = (globalThis.location?.pathname || '').startsWith('/forum/') && element.closest('[data-strgo-ui-copy]') && element.closest('#posts, #comments-list, #notifications-list, #detail-content');
+  const forumCopy = forumPdfCopy || ((globalThis.location?.pathname || '').startsWith('/forum/') && element.closest('[data-strgo-ui-copy]') && element.closest('#posts, #comments-list, #notifications-list, #detail-content'));
   const imageCopy = (globalThis.location?.pathname || '').startsWith('/image-playground/') && element.closest('[data-strgo-ui-copy]') && element.closest('#current-output, #library-list, #inspiration-list');
   const aiCopy = ((globalThis.location?.pathname || '').startsWith('/ai/') || isAiAdminPage()) && element.closest('[data-strgo-ui-copy]') && element.closest('#main, #dialog-content, .sidebar .account');
   const staticToast = !!element.closest('#toast[data-strgo-static]');
@@ -293,7 +298,12 @@ export function localizeTree(node) {
   if (node.nodeType === 3) { updateValue(node); return; }
   if (node.nodeType !== 1 && node.nodeType !== 9 && node.nodeType !== 11) return;
   if (node.nodeType === 1) {
-    if (node.matches('[data-strgo-user-content], [contenteditable]:not([contenteditable="false"]), .post-preview, .comment-body, .author-name')) return;
+    if (node.matches('[data-strgo-user-content], [contenteditable]:not([contenteditable="false"]), .post-preview, .comment-body, .author-name')) {
+      if ((globalThis.location?.pathname || '').startsWith('/forum/') && node.matches('.markdown-body')) {
+        for (const copy of node.querySelectorAll('[data-forum-pdf] [data-strgo-ui-copy]')) localizeTree(copy);
+      }
+      return;
+    }
     if (node.matches(protectedContent)) {
       if ((globalThis.location?.pathname || '').startsWith('/forum/') && node.matches('#posts, #comments-list, #notifications-list, #detail-content, .post-author')) for (const copy of node.querySelectorAll('[data-strgo-ui-copy]')) localizeTree(copy);
       if ((globalThis.location?.pathname || '').startsWith('/image-playground/') && node.matches('#current-output, #library-list, #inspiration-list')) for (const copy of node.querySelectorAll('[data-strgo-ui-copy]')) localizeTree(copy);

@@ -186,6 +186,7 @@ def dispatch(service, method, path, query, payload, user):
                 audit(db, actor['id'], 'forum.pin', identifier, {'pinned': payload['pinned']})
             elif method == 'DELETE' and not path.endswith('/pin'):
                 db.execute('UPDATE forum_posts SET deleted=1 WHERE id=?', (identifier,))
+                db.execute('DELETE FROM forum_attachments WHERE post_id=?', (identifier,))
                 audit(db, actor['id'], 'forum.delete', identifier)
             else:
                 raise Problem(400, '社区管理操作无效。')

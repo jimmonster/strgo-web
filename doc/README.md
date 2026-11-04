@@ -10,6 +10,7 @@
 | [360° 全景](PANORAMA-360.md) | 当前页文生图、管理员全景模板、图片导入、条目管理与回归 |
 | [固定机位全景与空间一致性](PANORAMA-FIXED-VIEWS.md) | 图片或文字输入、共同空间生成、多机位投影与 HTML 展示 |
 | [统一体验与社区功能](IMPECCABLE-UPGRADE.md) | Impeccable 视觉系统、跨应用导航、编辑/评论/通知与本轮验收 |
+| [论坛文档编辑器](FORUM-EDITOR.md) | Markdown 编辑与导入导出、图片插入、PDF 翻页、附件权限和验收 |
 | [架构与模块](ARCHITECTURE.md) | 主站、六个应用、共享后端、数据与发布边界 |
 | [开发指南](DEVELOPMENT.md) | 环境、构建、集成、测试与跨平台注意事项 |
 | [本轮功能补齐](FEATURE-COMPLETION-20261103.md) | 2026-11-03 的实际交付、验证与全站外部验收状态 |

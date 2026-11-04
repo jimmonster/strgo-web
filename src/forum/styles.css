@@ -23,3 +23,21 @@ dialog{background:var(--strgo-surface);border:1px solid var(--strgo-border);bord
 @media(max-width:760px){.post-preview,.detail-body,.auth-description,.welcome-banner p{font-size:16px}.comment-meta{font-size:14px}.feed-toolbar{gap:12px}.feed-toolbar>div{flex-wrap:wrap}.mobile-bottom{display:grid}}
 .section-label{font-size:12px;color:var(--strgo-muted);margin:0 0 14px}.post-time,.post-category,.role-badge,.auth-apps,.account-note,.community-stats span,.guidelines p:not(.eyebrow),.community-footer,.compose-footer>small,.mobile-bottom button{font-size:12px}.auth-caption{font-size:13px}.banner-symbol{color:var(--strgo-muted)}
 #comment-body{min-height:112px}input::placeholder,textarea::placeholder{font-size:14px}
+
+/* Document composition shares the forum's existing colors and mobile dialog. */
+.markdown-editor{min-width:0}.editor-toolbar{display:flex;flex-wrap:wrap;gap:5px;padding:10px;border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;background:var(--strgo-surface-raised)}
+.editor-toolbar button,.pdf-card button{min-height:36px;min-width:34px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;color:var(--ink);background:var(--strgo-input);font-size:13px}
+.editor-toolbar button:hover,.editor-toolbar button[aria-pressed=true],.pdf-card button:hover{color:var(--green);border-color:var(--green)}.editor-toolbar button[aria-label="粗体"]{font-weight:750}.editor-toolbar button[aria-label="斜体"]{font-style:italic}
+.markdown-editor textarea{display:block;width:100%;margin:0;border-radius:0 0 10px 10px;resize:vertical}.editor-help{font-size:12px;line-height:1.8;color:var(--muted);margin:9px 0 14px}
+.editor-preview{border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0;background:var(--strgo-input);min-height:80px}
+.markdown-body{white-space:normal;overflow-wrap:anywhere;line-height:1.8;min-width:0}.markdown-body p{margin:0 0 1em}.markdown-body>:last-child{margin-bottom:0}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{font-size:1.2em;line-height:1.5;margin:1.2em 0 .6em}.markdown-body h1{font-size:1.6em}.markdown-body h2{font-size:1.35em}
+.markdown-body pre{max-width:100%;overflow-x:auto;padding:14px;border-radius:8px;background:var(--strgo-surface-raised);white-space:pre;font-size:13px}.markdown-body code{font-family:var(--strgo-font-mono,monospace);background:var(--strgo-surface-raised);border-radius:4px;padding:2px 4px}.markdown-body pre code{padding:0}
+.markdown-body ul,.markdown-body ol{padding-left:24px;margin:12px 0}.markdown-body li>p{margin:0}.markdown-body input[type=checkbox]{width:auto;min-height:0;margin-right:8px}
+.markdown-body blockquote{margin:16px 0;padding:4px 16px;border-left:3px solid var(--green);color:var(--muted)}.markdown-body blockquote p:last-child{margin:0}
+.markdown-body a{color:var(--green);text-decoration:underline;text-underline-offset:3px}.markdown-body img{display:block;max-width:100%;height:auto;margin:14px 0;border-radius:10px}
+.markdown-table{max-width:100%;overflow-x:auto;margin:16px 0}.markdown-body table{border-collapse:collapse;min-width:240px}.markdown-body th,.markdown-body td{border:1px solid var(--line);padding:8px 12px;text-align:left}.markdown-body hr{border:0;border-top:1px solid var(--line);margin:24px 0}
+.pdf-card{display:block;max-width:100%;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--strgo-surface)}.pdf-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}.pdf-controls [role=status]{font-size:12px;flex:1;min-width:75px}.pdf-card canvas{display:block;width:100%;height:auto;background:white}.detail-dialog .post-bottom{flex-wrap:wrap;gap:12px}
+@media(max-width:760px){.editor-toolbar{padding:7px;gap:5px}.editor-toolbar button,.pdf-card button{min-height:42px;padding:7px 9px}.editor-preview{padding:12px}.pdf-card{padding:9px}.editor-help{font-size:12px}.markdown-body h1{font-size:1.4em}}
+@media(max-width:760px){.mobile-bottom{grid-template-columns:repeat(5,minmax(0,1fr))}.mobile-bottom button{min-width:0;overflow-wrap:anywhere}}
+@media(max-width:370px){.topbar-inner{gap:8px}.brand-divider{display:none}.product{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}

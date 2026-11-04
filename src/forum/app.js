@@ -1,3 +1,6 @@
+import { createEditor, downloadMarkdown } from './editor.js';
+import { renderMarkdown, clearDocumentPreviews } from './markdown.js';
+
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const API = '/api/image';
@@ -71,6 +74,7 @@ function clearAccount() {
   state.epoch++; state.load++; state.detail++;
   state.user = null; state.csrf = ''; state.posts = []; state.current = null; state.deleting = null;
   state.commentLoad++; state.noticeLoad++; state.comments = []; state.notices = []; state.editing = null; state.replyRequest = null;
+  postEditor.reset(); editEditor.reset(); clearDocumentPreviews($('#detail-content'));
   $('#comment-form').reset(); $('#edit-form').reset(); $('#comments-list').replaceChildren(); $('#notifications-list').replaceChildren();
   $('#comments-section').hidden = true; showNotificationFeed(false); updateUnread(0);
   state.scope = 'all'; state.category = ''; state.search = ''; state.hasMore = false; state.total = 0;
@@ -205,13 +209,17 @@ async function loadPosts(append = false) {
 function renderDetail(post) {
   state.current = post; message('#detail-message');
   const title = node('h2'); title.id = 'detail-title'; if (post.pinned) title.append(pinBadge()); title.append(document.createTextNode(post.title));
-  const body = node('div', 'detail-body', post.body);
+  clearDocumentPreviews($('#detail-content'));
+  const body = node('div', 'detail-body');
+  renderMarkdown(body, post.body, { onUnauthorized: () => lock('登录已过期，请重新登录。') });
   const bottom = node('div', 'post-bottom'); bottom.append(fixedNode('span', 'muted', '谢谢你，让想法在这里发生。'), postActions(post, true));
+  bottom.append(action('导出 MD', 'arrow', 'export-post', () => downloadMarkdown(post.title, '# ' + post.title + '\n\n' + post.body + '\n')));
   $('#detail-content').replaceChildren(postMeta(post), title, body, bottom);
 }
 async function openPost(id) {
   const epoch = state.epoch, request = ++state.detail;
   state.current = null; state.commentLoad++; state.comments = []; state.replyRequest = null;
+  clearDocumentPreviews($('#detail-content'));
   $('#comments-list').replaceChildren(); $('#comment-form').reset(); $('#comments-section').hidden = true;
   $('#detail-content').replaceChildren(fixedNode('h2', '', '正在打开话题…')); message('#detail-message');
   if (!$('#detail-dialog').open) $('#detail-dialog').showModal();
@@ -257,6 +265,16 @@ $('#search').addEventListener('search', () => { if (!$('#search').value && state
 $('#refresh').addEventListener('click', () => loadPosts());
 $('#load-more').addEventListener('click', () => loadPosts(true));
 function updateCounters() { $('#title-count').textContent = `${$('#post-title').value.length} / 80`; $('#body-count').textContent = `${$('#post-body').value.length} / 10000`; }
+const postEditor = createEditor({
+  textarea: $('#post-body'), heading: $('#post-title'), report: (text, error) => message('#post-message', text, error),
+  upload: body => api('/forum/attachments', { method: 'POST', body }), canWrite: () => Boolean(state.user) && !state.publishing,
+  onUnauthorized: () => lock('登录已过期，请重新登录。'),
+});
+const editEditor = createEditor({
+  textarea: $('#edit-body'), heading: $('#edit-heading'), report: (text, error) => message('#edit-message', text, error),
+  upload: body => api('/forum/attachments', { method: 'POST', body }), canWrite: () => Boolean(state.user && state.editing) && !state.editSaving,
+  onUnauthorized: () => lock('登录已过期，请重新登录。'),
+});
 $('#post-title').addEventListener('input', updateCounters); $('#post-body').addEventListener('input', updateCounters);
 $$('[data-compose]').forEach(button => button.addEventListener('click', () => {
   if (!state.user) return;
@@ -267,21 +285,23 @@ $('#compose-close').addEventListener('click', () => $('#compose-dialog').close()
 $('#compose-dialog').addEventListener('cancel', event => { if (state.publishing) event.preventDefault(); });
 $('#post-form').addEventListener('submit', async event => {
   event.preventDefault(); if (state.publishing) return;
+  if (postEditor.busy) { message('#post-message', '请等待文件处理完成后再发布。', true); return; }
   const title = $('#post-title').value.trim(), body = $('#post-body').value.trim();
   if (!title || !body) { message('#post-message', '请填写标题和正文。', true); return; }
   state.publishing = true; $('#publish').disabled = true; $('#compose-close').disabled = true;
+  postEditor.setLocked(true);
   const epoch = state.epoch;
   try {
     await api(POSTS, { method: 'POST', body: { title, body, category: $('#post-category').value } });
     if (epoch !== state.epoch) return;
-    $('#compose-dialog').close(); $('#post-form').reset(); updateCounters();
+    $('#compose-dialog').close(); $('#post-form').reset(); postEditor.reset(); updateCounters();
     showNotificationFeed(false); state.category = ''; state.search = ''; $('#search').value = ''; syncFilters();
     await loadPosts(); toastFixed('发布成功，想法已经被看见。');
   } catch (error) { if (epoch === state.epoch) message('#post-message', error.message, true); }
-  finally { state.publishing = false; $('#publish').disabled = false; $('#compose-close').disabled = false; }
+  finally { state.publishing = false; postEditor.setLocked(false); $('#publish').disabled = false; $('#compose-close').disabled = false; }
 });
 $('#detail-close').addEventListener('click', () => $('#detail-dialog').close());
-$('#detail-dialog').addEventListener('close', () => { state.detail++; state.commentLoad++; state.current = null; $('#comment-form').reset(); state.replyRequest = null; });
+$('#detail-dialog').addEventListener('close', () => { clearDocumentPreviews($('#detail-content')); state.detail++; state.commentLoad++; state.current = null; $('#comment-form').reset(); state.replyRequest = null; });
 $('#delete-cancel').addEventListener('click', () => $('#delete-dialog').close());
 $('#delete-dialog').addEventListener('close', () => { state.deleting = null; });
 $('#delete-dialog').addEventListener('cancel', event => { if ($('#delete-confirm').disabled) event.preventDefault(); });
@@ -417,7 +437,7 @@ $('#comment-form').addEventListener('submit', async event => {
 async function openEdit(id) {
   const epoch = state.epoch;
   message('#edit-message', '正在读取最新帖子…');
-  $('#edit-form').reset(); state.editing = null;
+  $('#edit-form').reset(); editEditor.reset(); state.editing = null;
   $('#edit-save').disabled = true; $('#edit-dialog').showModal();
   const request = (state.editLoad || 0) + 1; state.editLoad = request;
   try {
@@ -426,16 +446,19 @@ async function openEdit(id) {
     if (!post.canEdit) throw new Error('只有作者可以编辑帖子。');
     state.editing = post;
     $('#edit-heading').value = post.title; $('#edit-body').value = post.body; $('#edit-category').value = post.category;
+    editEditor.refresh();
     $('#edit-save').disabled = false; message('#edit-message'); $('#edit-heading').focus();
   } catch (error) { if (epoch === state.epoch && request === state.editLoad) message('#edit-message', error.message, true); }
 }
 $('#edit-close').addEventListener('click', () => $('#edit-dialog').close());
-$('#edit-dialog').addEventListener('close', () => { state.editLoad++; state.editing = null; $('#edit-form').reset(); });
+$('#edit-dialog').addEventListener('close', () => { editEditor.reset(); state.editLoad++; state.editing = null; $('#edit-form').reset(); });
 $('#edit-dialog').addEventListener('cancel', event => { if (state.editSaving) event.preventDefault(); });
 $('#edit-form').addEventListener('submit', async event => {
   event.preventDefault(); if (!state.editing || state.editSaving) return;
+  if (editEditor.busy) { message('#edit-message', '请等待文件处理完成后再保存。', true); return; }
   const post = state.editing, epoch = state.epoch;
   state.editSaving = true; $('#edit-save').disabled = true; $('#edit-close').disabled = true;
+  editEditor.setLocked(true);
   try {
     const updated = await api(`${POSTS}/${post.id}`, { method: 'PUT', body: { title: $('#edit-heading').value.trim(), body: $('#edit-body').value.trim(), category: $('#edit-category').value, revision: post.revision } });
     if (epoch !== state.epoch) return;
@@ -443,7 +466,7 @@ $('#edit-form').addEventListener('submit', async event => {
     if (state.current?.id === post.id) renderDetail(updated);
     await loadPosts(); toastFixed('修改已保存');
   } catch (error) { if (epoch === state.epoch) message('#edit-message', error.message, true); }
-  finally { state.editSaving = false; $('#edit-save').disabled = false; $('#edit-close').disabled = false; }
+  finally { state.editSaving = false; editEditor.setLocked(false); $('#edit-save').disabled = false; $('#edit-close').disabled = false; }
 });
 window.addEventListener('beforeunload', event => {
   if (state.user && ($('#post-title').value || $('#post-body').value || $('#comment-body').value || state.editing && ($('#edit-heading').value !== state.editing.title || $('#edit-body').value !== state.editing.body || $('#edit-category').value !== state.editing.category))) {

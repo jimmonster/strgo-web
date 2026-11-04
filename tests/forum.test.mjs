@@ -4,9 +4,12 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { parseHTML } from 'linkedom';
 import { randomUUID, randomFillSync } from 'node:crypto';
+import { Marked } from 'marked';
 
 const html = readFileSync(new URL('../src/forum/index.html', import.meta.url), 'utf8');
-const source = readFileSync(new URL('../src/forum/app.js', import.meta.url), 'utf8');
+// Load the actual modules into the existing isolated DOM harness.
+const source = ['markdown.js', 'editor.js', 'app.js'].map(file => readFileSync(new URL('../src/forum/' + file, import.meta.url), 'utf8')
+  .replace(/^import .*;\r?$/gm, '').replace(/^export /gm, '')).join('\n');
 const tick = async () => { for (let i = 0; i < 8; i++) await new Promise(resolve => setImmediate(resolve)); };
 const member = { id: 'member-id', username: 'member', role: 'member' };
 const other = { id: 'other-id', username: 'other', role: 'member' };
@@ -17,7 +20,8 @@ async function environment({ user = member, posts = [fixturePost()], failure = n
   const window = new dom.EventTarget();
   const requests = [], timers = new Map();
   const session = { user, csrf: 'test-csrf' };
-  let fail = failure, defer = null, nextId = 0;
+  let fail = failure, defer = null, nextId = 0, uploadResponse = null;
+  const uploads = [];
   document.querySelectorAll('input,textarea').forEach(input => { input.value = ''; });
   document.querySelectorAll('form').forEach(form => { form.reset = () => {
     form.querySelectorAll('input,textarea').forEach(input => { input.value = ''; });
@@ -28,7 +32,7 @@ async function environment({ user = member, posts = [fixturePost()], failure = n
     dialog.close = () => { dialog.open = false; dialog.removeAttribute('open'); dialog.dispatchEvent(new dom.Event('close')); };
   });
   const response = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });
-  const sandbox = { window, document, URLSearchParams, Intl, Date, console, crypto: { randomUUID: uuidAvailable ? randomUUID : undefined, getRandomValues: bytes => randomFillSync(bytes) },
+  const sandbox = { window, document, URL, URLSearchParams, TextDecoder, Blob, Marked, btoa: text => Buffer.from(text, 'binary').toString('base64'), Event: dom.Event, Intl, Date, console, crypto: { randomUUID: uuidAvailable ? randomUUID : undefined, getRandomValues: bytes => randomFillSync(bytes) },
     setTimeout(callback) { const id = timers.size + 1; timers.set(id, callback); return id; },
     clearTimeout(id) { timers.delete(id); },
     async fetch(url, options) {
@@ -39,6 +43,15 @@ async function environment({ user = member, posts = [fixturePost()], failure = n
       if (path === '/login' || path === '/register') { session.user = member; return response({ ...session }); }
       if (path === '/logout') { session.user = null; return response({ ok: true }); }
       if (fail) return response({ error: fail.message }, fail.status);
+      if (path === '/forum/attachments') {
+        if (uploadResponse) { const callback = uploadResponse; uploadResponse = null; return callback(body); }
+        let attachment = uploads.find(file => file.request_id === body.request_id);
+        if (!attachment) {
+          const id = String(++nextId).padStart(32, '0');
+          attachment = { id, ...body, url: '/api/image/forum/attachments/' + id }; uploads.push(attachment);
+        }
+        return response(attachment, 201);
+      }
       if (path.startsWith('/forum/notifications')) {
         if (path.endsWith('/read')) { notices.filter(n => body.ids.includes(n.id)).forEach(n => { n.read = true; }); return response({ ok: true }); }
         return response({ notifications: notices, total: notices.length, unreadCount: notices.filter(n => !n.read).length, hasMore: false });
@@ -74,6 +87,12 @@ async function environment({ user = member, posts = [fixturePost()], failure = n
   const input = (selector, value) => { const field = document.querySelector(selector); field.value = value; field.dispatchEvent(new dom.Event('input', { bubbles: true })); };
   const submit = selector => document.querySelector(selector).dispatchEvent(new dom.Event('submit', { bubbles: true, cancelable: true }));
   return { document, window, requests, session, posts, comments, notices, click, input, submit, response,
+    changeFile(selector, file) {
+      const field = document.querySelector(selector);
+      Object.defineProperty(field, 'files', { configurable: true, value: [file] });
+      field.dispatchEvent(new dom.Event('change', { bubbles: true }));
+    },
+    deferUpload(callback) { uploadResponse = callback; },
     focus() { window.dispatchEvent(new dom.Event('focus')); },
     fail(value) { fail = value; }, defer(callback) { defer = callback; },
   };
@@ -239,4 +258,76 @@ test('Selecting a category returns from notifications to the topic feed', async 
   env.click('[data-category="ai"]'); await tick();
   assert.equal(env.document.querySelector('#notifications-panel').hidden, true);
   assert.equal(env.document.querySelector('.feed-column').hasAttribute('data-notifications'), false);
+});
+
+const textFile = (name, text) => {
+  const bytes = new TextEncoder().encode(text);
+  return { name, size: bytes.length, lastModified: 123, arrayBuffer: async () => bytes.buffer };
+};
+
+test('Markdown renders headings, formatting, tables and code while excluding active content and unsafe URLs', async () => {
+  const fence = String.fromCharCode(96).repeat(3);
+  const body = '# 文档标题\n\n**强调**与 _斜体_\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n' +
+    fence + 'js\n<script>code()</script>\n' + fence + '\n\n<script>alert(1)</script>\n\n' +
+    '[bad](javascript:alert%281%29) ![remote](https://tracking.example/a.png)\n\n' +
+    '![说明](/api/image/forum/attachments/' + 'b'.repeat(32) + ')';
+  const env = await environment({ posts: [fixturePost({ body })] }); env.click('.post-open'); await tick();
+  const content = env.document.querySelector('.detail-body');
+  assert.equal(content.querySelector('h1').textContent, '文档标题');
+  assert.equal(content.querySelector('strong').textContent, '强调');
+  assert.equal(content.querySelectorAll('table td').length, 2);
+  assert.equal(content.querySelector('pre code').textContent, '<script>code()</script>');
+  assert.equal(content.querySelector('script'), null);
+  assert.equal(content.querySelector('[href^="javascript:"]'), null);
+  assert.equal(content.querySelectorAll('img').length, 1);
+  assert.equal(content.querySelector('img').getAttribute('alt'), '说明');
+});
+
+test('Markdown toolbar and preview update the current draft without changing its account identity', async () => {
+  const env = await environment(); env.click('[data-compose]'); env.input('#post-body', '正文');
+  env.click('#compose-dialog [aria-label="粗体"]');
+  assert.equal(env.document.querySelector('#post-body').value, '正文**粗体文字**');
+  env.click('#compose-dialog [aria-controls="post-body-preview"]');
+  assert.equal(env.document.querySelector('#post-body-preview strong').textContent, '粗体文字');
+  env.session.user = other; env.focus(); await tick();
+  assert.equal(env.document.querySelector('#post-body-preview').textContent, '');
+  assert.equal(env.document.querySelector('#post-body-preview').hidden, true);
+});
+
+test('Markdown import rejects invalid files without erasing a draft, then imports UTF-8 title and body', async () => {
+  const env = await environment(); env.click('[data-compose]'); env.input('#post-body', '保留草稿');
+  env.changeFile('#compose-dialog [data-md-import]', textFile('bad.pdf', 'not Markdown')); await tick();
+  assert.equal(env.document.querySelector('#post-body').value, '保留草稿');
+  env.changeFile('#compose-dialog [data-md-import]', textFile('example.md', '# 导入标题\n\n**你好**')); await tick();
+  assert.equal(env.document.querySelector('#post-title').value, '导入标题');
+  assert.equal(env.document.querySelector('#post-body').value, '# 导入标题\n\n**你好**');
+});
+
+test('Failed uploads retain the draft and reuse the upload identity on retry', async () => {
+  const env = await environment(); env.click('[data-compose]'); env.input('#post-body', '保留文字');
+  const file = textFile('photo.png', 'fixture');
+  env.fail({ status: 503, message: '上传中断' }); env.changeFile('#compose-dialog [data-attachment-input]', file); await tick();
+  assert.equal(env.document.querySelector('#post-body').value, '保留文字');
+  const first = env.requests.find(request => request.path === '/forum/attachments');
+  assert.match(first.body.request_id, /^[a-f0-9]{32}$/);
+  env.fail(null); env.changeFile('#compose-dialog [data-attachment-input]', file); await tick();
+  const sent = env.requests.filter(request => request.path === '/forum/attachments');
+  assert.equal(sent[1].body.request_id, first.body.request_id);
+  assert.match(env.document.querySelector('#post-body').value, /保留文字[\s\S]*!\[photo.png\]\(\/api\/image\/forum\/attachments\//);
+  assert.equal(env.document.querySelector('#post-body').disabled, false);
+});
+
+test('A pending upload blocks publication and cannot repopulate a draft after an account switch', async () => {
+  const env = await environment(); env.click('[data-compose]'); env.input('#post-title', '标题'); env.input('#post-body', '草稿');
+  let resolveUpload;
+  env.deferUpload(() => new Promise(resolve => { resolveUpload = resolve; }));
+  env.changeFile('#compose-dialog [data-attachment-input]', textFile('report.pdf', 'fixture')); await tick();
+  env.submit('#post-form'); await tick();
+  assert.equal(env.requests.some(request => request.path === '/forum/posts' && request.method === 'POST'), false);
+  assert.match(env.document.querySelector('#post-message').textContent, /文件处理/);
+  env.session.user = other; env.focus(); await tick();
+  resolveUpload(env.response({ name: 'report.pdf', url: '/api/image/forum/attachments/' + 'f'.repeat(32) }));
+  await tick();
+  assert.equal(env.document.querySelector('#post-body').value, '');
+  assert.equal(env.document.querySelector('#post-body-preview').textContent, '');
 });
