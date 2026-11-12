@@ -1,0 +1,17 @@
+{
+  "1": {
+    "class_type": "StrgoMockVideo",
+    "inputs": {
+      "prompt": "缓慢推镜进入雨后的校园。"
+    }
+  },
+  "2": {
+    "class_type": "StrgoDisplay",
+    "inputs": {
+      "value": [
+        "1",
+        0
+      ]
+    }
+  }
+}

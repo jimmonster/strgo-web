@@ -87,6 +87,8 @@ def authorize(service, method, query, headers, ip):
         require_admin(row, now)
         db.execute('DELETE FROM comfy_sso_codes WHERE expires<=?', (now,))
         code = secrets.token_urlsafe(32)
+        from .admin import audit
+        audit(db, row['id'], 'comfyui.sso.authorize')
         db.execute('INSERT INTO comfy_sso_codes VALUES(?,?,?,?)',
                    (digest(code), row['hash'], digest(state), now + CODE_AGE))
     return redirect(ORIGIN + '/auth/callback?' + urlencode({'code': code, 'state': state}))

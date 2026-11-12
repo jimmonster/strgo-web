@@ -824,7 +824,11 @@ class HTTPHandler(BaseHTTPRequestHandler):
                 payload = json.loads(self.rfile.read(length) or b'{}')
             peer = self.client_address[0]
             ip = self.headers.get('X-Real-IP', peer) if peer in ('127.0.0.1', '::1') else peer
-            status, result, extra = self.server.service.dispatch(method, self.path, payload, dict(self.headers), ip)
+            headers = dict(self.headers)
+            if self.path.split('?', 1)[0] == comfy_auth.PUBLIC:
+                headers = {k: v for k, v in headers.items() if k.lower() != 'cookie'}
+                headers['Cookie'] = '; '.join(self.headers.get_all('Cookie', []))
+            status, result, extra = self.server.service.dispatch(method, self.path, payload, headers, ip)
         except Problem as error:
             error_code = getattr(error, 'code', 'REQUEST_FAILED')
             status, result, extra = error.status, {'error': error.message}, {}

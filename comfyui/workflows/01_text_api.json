@@ -1,0 +1,18 @@
+{
+  "1": {
+    "class_type": "StrgoText",
+    "inputs": {
+      "selection": "mock:echo",
+      "prompt": "用一句话描写雨后的校园。"
+    }
+  },
+  "2": {
+    "class_type": "StrgoDisplay",
+    "inputs": {
+      "value": [
+        "1",
+        0
+      ]
+    }
+  }
+}

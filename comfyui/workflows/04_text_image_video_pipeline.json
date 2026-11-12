@@ -1,0 +1,36 @@
+{
+  "1": {
+    "class_type": "StrgoText",
+    "inputs": {
+      "selection": "mock:echo",
+      "prompt": "用一句话写一段校园空镜。"
+    }
+  },
+  "2": {
+    "class_type": "StrgoMockImage",
+    "inputs": {
+      "prompt": [
+        "1",
+        0
+      ]
+    }
+  },
+  "3": {
+    "class_type": "StrgoMockVideo",
+    "inputs": {
+      "prompt": [
+        "2",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "StrgoDisplay",
+    "inputs": {
+      "value": [
+        "3",
+        0
+      ]
+    }
+  }
+}
