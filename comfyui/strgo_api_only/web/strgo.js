@@ -92,17 +92,39 @@ function showResult() {
   panel.showModal();
 }
 
+async function showJobs() {
+  const panel = dialog("STRGO 任务与额度");
+  const content = document.createElement("div");
+  content.style.cssText = "max-width:min(75vw,680px);max-height:60vh;overflow:auto";
+  panel.append(content);
+  panel.showModal();
+  try {
+    const { jobs } = await data("/strgo/jobs");
+    const list = document.createElement("ul");
+    for (const job of jobs) {
+      const row = document.createElement("li");
+      const cost = job.unit ? ` · 估算上限 ${job.estimated_max} ${job.unit}` : "";
+      row.textContent = `${job.provider} / ${job.model} · ${job.state}${cost} · ${job.job}`;
+      list.append(row);
+    }
+    content.append(jobs.length ? list : "暂无任务。");
+  } catch (error) {
+    content.textContent = error.message;
+  }
+}
+
 app.registerExtension({
   name: "STRGO.ApiOnly",
   commands: [
     { id: "STRGO.Workflows", label: "工作流与供应商", function: selectProvider },
     { id: "STRGO.Result", label: "最近结果", function: showResult },
+    { id: "STRGO.Jobs", label: "任务与额度", function: showJobs },
     { id: "STRGO.Logout", label: "退出 STRGO ComfyUI", function: async () => {
       const response = await fetch("/auth/logout", { method: "POST", headers: { "X-STRGO-Request": "logout" } });
       if (response.ok) location.assign("/login/");
     } },
   ],
-  menuCommands: [{ path: ["STRGO"], commands: ["STRGO.Workflows", "STRGO.Result", "STRGO.Logout"] }],
+  menuCommands: [{ path: ["STRGO"], commands: ["STRGO.Workflows", "STRGO.Result", "STRGO.Jobs", "STRGO.Logout"] }],
   setup() {
     api.addEventListener("executed", ({ detail }) => {
       if (typeof detail?.output?.text?.[0] === "string") latestResult = detail.output.text[0];

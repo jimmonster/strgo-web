@@ -154,6 +154,10 @@ bash /root/strgo-web/apps/terminal/publish.sh --build-mode native
 
 SWARMERA 发布末尾会从当前统一仓库再次发布主站入口；如需指定其他主站源码，可设置 `STRGO_HOMEPAGE_DIR=/实际主站路径`。旧独立项目布局仍兼容 `/root/strgo-homepage`。
 
+## ComfyUI API-only 子域
+
+已有主站与账号服务时，按 [ComfyUI API-only](doc/COMFYUI-API-ONLY.md) 部署和验收独立子域。
+
 ## 6. 发布后验收
 
 ```bash

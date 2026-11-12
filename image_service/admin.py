@@ -6,7 +6,7 @@ import shutil
 import time
 import uuid
 
-from . import forum, local_studio
+from . import comfy_auth, forum, local_studio
 from .security import Problem, digest
 
 PREFIX = '/api/image/admin'
@@ -63,7 +63,8 @@ def summary(service, db):
     return {'counts': counts, 'tasks': groups,
             'storage': {'ready': service.storage.ready, 'label': getattr(service.storage, 'label', '私有存储'), 'freeBytes': free},
             'backup': {'last': service.store.metadata('last_backup'), 'hasError': bool(service.store.metadata('backup_error'))},
-            'workflow': local_studio.status(service)}
+            'workflow': local_studio.status(service),
+            'comfyuiOrigin': comfy_auth.ORIGIN if comfy_auth.bridge_secret() else None}
 
 
 def dispatch(service, method, path, query, payload, user):

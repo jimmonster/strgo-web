@@ -34,7 +34,7 @@ jobs:
           for app in dreams polyverse meow swarmera nexus; do
             npm ci --prefix "apps/$app"
           done
-          python -m pip install -r image_service/requirements.txt tzdata
+          python -m pip install -r image_service/requirements.txt -r comfyui/requirements-test.txt tzdata
       - name: Root production build and regressions
         run: node scripts/verify.mjs --root
       - name: Application builds, integration and deployment helpers

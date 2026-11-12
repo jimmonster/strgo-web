@@ -19,7 +19,7 @@ def credential(name):
 
 
 def key(value):
-    if not isinstance(value, str) or len(value) > 1024 or any(not 33 <= ord(char) <= 126 for char in value):
+    if not isinstance(value, str) or (value and len(value) < 8) or len(value) > 1024 or any(not 33 <= ord(char) <= 126 for char in value):
         raise ValueError('Invalid API credential.')
     return value
 

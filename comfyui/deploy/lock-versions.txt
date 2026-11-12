@@ -1,0 +1,6 @@
+ComfyUI v0.18.5 7782171a272bca4bfb8586a5bb801c5c04b5ee6a
+Python CPython 3.12, Linux x86_64
+Torch 2.10.0+cpu
+TorchVision 0.25.0+cpu
+TorchAudio 2.10.0+cpu
+Frontend 1.41.21

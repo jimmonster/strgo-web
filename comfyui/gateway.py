@@ -256,7 +256,7 @@ class Gateway:
 <title>STRGO ComfyUI</title><main><h1>STRGO ComfyUI</h1>
 <form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{csrf}">
 <button>用 STRGO 账号登录</button></form></main></html>''')
-            response.headers['Content-Security-Policy'] = "default-src 'none'; form-action 'self'; frame-ancestors 'none'"
+            response.headers['Content-Security-Policy'] = "default-src 'none'; form-action 'self' https://strgo.com; frame-ancestors 'none'"
             set_cookie(response, STATE_COOKIE, csrf, 600)
             return response
         if path == '/auth/start' and method == 'POST':
@@ -309,11 +309,21 @@ class Gateway:
         plan = compile_graph(body.get('prompt'))
         model = self.registry.model(plan.route, plan.model)
         async with self.submit_lock:
-            job, previous = self.ledger.reserve(owner, request_id, plan, model)
+            if any(entry.api_key and entry.api_key in json.dumps(plan.graph, ensure_ascii=False)
+                   for entry in self.registry.entries.values()):
+                raise Rejected('Credentials are configured on the server.')
+            await self.account_user(token)
+            try:
+                job, previous, position = self.ledger.reserve(owner, request_id, plan, model)
+            except Rejected as error:
+                if error.status not in (409, 429):
+                    raise
+                await self.reconcile()
+                job, previous, position = self.ledger.reserve(owner, request_id, plan, model)
             if previous in ('unknown', 'failed'):
                 raise Rejected('The job needs verification before another submission.', 409)
             if previous:
-                return web.json_response({'prompt_id': job, 'number': 0, 'node_errors': {}})
+                return web.json_response({'prompt_id': job, 'number': position, 'node_errors': {}})
             if model.enabled:
                 self.pending_tokens[job] = token
             payload = {'prompt': plan.graph, 'prompt_id': job}
@@ -325,27 +335,30 @@ class Gateway:
                 async with self.http.post(self.engine + '/prompt', json=payload, headers=self.engine_headers(),
                                           allow_redirects=False) as response:
                     if response.status == 400:
-                        self.ledger.update(job, 'failed', 'submitted')
-                        self.pending_tokens.pop(job, None)
-                        raise Rejected('ComfyUI rejected the workflow. Check node inputs.')
-                    if response.status != 200:
+                        result = None
+                    elif response.status == 200:
+                        result = await limit_response(response, 16384)
+                        if result.get('prompt_id') != job or type(result.get('number')) is not int:
+                            raise OSError('Mismatched engine job ID.')
+                    else:
                         raise OSError('Engine submission uncertain.')
-                    result = await limit_response(response, 16384)
-                    if result.get('prompt_id') != job:
-                        raise OSError('Mismatched engine job ID.')
-            except (aiohttp.ClientError, OSError, TimeoutError, ValueError):
-                self.ledger.update(job, 'unknown' if model.enabled else 'failed', 'submitted')
+            except (aiohttp.ClientError, OSError, TimeoutError, ValueError, AttributeError):
+                self.ledger.uncertain(job, model.enabled)
                 self.pending_tokens.pop(job, None)
                 raise Rejected('Submission could not be confirmed. Check the task status.', 503) from None
-            self.ledger.update(job, 'queued', 'submitted')
-            return web.json_response({'prompt_id': job, 'number': result.get('number', 0), 'node_errors': {}})
+            if result is None:
+                self.ledger.update(job, 'failed', 'submitted')
+                self.pending_tokens.pop(job, None)
+                raise Rejected('ComfyUI rejected the workflow. Check node inputs.')
+            self.ledger.accepted(job, result['number'])
+            return web.json_response({'prompt_id': job, 'number': result['number'], 'node_errors': {}})
 
     async def poll(self):
         while True:
             try:
                 await self.reconcile()
-            except (Rejected, OSError, aiohttp.ClientError, TimeoutError, ValueError):
-                pass
+            except (Rejected, OSError, aiohttp.ClientError, TimeoutError, ValueError, KeyError, TypeError):
+                LOG.warning('Could not reconcile the engine queue; no job was resubmitted.')
             await asyncio.sleep(4)
 
     async def engine_json(self, path):
@@ -444,8 +457,9 @@ class Gateway:
                 else:
                     raise Rejected('Only PNG, JPEG and WebP images are supported.', 415)
                 assets = self.state.parent / 'engine' / 'input'
-                total = sum(p.stat().st_size for p in assets.iterdir() if p.is_file())
-                if total + size > FILE_LIMIT:
+                stored = [p for p in assets.iterdir() if p.is_file()]
+                total = sum(p.stat().st_size for p in stored)
+                if total + size > FILE_LIMIT or len(stored) >= 256:
                     raise Rejected('The upload cache is full.', 507)
                 stream.seek(0)
                 form = aiohttp.FormData()

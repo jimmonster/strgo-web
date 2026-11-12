@@ -21,7 +21,7 @@ class Ledger:
                     graph TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
                     nodes INTEGER NOT NULL, state TEXT NOT NULL, reserved INTEGER NOT NULL,
                     unit TEXT NOT NULL, day INTEGER NOT NULL, created INTEGER NOT NULL,
-                    updated INTEGER NOT NULL, dispatched INTEGER, vendor_job TEXT,
+                    updated INTEGER NOT NULL, dispatched INTEGER, vendor_job TEXT, position INTEGER DEFAULT 0,
                     UNIQUE(owner,request));
                 CREATE INDEX IF NOT EXISTS job_admission ON jobs(state,owner,graph);
                 CREATE INDEX IF NOT EXISTS job_budget ON jobs(provider,day);
@@ -47,7 +47,7 @@ class Ledger:
             if previous:
                 if previous['graph'] != plan.digest:
                     raise Rejected('The request ID belongs to a different workflow.', 409)
-                return previous['id'], previous['state']
+                return previous['id'], previous['state'], previous['position']
             if db.execute(SELECT + '''
                 WHERE owner=? AND graph=? AND (state IN ('submitted','queued','running','unknown'))
             ''', (owner, plan.digest)).fetchone():
@@ -60,10 +60,10 @@ class Ledger:
                 if not model.enabled or used + model.reserve > model.daily_limit:
                     raise Rejected('This provider is disabled or its daily budget is exhausted.', 403)
             job = str(uuid.uuid4())
-            db.execute('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL)',
+            db.execute('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,0)',
                        (job, owner, request, plan.digest, model.provider, model.model, plan.node_count,
                         'submitted', model.reserve, model.unit, day, now, now))
-        return job, None
+        return job, None, 0
 
     def claim(self, job):
         with self.db() as db:
@@ -77,6 +77,17 @@ class Ledger:
         with self.db() as db:
             db.execute('UPDATE jobs SET state=?,updated=? WHERE id=? AND state=?',
                        (state, int(time.time()), job, expected))
+
+    def accepted(self, job, position):
+        with self.db() as db:
+            db.execute("""UPDATE jobs SET position=?, state=CASE WHEN state='submitted' THEN 'queued' ELSE state END
+                          WHERE id=?""", (position, job))
+
+    def uncertain(self, job, paid):
+        with self.db() as db:
+            db.execute("""UPDATE jobs SET state=?,updated=? WHERE id=?
+                          AND state IN ('submitted','queued','running')""",
+                       ('unknown' if paid else 'failed', int(time.time()), job))
 
     def receipt(self, job, vendor_id):
         with self.db() as db:

@@ -10,7 +10,7 @@ Windows 可以运行静态构建和 Node 测试；部分部署测试、磁盘同
 
 ```bash
 npm ci
-python3 -m pip install -r image_service/requirements.txt
+python3 -m pip install -r image_service/requirements.txt -r comfyui/requirements-test.txt
 npm run build:production
 npm run dev
 ```
