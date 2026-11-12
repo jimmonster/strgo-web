@@ -31,7 +31,6 @@
 | 部署和运维 | [统一部署](../DEPLOYMENT.md)、[NEXUS 集成部署](../NEXUS-DEPLOYMENT.md) |
 | 生图与共享账号 | [生图工作台](../IMAGE-PLAYGROUND.md) |
 | 管理员本地工作流 | [Workflow / ComfyUI](../WORKFLOW.md) |
-| 管理员 API 工作流 | [ComfyUI API-only](COMFYUI-API-ONLY.md) |
 | AI 音乐、对话与权限 | [功能与接入](../AI-WORKSPACE.md)、[设计](ai/design-v1.0.md)、[实现与接口](ai/implementation.md)、[验收](ai/acceptance.md) |
 | 社区 | [论坛说明](../FORUM.md) |
 | 内容与作品 | [内容维护](../CONTENT-MAINTENANCE.md)、[待补内容](../CONTENT-MISSING.md) |

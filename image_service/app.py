@@ -22,7 +22,7 @@ from .storage import create_storage
 from .store import Store
 from . import forum
 from . import local_studio
-from . import admin, comfy_auth
+from . import admin
 
 API = '/api/image'
 COOKIE = 'strgo_image_session'
@@ -414,10 +414,6 @@ class Service:
             raise Problem(400, '请求内容应为 JSON 对象。')
         url = urlsplit(target)
         path, query = url.path, parse_qs(url.query)
-        if path == comfy_auth.PUBLIC:
-            return comfy_auth.authorize(self, method, query, headers, ip)
-        if path.startswith(comfy_auth.INTERNAL):
-            return comfy_auth.internal(self, method, path, payload, headers, ip)
         if path.startswith('/api/ai/v1/'):
             return self.ai.dispatch(method, target, payload, headers, ip)
         if not path.startswith(API + '/'):
@@ -825,9 +821,6 @@ class HTTPHandler(BaseHTTPRequestHandler):
             peer = self.client_address[0]
             ip = self.headers.get('X-Real-IP', peer) if peer in ('127.0.0.1', '::1') else peer
             headers = dict(self.headers)
-            if self.path.split('?', 1)[0] == comfy_auth.PUBLIC:
-                headers = {k: v for k, v in headers.items() if k.lower() != 'cookie'}
-                headers['Cookie'] = '; '.join(self.headers.get_all('Cookie', []))
             status, result, extra = self.server.service.dispatch(method, self.path, payload, headers, ip)
         except Problem as error:
             error_code = getattr(error, 'code', 'REQUEST_FAILED')
