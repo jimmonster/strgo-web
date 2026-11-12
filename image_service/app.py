@@ -22,7 +22,7 @@ from .storage import create_storage
 from .store import Store
 from . import forum
 from . import local_studio
-from . import admin
+from . import admin, comfy_auth
 
 API = '/api/image'
 COOKIE = 'strgo_image_session'
@@ -414,6 +414,10 @@ class Service:
             raise Problem(400, '请求内容应为 JSON 对象。')
         url = urlsplit(target)
         path, query = url.path, parse_qs(url.query)
+        if path == comfy_auth.PUBLIC:
+            return comfy_auth.authorize(self, method, query, headers, ip)
+        if path.startswith(comfy_auth.INTERNAL):
+            return comfy_auth.internal(self, method, path, payload, headers, ip)
         if path.startswith('/api/ai/v1/'):
             return self.ai.dispatch(method, target, payload, headers, ip)
         if not path.startswith(API + '/'):
