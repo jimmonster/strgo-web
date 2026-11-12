@@ -198,6 +198,11 @@ class Gateway:
                 return web.FileResponse(Path(__file__).with_name('workflows') / (name + '.json'))
         canonical = path.removeprefix('/api') if path.startswith('/api/') else path
         if method in ('GET', 'HEAD'):
+            if canonical == '/settings':
+                settings = await self.engine_json('/settings')
+                return web.json_response({**settings, 'Comfy.TutorialCompleted': True})
+            if canonical == '/settings/Comfy.TutorialCompleted':
+                return web.json_response(True)
             if path in ('/user.css', '/api/userdata/user.css'):
                 return web.Response(text='', content_type='text/css')
             if canonical in ('/workflow_templates', '/global_subgraphs') or path in (
