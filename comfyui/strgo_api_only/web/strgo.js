@@ -126,6 +126,13 @@ app.registerExtension({
   ],
   menuCommands: [{ path: ["STRGO"], commands: ["STRGO.Workflows", "STRGO.Result", "STRGO.Jobs", "STRGO.Logout"] }],
   setup() {
+    const launcher = document.createElement("button");
+    launcher.id = "strgo-workflow-launcher";
+    launcher.type = "button";
+    launcher.textContent = "STRGO 工作流";
+    launcher.style.cssText = "position:fixed;left:64px;bottom:16px;z-index:30;padding:8px 12px;border:1px solid var(--border-color,#555);border-radius:8px;background:var(--comfy-menu-bg,#222);color:var(--fg-color,#eee)";
+    launcher.onclick = selectProvider;
+    document.body.append(launcher);
     api.addEventListener("executed", ({ detail }) => {
       if (typeof detail?.output?.text?.[0] === "string") latestResult = detail.output.text[0];
     });

@@ -24,7 +24,8 @@ class PublicResolver(AbstractResolver):
             address = ipaddress.ip_address(sockaddr[0])
             if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
                 address = address.ipv4_mapped
-            if not address.is_global or address.is_multicast or address.is_reserved:
+            if (not address.is_global or address.is_multicast or address.is_reserved
+                    or getattr(address, 'is_site_local', False)):
                 raise ProviderError('Provider DNS did not resolve exclusively to public addresses.')
             resolved.append({'hostname': host, 'host': sockaddr[0], 'port': port, 'family': af,
                              'proto': protocol, 'flags': socket.AI_NUMERICHOST})

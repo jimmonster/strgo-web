@@ -36,8 +36,8 @@ EXAMPLES = ('01_text_api', '02_image_api', '03_video_async_api', '04_text_image_
             '05_official_partner_example', '06_provider_switch_demo')
 READ = re.compile(r'/(?:api/)?(?:system_stats|features|extensions|embeddings|models(?:/[a-z_]+)?|'
                   r'object_info(?:/[A-Za-z0-9_]+)?|prompt|queue|history(?:/[a-f0-9-]+)?|'
-                  r'jobs(?:/[a-f0-9-]+)?|settings|userdata|view)')
-STATIC = re.compile(r'/(?:assets|scripts|extensions|static|locales|icons|web|fonts)/[A-Za-z0-9_./@+-]+')
+                  r'jobs(?:/[a-f0-9-]+)?|settings|userdata|view|users|node_replacements|i18n|experiment/models)')
+STATIC = re.compile(r'/(?:assets|scripts|extensions|static|locales|icons|web|fonts|cursor)/[A-Za-z0-9_./@+-]+')
 WRITE = {'/interrupt', '/queue', '/history', '/settings'}
 SETTINGS = re.compile(r'/settings/[A-Za-z0-9._-]{1,120}')
 USERDATA = re.compile(r'/userdata/(?:workflows/)?[^/\\]{1,160}\.json')
@@ -69,8 +69,9 @@ def verify_origin(request):
         raise Rejected('Request origin is invalid.', 403)
 
 
-async def read_json(request, maximum=MAX_JSON):
-    if request.content_type != 'application/json' or request.headers.get('Content-Encoding', 'identity') != 'identity':
+async def read_json(request, maximum=MAX_JSON, *, native=False):
+    allowed = ('application/json', 'text/plain') if native else ('application/json',)
+    if request.content_type not in allowed or request.headers.get('Content-Encoding', 'identity') != 'identity':
         raise Rejected('Use uncompressed application/json.', 415)
     buffer = bytearray()
     async for chunk in request.content.iter_chunked(16384):
@@ -81,7 +82,7 @@ async def read_json(request, maximum=MAX_JSON):
         body = json.loads(buffer)
     except (ValueError, RecursionError):
         raise Rejected('Invalid JSON.') from None
-    if not isinstance(body, dict):
+    if not native and not isinstance(body, dict):
         raise Rejected('Expected a JSON object.')
     return body
 
@@ -96,7 +97,8 @@ async def limit_response(response, limit=MAX_JSON):
 
 
 async def prepare(_request, response):
-    response.headers.update({'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer',
+    response.headers.setdefault('Referrer-Policy', 'no-referrer')
+    response.headers.update({'Cache-Control': 'private, no-store',
                              'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
                              'Cross-Origin-Resource-Policy': 'same-origin'})
 
@@ -120,6 +122,7 @@ class Gateway:
     def __init__(self, registry, ledger, state, bridge_key, engine_key, *,
                  account='http://127.0.0.1:8092', engine='http://127.0.0.1:8188', recheck=30):
         self.registry = registry
+        self.keys = tuple(model.api_key for model in registry.entries.values() if model.api_key)
         self.ledger = ledger
         self.state = state
         self.bridge_key = bridge_key
@@ -194,11 +197,19 @@ class Gateway:
             if name in EXAMPLES:
                 return web.FileResponse(Path(__file__).with_name('workflows') / (name + '.json'))
         canonical = path.removeprefix('/api') if path.startswith('/api/') else path
+        if method in ('GET', 'HEAD'):
+            if path in ('/user.css', '/api/userdata/user.css'):
+                return web.Response(text='', content_type='text/css')
+            if canonical in ('/workflow_templates', '/global_subgraphs') or path in (
+                    '/templates/fuse_options.json', '/templates/index_logo.json'):
+                return web.json_response({})
+            if re.fullmatch(r'/templates/index(?:\.[a-zA-Z-]+)?\.json', path):
+                return web.json_response([])
         if canonical == '/prompt' and method == 'POST':
             return await self.submit(request, owner, token)
         if canonical == '/upload/image' and method == 'POST':
             return await self.upload(request, canonical)
-        if method in ('GET', 'HEAD') and (path in ('/', '/favicon.ico', '/robots.txt')
+        if method in ('GET', 'HEAD') and (path in ('/', '/favicon.ico', '/robots.txt', '/materialdesignicons.min.css')
                 or READ.fullmatch(path) or STATIC.fullmatch(path) or USERDATA.fullmatch(canonical)
                 or SETTINGS.fullmatch(canonical)):
             if any(part in ('.', '..') for part in path.split('/')):
@@ -207,13 +218,20 @@ class Gateway:
         if method in ('POST', 'DELETE') and (canonical in WRITE or SETTINGS.fullmatch(canonical)
                                              or USERDATA.fullmatch(canonical)):
             if canonical != '/interrupt' and request.can_read_body:
-                data = await read_json(request)
-                if self.sensitive(data):
+                data = await read_json(request, native=canonical not in WRITE)
+                if self.sensitive(data) or self.has_key(data):
                     raise Rejected('Credentials are configured on the server.')
             else:
                 data = {}
             return await self.forward(request, path, json_data=data)
         return failed('This route is unavailable in API-only mode.', 404)
+
+    def has_key(self, value):
+        if isinstance(value, dict):
+            return any(self.has_key(key) or self.has_key(item) for key, item in value.items())
+        if isinstance(value, list):
+            return any(self.has_key(item) for item in value)
+        return isinstance(value, str) and any(key in value for key in self.keys)
 
     @staticmethod
     def sensitive(value):
@@ -242,8 +260,7 @@ class Gateway:
         if path == '/internal/receipt':
             vendor_id = body.get('provider_id')
             if (isinstance(vendor_id, str) and re.fullmatch(r'[A-Za-z0-9_-]{1,128}', vendor_id)
-                    and all(model.api_key not in vendor_id for model in self.registry.entries.values()
-                            if model.api_key)):
+                    and not self.has_key(vendor_id)):
                 self.ledger.receipt(job, vendor_id)
                 return web.Response(status=200)
         return web.Response(status=404)
@@ -256,6 +273,9 @@ class Gateway:
 <title>STRGO ComfyUI</title><main><h1>STRGO ComfyUI</h1>
 <form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{csrf}">
 <button>用 STRGO 账号登录</button></form></main></html>''')
+            # Form navigation needs a same-origin Origin header. Callback and code
+            # responses retain no-referrer.
+            response.headers['Referrer-Policy'] = 'same-origin'
             response.headers['Content-Security-Policy'] = "default-src 'none'; form-action 'self' https://strgo.com; frame-ancestors 'none'"
             set_cookie(response, STATE_COOKIE, csrf, 600)
             return response
@@ -297,7 +317,7 @@ class Gateway:
         if set(body) - {'prompt', 'extra_data', 'client_id', 'prompt_id'}:
             raise Rejected('Unsupported submission fields.')
         extra = body.get('extra_data', {})
-        if (not isinstance(extra, dict) or set(extra) - {'extra_pnginfo', 'api_key_comfy_org', 'auth_token_comfy_org'}
+        if (not isinstance(extra, dict) or set(extra) - {'extra_pnginfo', 'api_key_comfy_org', 'auth_token_comfy_org', 'preview_method'}
                 or extra.get('api_key_comfy_org') or extra.get('auth_token_comfy_org')):
             raise Rejected('Official credentials are injected by STRGO. Sign out of browser-side Comfy credentials.')
         client = body.get('client_id', '')
@@ -309,8 +329,7 @@ class Gateway:
         plan = compile_graph(body.get('prompt'))
         model = self.registry.model(plan.route, plan.model)
         async with self.submit_lock:
-            if any(entry.api_key and entry.api_key in json.dumps(plan.graph, ensure_ascii=False)
-                   for entry in self.registry.entries.values()):
+            if self.has_key(plan.graph):
                 raise Rejected('Credentials are configured on the server.')
             await self.account_user(token)
             try:

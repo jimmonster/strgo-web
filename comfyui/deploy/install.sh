@@ -153,7 +153,7 @@ fi
 id strgo-comfyui >/dev/null 2>&1 || useradd --system --user-group --home-dir "$STATE/engine" --shell /usr/sbin/nologin strgo-comfyui
 id strgo-comfyui-web >/dev/null 2>&1 || useradd --system --gid strgo-comfyui --home-dir "$STATE/gateway" --shell /usr/sbin/nologin strgo-comfyui-web
 install -d -o strgo-comfyui -g strgo-comfyui -m 0750 "$STATE/engine" "$STATE/engine/input"
-install -d -o strgo-comfyui -g strgo-comfyui -m 0700 "$STATE/engine/output" "$STATE/engine/temp" "$STATE/engine/user"
+install -d -o strgo-comfyui -g strgo-comfyui -m 0700 "$STATE/engine/output" "$STATE/engine/temp" "$STATE/engine/user" "$STATE/engine/user/default" "$STATE/engine/user/default/workflows"
 install -d -o strgo-comfyui-web -g strgo-comfyui -m 0700 "$STATE/gateway"
 if [[ ! -s "$ETC/account.token" ]]; then
     python3.12 -c 'import secrets; print(secrets.token_urlsafe(32))' > "$ETC/account.token"

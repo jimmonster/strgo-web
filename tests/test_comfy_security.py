@@ -6,9 +6,12 @@ import socket
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from comfyui.strgo_api_only.config import Registry
+from aiohttp import web
+from aiohttp.test_utils import TestServer
+
+from comfyui.strgo_api_only.config import Model, Registry
 from comfyui.strgo_api_only.policy import Rejected, compile_graph
-from comfyui.strgo_api_only.providers import Mock, ProviderError, PublicResolver
+from comfyui.strgo_api_only.providers import Mock, OpenAICompatible, ProviderError, PublicResolver
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / 'comfyui/workflows'
 
@@ -80,3 +83,29 @@ class ComfyTransportTests(unittest.IsolatedAsyncioTestCase):
         await mock.cancel(task)
         with self.assertRaises(ProviderError):
             await mock.result(task)
+
+    async def test_byok_adapter_submits_once_and_does_not_echo_error_bodies(self):
+        requests = []
+        secret = 'temporary-provider-fixture-key'
+
+        async def provider(request):
+            self.assertEqual(request.headers['Authorization'], 'Bearer ' + secret)
+            data = await request.json()
+            requests.append(data)
+            if data['messages'][0]['content'] == 'return 503':
+                return web.json_response({'error': secret}, status=503)
+            return web.json_response({'id': 'mock-response',
+                                      'choices': [{'message': {'content': 'fixture result'}}]})
+
+        app = web.Application()
+        app.router.add_post('/v1/chat/completions', provider)
+        async with TestServer(app) as upstream:
+            endpoint = str(upstream.make_url('/v1/chat/completions'))
+            model = Model('fixture', 'text', 'fixture-model', endpoint, secret, 'micro-USD', 10, 1)
+            adapter = OpenAICompatible(model)
+            self.assertEqual(await adapter.submit('hello'), ('fixture result', 'mock-response'))
+            with self.assertRaisesRegex(ProviderError, 'HTTP 503') as caught:
+                await adapter.submit('return 503')
+            self.assertNotIn(secret, str(caught.exception))
+        self.assertEqual(len(requests), 2)
+        self.assertTrue(all(item['max_tokens'] == 1024 and not item['stream'] for item in requests))
