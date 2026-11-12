@@ -2,10 +2,8 @@ diff --git a/comfy_api_nodes/nodes_openai.py b/comfy_api_nodes/nodes_openai.py
 index 4ee896f..f025c2e 100644
 --- a/comfy_api_nodes/nodes_openai.py
 +++ b/comfy_api_nodes/nodes_openai.py
-@@ -747,36 +747,55 @@ class OpenAIChatNode(IO.ComfyNode):
-     ) -> IO.NodeOutput:
-         validate_string(prompt, strip_whitespace=False)
- 
+@@ -749,32 +749,51 @@ class OpenAIChatNode(IO.ComfyNode):
+
 -        # Create response
 -        create_response = await sync_op(
 -            cls,
@@ -29,7 +27,7 @@ index 4ee896f..f025c2e 100644
 +        import asyncio
 +        import re
 +        from strgo_engine_guard import claim_current_job, record_receipt
- 
+
 -        # Get result output
 -        result_response = await poll_op(
 -            cls,
@@ -84,47 +82,31 @@ index 4ee896f..f025c2e 100644
 +            return IO.NodeOutput(text)
 +        except Exception:
 +            raise RuntimeError('Official Partner request failed. Check the provider before retrying.') from None
- 
- 
- class OpenAIInputFiles(IO.ComfyNode):
+
 diff --git a/comfy_api_nodes/util/client.py b/comfy_api_nodes/util/client.py
 index 9d730b8..cf26722 100644
 --- a/comfy_api_nodes/util/client.py
 +++ b/comfy_api_nodes/util/client.py
-@@ -678,7 +678,7 @@ async def _request_base(cfg: _RequestConfig, expect_binary: bool):
-                 request_data=request_body_log,
-             )
- 
+@@ -680,3 +680,3 @@ async def _request_base(cfg: _RequestConfig, expect_binary: bool):
+
 -            req_coro = sess.request(method, url, params=params, **payload_kw)
 +            req_coro = sess.request(method, url, params=params, allow_redirects=False, **payload_kw)
              req_task = asyncio.create_task(req_coro)
- 
-             # Race: request vs. monitor (interruption)
-@@ -696,7 +696,7 @@ async def _request_base(cfg: _RequestConfig, expect_binary: bool):
-             # Otherwise, request finished
-             resp = await req_task
+@@ -698,3 +698,3 @@ async def _request_base(cfg: _RequestConfig, expect_binary: bool):
              async with resp:
 -                if resp.status >= 400:
 +                if not 200 <= resp.status < 300:
                      try:
-                         body = await resp.json()
-                     except (ContentTypeError, json.JSONDecodeError):
-@@ -746,7 +746,7 @@ async def _request_base(cfg: _RequestConfig, expect_binary: bool):
-                             display_callback=_display_time_progress if cfg.monitor_progress else None,
-                         )
+@@ -748,3 +748,3 @@ async def _request_base(cfg: _RequestConfig, expect_binary: bool):
                          continue
 -                    msg = _friendly_http_message(resp.status, body)
 +                    msg = f"Official provider returned HTTP {resp.status}."
                      request_logger.log_request_response(
-                         operation_id=operation_id,
-                         request_method=method,
 diff --git a/comfy_api_nodes/util/request_logger.py b/comfy_api_nodes/util/request_logger.py
 index fe0543d..1a63c58 100644
 --- a/comfy_api_nodes/util/request_logger.py
 +++ b/comfy_api_nodes/util/request_logger.py
-@@ -85,81 +85,4 @@ def log_request_response(
-     response_content: Any = None,
-     error_message: str | None = None,
+@@ -87,79 +87,2 @@ def log_request_response(
  ):
 -    """
 -    Logs API request and response details to a file in the temp/api_logs directory.
@@ -209,13 +191,9 @@ diff --git a/server.py b/server.py
 index 173a283..d07cbc9 100644
 --- a/server.py
 +++ b/server.py
-@@ -212,7 +212,8 @@ class PromptServer():
-         self.client_session:Optional[aiohttp.ClientSession] = None
-         self.number = 0
- 
+@@ -214,3 +214,4 @@ class PromptServer():
+
 -        middlewares = [cache_control, deprecation_warning]
 +        from strgo_engine_guard import engine_only
 +        middlewares = [engine_only, cache_control, deprecation_warning]
          if args.enable_compress_response_body:
-             middlewares.append(compress_body)
- 
