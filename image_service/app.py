@@ -29,20 +29,22 @@ COOKIE = 'strgo_image_session'
 ACCOUNT_COOKIE = 'strgo_account_session'
 SESSION_AGE = 7 * 24 * 3600
 BUSY = ('queued', 'generating', 'uploading')
-QUALITIES = ('', 'auto', 'low', 'medium', 'high', 'standard', 'hd')
+QUALITIES = ('', 'auto', 'low', 'medium', 'high', 'xhigh', 'standard', 'hd')
 LOGGER = logging.getLogger('image-playground')
 REFERENCE_MAX_BYTES = 2_000_000
 REFERENCE_MAX_ENCODED = 4 * ((REFERENCE_MAX_BYTES + 2) // 3)
 QUOTA_TIMEZONE = 'Asia/Shanghai'
 QUOTA_UTC_OFFSET = 8 * 3600
 MAX_DAILY_IMAGES = 100000
+MAX_IMAGE_SIDE = 3840
+MAX_IMAGE_PIXELS = 8_294_400
 
 
 def valid_size(value):
-    if not isinstance(value, str) or not re.fullmatch(r'\d{3,4}x\d{3,4}', value):
+    if not isinstance(value, str) or not re.fullmatch(r'[0-9]{1,4}x[0-9]{1,4}', value):
         return False
     width, height = (int(part) for part in value.split('x'))
-    return all(256 <= side <= 4096 and side % 64 == 0 for side in (width, height))
+    return all(0 < side <= MAX_IMAGE_SIDE for side in (width, height)) and width * height <= MAX_IMAGE_PIXELS
 
 
 def preset_public(row):

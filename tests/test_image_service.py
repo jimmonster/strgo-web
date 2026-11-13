@@ -240,10 +240,35 @@ class ImageServiceTests(unittest.TestCase):
         result = self.call('GET', '/jobs/' + job['id'], session=self.admin)[1]
         self.assertTrue(result['hasReference'])
 
+    def test_maximum_sizes_arbitrary_integers_and_xhigh_reach_provider(self):
+        self.configure()
+        for size in ('3840x2160', '2160x3840', '2880x2880', '2049x751', '1x255'):
+            with self.subTest(size=size):
+                payload = {'prompt': 'Maximum quality image', 'size': size, 'quality': 'xhigh',
+                           'count': 1, 'requestId': str(uuid.uuid4())}
+                status, job, _ = self.call('POST', '/jobs', payload, self.admin)
+                self.assertEqual(status, 202)
+                self.assertEqual((job['size'], job['quality']), (size, 'xhigh'))
+                self.app.run_job(job['id'])
+                self.assertEqual((self.provider.jobs[-1]['size'], self.provider.jobs[-1]['quality']), (size, 'xhigh'))
+                status, inspiration, _ = self.call('POST', '/inspirations', payload, self.admin)
+                self.assertEqual(status, 201)
+                self.assertEqual((inspiration['size'], inspiration['quality']), (size, 'xhigh'))
+
+    def test_jobs_and_inspirations_reject_oversized_or_invalid_dimensions(self):
+        self.configure()
+        for size in ('3841x100', '100x3841', '3840x2161', '2161x3840', '2880x2881',
+                     '0x100', '100x0', '-1x100', '100.5x100', 'x100', '100x', None, 1024):
+            for path in ('/jobs', '/inspirations'):
+                with self.subTest(size=size, path=path):
+                    payload = {'prompt': 'Check limits', 'size': size, 'quality': 'xhigh',
+                               'count': 1, 'requestId': str(uuid.uuid4())}
+                    self.assert_problem(400, lambda: self.call('POST', path, payload, self.admin))
+
     def test_reference_image_and_custom_size_are_strictly_validated(self):
         self.configure()
         base = {'prompt': 'A prompt', 'size': '1024x1024', 'count': 1, 'quality': '', 'requestId': str(uuid.uuid4())}
-        bad_size = dict(base, size='2048x750', requestId=str(uuid.uuid4()))
+        bad_size = dict(base, size='3840x2161', requestId=str(uuid.uuid4()))
         self.assert_problem(400, lambda: self.call('POST', '/jobs', bad_size, self.admin))
         bad_image = dict(base, requestId=str(uuid.uuid4()), referenceImage={'mime': 'image/png', 'data': base64.b64encode(b'not a png').decode()})
         self.assert_problem(400, lambda: self.call('POST', '/jobs', bad_image, self.admin))
@@ -269,13 +294,14 @@ class ImageServiceTests(unittest.TestCase):
         with patch.object(cloud, 'https_request', side_effect=fake_request):
             result = ImageProvider().generate(
                 {'endpoint': 'https://images.example.com/v1/images/generations', 'apiKey': 'test-key', 'model': 'test-model'},
-                {'prompt': 'Preserve the reference composition', 'size': '2048x768', 'quality': 'high', 'count': 1, 'reference_image': PNG},
+                {'prompt': 'Preserve the reference composition', 'size': '2049x751', 'quality': 'xhigh', 'count': 1, 'reference_image': PNG},
             )
         self.assertEqual(result, [{'b64_json': base64.b64encode(PNG).decode()}])
         self.assertEqual(captured['url'], 'https://images.example.com/v1/images/edits')
         self.assertTrue(captured['headers']['Content-Type'].startswith('multipart/form-data; boundary='))
         self.assertEqual(captured['headers']['Authorization'], 'Bearer test-key')
-        self.assertIn(b'name="size"\r\n\r\n2048x768', captured['body'])
+        self.assertIn(b'name="size"\r\n\r\n2049x751', captured['body'])
+        self.assertIn(b'name="quality"\r\n\r\nxhigh', captured['body'])
         self.assertIn(b'name="prompt"\r\n\r\nPreserve the reference composition', captured['body'])
         self.assertIn(b'filename="reference.png"', captured['body'])
         self.assertIn(PNG, captured['body'])
@@ -295,7 +321,7 @@ class ImageServiceTests(unittest.TestCase):
         self.assert_problem(404, lambda: self.call('DELETE', '/inspirations/' + saved['id'], session=member))
         self.call('DELETE', '/inspirations/' + saved['id'], session=self.admin)
         self.assertEqual(self.call('GET', '/inspirations', session=self.admin)[1]['inspirations'], [])
-        self.assert_problem(400, lambda: self.call('POST', '/inspirations', {'prompt': 'A prompt', 'size': '512x511', 'quality': '', 'count': 1}, self.admin))
+        self.assert_problem(400, lambda: self.call('POST', '/inspirations', {'prompt': 'A prompt', 'size': '2880x2881', 'quality': '', 'count': 1}, self.admin))
 
     def test_generated_images_saved_and_served_from_private_oss(self):
         job = self.create_job(count=2)

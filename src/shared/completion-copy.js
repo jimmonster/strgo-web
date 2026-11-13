@@ -1,6 +1,9 @@
 // Fixed interface text only: source, Simplified, Traditional, English, Japanese, Korean.
 // Identity, formulas, model output, saved names and user text stay outside this table.
 export const completionRows = [
+ ['最高', '最高', '最高', 'Maximum', '最高', '최고'],
+ ['单边最多 3840 像素，总像素不超过 8,294,400；无需为 64 的倍数。', '单边最多 3840 像素，总像素不超过 8,294,400；无需为 64 的倍数。', '單邊最多 3840 像素，總像素不超過 8,294,400；無需為 64 的倍數。', 'Up to 3840 pixels per side and 8,294,400 total pixels; multiples of 64 are not required.', '各辺は最大 3840 ピクセル、総画素数は 8,294,400 以下。64 の倍数である必要はありません。', '한 변은 최대 3840픽셀, 총 픽셀 수는 8,294,400 이하입니다. 64의 배수일 필요는 없습니다.'],
+ ['自定义宽、高需为正整数，单边最多 3840 像素，总像素不超过 8,294,400。', '自定义宽、高需为正整数，单边最多 3840 像素，总像素不超过 8,294,400。', '自訂寬、高需為正整數，單邊最多 3840 像素，總像素不超過 8,294,400。', 'Custom width and height must be positive integers, up to 3840 pixels per side and 8,294,400 total pixels.', '幅と高さは正の整数で、各辺は最大 3840 ピクセル、総画素数は 8,294,400 以下にしてください。', '너비와 높이는 양의 정수여야 하며, 한 변은 최대 3840픽셀, 총 픽셀 수는 8,294,400 이하여야 합니다.'],
  ["IDEAS IN MOTION", "让灵感运转", "讓靈感運轉", "IDEAS IN MOTION", "動き出すアイデア", "움직이는 아이디어"],
  ["KEEP BUILDING. KEEP EXPLORING.", "持续创造，持续探索。", "持續創造，持續探索。", "KEEP BUILDING. KEEP EXPLORING.", "作り続け、探求し続ける。", "계속 만들고 계속 탐색하세요."],
  ["A SMALL WORLD OF MY OWN", "属于我的小世界", "屬於我的小世界", "A SMALL WORLD OF MY OWN", "自分だけの小さな世界", "나만의 작은 세계"],

@@ -13,7 +13,7 @@ try {
   browser = await chromium.launch({ executablePath: '/opt/google/chrome/chrome', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   for (const width of [320, 390, 768, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 920 }, reducedMotion: 'reduce' });
-    let loggedIn = false, submittedReference = null;
+    let loggedIn = false, submittedReference = null, submittedJob = null;
     const presets = [{ id: 'd'.repeat(32), title: '自然美颜', description: '保留真实皮肤纹理', prompt: '保持人物身份与自然光线。', sortOrder: 10, created: 1700000000, updated: 1700000000 }];
     await context.route('https://strgo.test/**', async route => {
       const request = route.request(), path = new URL(request.url()).pathname;
@@ -36,7 +36,7 @@ try {
         }
         else if (path.endsWith('/config')) value = { ...request.postDataJSON(), hasKey: true };
         else if (path.endsWith('/jobs') && request.method() === 'POST') {
-          const body = request.postDataJSON(); submittedReference = body.referenceImage;
+          const body = request.postDataJSON(); submittedReference = body.referenceImage; submittedJob = body;
           value = { id: 'a'.repeat(32), prompt: body.prompt, model: 'test-model', size: body.size, count: body.count, hasReference: true, status: 'queued', error: '', created: 1700000000, images: [] };
         }
         else if (path.endsWith('/inspirations')) value = { inspirations: [], hasMore: false };
@@ -57,6 +57,17 @@ try {
     await page.locator('[data-auth=register]').click(); await page.locator('#invite').fill('TEST-INVITE');
     await page.locator('#username').fill('creator'); await page.locator('#password').fill('test-private-password');
     await page.locator('#auth-submit').click(); await page.locator('#workspace').waitFor({ state: 'visible' });
+    assert.deepEqual(await page.locator('[data-size]').evaluateAll(nodes => nodes.map(node => node.dataset.size)), ['3840x2160', '2160x3840', 'custom']);
+    assert.equal(await page.locator('#quality').inputValue(), 'xhigh');
+    await page.locator('[data-size="custom"]').click();
+    await page.locator('#size-width').fill('2049'); await page.locator('#size-height').fill('751');
+    assert.equal(await page.locator('#size-width').evaluate(input => input.checkValidity()), true);
+    assert.equal(await page.locator('#size-height').evaluate(input => input.checkValidity()), true);
+    await page.locator('#size-width').fill('3841');
+    assert.equal(await page.locator('#size-width').evaluate(input => input.checkValidity()), false);
+    await page.locator('[data-size="3840x2160"]').click();
+    assert.equal(await page.locator('#size-width').isDisabled(), true);
+    assert.equal(await page.locator('#size-height').isDisabled(), true);
     for (const view of ['create', 'library', 'inspirations', 'settings']) {
       await page.locator(`[data-view=${view}]`).click();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, width + ' ' + view + ' overflow');
@@ -123,6 +134,8 @@ try {
       await page.locator('#prompt').fill('Retouch the reference while preserving identity and composition.');
       await page.locator('#generate').click();
       await page.waitForFunction(() => document.querySelector('#generation-message').textContent.includes('任务已创建'));
+      assert.equal(submittedJob.size, '3840x2160');
+      assert.equal(submittedJob.quality, 'xhigh');
       assert.deepEqual(submittedReference, { mime: compressed.mime, data: compressed.data });
       await page.screenshot({ path: directory + '1440-reference-compressed.png', fullPage: true });
       report.checks.push({ name: 'real canvas compression and upload', originalBytes, compressedBytes: compressed.bytes, width: compressed.width, height: compressed.height, status: 'passed' });

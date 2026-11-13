@@ -4,9 +4,12 @@ import { compressReferenceImage } from './reference-image.js';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
+const MAX_IMAGE_SIDE = 3840;
+const MAX_IMAGE_PIXELS = 8_294_400;
+const CUSTOM_SIZE_ERROR = '自定义宽、高需为正整数，单边最多 3840 像素，总像素不超过 8,294,400。';
 const busyStates = new Set(['queued', 'generating', 'uploading']);
 const stateNames = { queued: '等待生成', generating: '正在生成', uploading: '等待存储同步', complete: '已保存', partial: '部分完成', failed: '任务未完成' };
-const state = { user: null, csrf: '', config: null, storageReady: false, view: 'create', auth: 'login', size: '1024x1024', sizeMode: 'preset', jobs: new Map(), current: null, offset: 0, hasMore: false, favoriteOnly: false, libraryJobs: [], inspirations: [], inspirationOffset: 0, inspirationHasMore: false, poll: null, preview: null, epoch: 0, requestId: null, reference: null, referenceProcessing: false, referenceError: false, generating: false };
+const state = { user: null, csrf: '', config: null, storageReady: false, view: 'create', auth: 'login', size: '3840x2160', sizeMode: 'preset', jobs: new Map(), current: null, offset: 0, hasMore: false, favoriteOnly: false, libraryJobs: [], inspirations: [], inspirationOffset: 0, inspirationHasMore: false, poll: null, preview: null, epoch: 0, requestId: null, reference: null, referenceProcessing: false, referenceError: false, generating: false };
 let referenceController = null;
 const presetState = { items: [], request: 0, editing: null, editorVersion: 0 };
 let generationQuota = null, quotaTimer = null, quotaRequest = 0;
@@ -531,6 +534,7 @@ function selectSize(size) {
     const button = $('[data-size="custom"]');
     if (button) state.size = `${width}x${height}`;
   }
+  $$('#custom-size-controls input').forEach(input => { input.disabled = state.sizeMode !== 'custom'; });
   const selected = preset || $('[data-size="custom"]');
   $$('[data-size]').forEach(node => node.setAttribute('aria-pressed', String(node === selected)));
   state.requestId = null;
@@ -538,12 +542,13 @@ function selectSize(size) {
 $$('[data-size]').forEach(button => button.addEventListener('click', () => {
   if (button.dataset.size === 'custom') {
     state.sizeMode = 'custom'; $('#custom-size-controls').hidden = false;
+    $$('#custom-size-controls input').forEach(input => { input.disabled = false; });
     updateCustomSize();
   } else selectSize(button.dataset.size);
 }));
 function updateCustomSize() {
   const width = Number($('#size-width').value), height = Number($('#size-height').value);
-  const valid = [width, height].every(value => Number.isInteger(value) && value >= 256 && value <= 4096 && value % 64 === 0);
+  const valid = [width, height].every(value => Number.isInteger(value) && value > 0 && value <= MAX_IMAGE_SIDE) && width * height <= MAX_IMAGE_PIXELS;
   $$('[data-size]').forEach(node => node.setAttribute('aria-pressed', String(node.dataset.size === 'custom')));
   if (valid) { state.size = `${width}x${height}`; state.requestId = null; message('#generation-message', ''); }
   return valid;
@@ -559,7 +564,7 @@ $('#example-prompt').addEventListener('click', () => { const example = examples[
 $('#save-inspiration').addEventListener('click', async () => {
   const prompt = $('#prompt').value.trim();
   if (!prompt) { message('#generation-message', '先写下画面描述，再保存为灵感。', 'error'); $('#prompt').focus(); return; }
-  if (state.sizeMode === 'custom' && !updateCustomSize()) { message('#generation-message', '自定义宽、高需为 256–4096 范围内的 64 倍数。', 'error'); return; }
+  if (state.sizeMode === 'custom' && !updateCustomSize()) { message('#generation-message', CUSTOM_SIZE_ERROR, 'error'); return; }
   const button = $('#save-inspiration'); button.disabled = true;
   try {
     await api('/inspirations', { method: 'POST', body: { prompt, title: prompt.split('\n')[0].slice(0, 80), size: state.size, quality: $('#quality').value, count: Number($('#count').value) } });
@@ -606,7 +611,7 @@ $('#generation-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (state.referenceProcessing || state.referenceError) { message('#generation-message', state.referenceProcessing ? '请等待参考图压缩完成。' : '请重新选择或移除无法处理的参考图。', 'error'); return; }
   if (state.generating) return;
-  if (state.sizeMode === 'custom' && !updateCustomSize()) { message('#generation-message', '自定义宽、高需为 256–4096 范围内的 64 倍数。', 'error'); return; }
+  if (state.sizeMode === 'custom' && !updateCustomSize()) { message('#generation-message', CUSTOM_SIZE_ERROR, 'error'); return; }
   state.generating = true; updateGenerateButton(); message('#generation-message', '正在提交创作…');
   const retrying = Boolean(state.requestId);
   state.requestId ||= crypto.randomUUID();

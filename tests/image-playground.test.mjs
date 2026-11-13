@@ -31,7 +31,7 @@ async function environment({ search = '', loggedIn = false, role = 'admin', stor
   const jobs = initialJobs;
   const presets = initialPresets.map(item => ({ ...item }));
   const dialog = document.querySelector('#image-dialog'); dialog.showModal = () => { dialog.open = true; }; dialog.close = () => { dialog.open = false; };
-  document.querySelectorAll('select').forEach(select => Object.defineProperty(select, 'value', { configurable: true, writable: true, value: select.querySelector('option').value }));
+  document.querySelectorAll('select').forEach(select => Object.defineProperty(select, 'value', { configurable: true, writable: true, value: (select.querySelector('option[selected]') || select.querySelector('option')).value }));
   document.querySelectorAll('form').forEach(form => { form.reset = () => { form.querySelectorAll('input').forEach(input => { input.value = ''; }); }; });
   document.querySelector('#old-password').value = '';
   const location = { hash: '', search, pathname: '/image-playground/' };
@@ -140,15 +140,69 @@ test('Invitation registration submits credentials once and unlocks the workspace
 
 test('Generation submits selected parameters with csrf, then shows durable queued state', async () => {
   const env = await environment({ loggedIn: true, role: 'member' });
-  env.input('#prompt', 'A quiet mountain lake'); env.click('[data-size="1536x1024"]');
+  env.input('#prompt', 'A quiet mountain lake'); env.click('[data-size="2160x3840"]');
   env.submit('#generation-form'); await tick();
   const request = env.requests.find(request => request.url === '/api/image/jobs' && request.method === 'POST');
   assert.equal(request.parsed.prompt, 'A quiet mountain lake');
-  assert.equal(request.parsed.size, '1536x1024'); assert.equal(request.parsed.count, 1);
+  assert.equal(request.parsed.size, '2160x3840'); assert.equal(request.parsed.count, 1);
+  assert.equal(request.parsed.quality, 'xhigh');
   assert.equal(request.headers['X-CSRF-Token'], 'csrf-test');
   assert.equal(typeof request.parsed.requestId, 'string');
   assert.ok(env.document.querySelector('#current-output').textContent.includes('等待生成'));
   assert.match(env.document.querySelector('#quota-status').textContent, /每日额度不限/);
+  env.close();
+});
+
+test('New creations default to maximum landscape size and quality with only two presets', async () => {
+  const env = await environment({ loggedIn: true });
+  assert.deepEqual([...env.document.querySelectorAll('[data-size]')].map(node => node.dataset.size), ['3840x2160', '2160x3840', 'custom']);
+  assert.equal(env.document.querySelector('[data-size="3840x2160"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(env.document.querySelector('#quality').value, 'xhigh');
+  env.input('#prompt', 'A landscape with fine details'); env.submit('#generation-form'); await tick();
+  const request = env.requests.find(item => item.url === '/api/image/jobs' && item.method === 'POST');
+  assert.equal(request.parsed.size, '3840x2160');
+  assert.equal(request.parsed.quality, 'xhigh');
+  env.close();
+});
+
+test('Preset selection disables hidden invalid custom fields', async () => {
+  const env = await environment({ loggedIn: true });
+  assert.equal(env.document.querySelector('#size-width').disabled, true);
+  env.click('[data-size="custom"]'); env.input('#size-width', '3841');
+  assert.equal(env.document.querySelector('#size-width').disabled, false);
+  env.click('[data-size="2160x3840"]');
+  assert.equal(env.document.querySelector('#size-width').disabled, true);
+  assert.equal(env.document.querySelector('#size-height').disabled, true);
+  env.input('#prompt', 'Use preset dimensions'); env.submit('#generation-form'); await tick();
+  const request = env.requests.find(item => item.url === '/api/image/jobs' && item.method === 'POST');
+  assert.equal(request.parsed.size, '2160x3840');
+  env.close();
+});
+
+test('Custom dimensions accept arbitrary positive integers for jobs and inspirations', async () => {
+  const env = await environment({ loggedIn: true });
+  env.input('#prompt', 'An arbitrary sized image'); env.click('[data-size="custom"]');
+  for (const [width, height] of [['2049', '751'], ['1', '255'], ['2880', '2880']]) {
+    env.input('#size-width', width); env.input('#size-height', height);
+    env.submit('#generation-form'); env.click('#save-inspiration'); await tick();
+    for (const path of ['/api/image/jobs', '/api/image/inspirations']) {
+      const request = env.requests.findLast(item => item.url === path && item.method === 'POST');
+      assert.equal(request.parsed.size, `${width}x${height}`);
+      assert.equal(request.parsed.quality, 'xhigh');
+    }
+  }
+  env.close();
+});
+
+test('Custom dimensions reject side and pixel limits and invalid numbers before any write', async () => {
+  const env = await environment({ loggedIn: true });
+  env.input('#prompt', 'Check size limits'); env.click('[data-size="custom"]');
+  for (const [width, height] of [['3841', '100'], ['100', '3841'], ['3840', '2161'], ['2161', '3840'], ['2880', '2881'], ['0', '100'], ['100', '-1'], ['100.5', '100'], ['', '100']]) {
+    env.input('#size-width', width); env.input('#size-height', height);
+    env.submit('#generation-form'); env.click('#save-inspiration'); await tick();
+    assert.match(env.document.querySelector('#generation-message').textContent, /正整数.*3840.*8,294,400/);
+  }
+  assert.equal(env.requests.some(item => item.method === 'POST'), false);
   env.close();
 });
 
@@ -495,6 +549,8 @@ test('Portal image deep links reopen the requested job and reuse parameters with
   assert.equal(env.document.querySelector('#prompt').value, job.prompt);
   assert.equal(env.document.querySelector('#count').value, '2');
   assert.equal(env.document.querySelector('#quality').value, 'high');
+  assert.equal(env.document.querySelector('#size-width').disabled, false);
+  assert.equal(env.document.querySelector('#size-height').disabled, false);
   assert.ok(env.requests.some(r => r.url === '/api/image/jobs/' + id && r.method === 'GET'));
   assert.equal(env.requests.filter(r => r.method === 'POST' && r.url === '/api/image/jobs').length, 0);
   env.close();
