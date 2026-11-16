@@ -1,5 +1,7 @@
 // Traditional Chinese SWARMERA copy.
 export const traditional = {
+  "虫潮生存":"蟲潮生存",
+  "飞天蜘蛛与变异大蜈蚣":"飛天蜘蛛與變異大蜈蚣",
   "<span class=\"brand-text\">虫族狂潮<small>SWARMERA</small></span>": "<span class=\"brand-text\">蟲族狂潮<small>SWARMERA</small></span>",
   "S W A R M E R A": "S W A R M E R A",
   "Switch to 简体中文": "Switch to 簡體中文",

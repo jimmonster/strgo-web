@@ -1,5 +1,7 @@
 # SWARMERA · 虫族狂潮
 
+2026-11-16 新增可玩的**虫潮生存**：`/swarmera/survival/`，支持大量飞天蜘蛛、分节变异大蜈蚣、移动射击、冲刺与清场脉冲、晶体升级和手机摇杆。入口位于首页和导航，玩法、源码与本轮验证见 [虫潮生存文档](../../doc/SWARM-SURVIVAL.md)。以下首版交付历史中的路径与限制以根仓库文档及该文档为准。
+
 程序化三维虫族战争概念网站，目标挂载路径 `/swarmera/`。主站首页空间入口第八张卡片为 **虫族狂潮 / SWARMERA**，移动导航也有入口。主站源文件位于 `/root/strgo-homepage`。
 
 本次输入只有文字规格与 `REFERENCE_IMAGE` 标记，没有实际参考图片。首版根据文字构图制作完整体积的程序化女皇、四型机甲、废墟与裂隙。它是可交互的概念原型；没有接入真实游戏、CG 视频、公开社区或预约服务器。
@@ -13,7 +15,7 @@ npm run build
 npm run preview
 ```
 
-浏览器打开 `http://localhost:4176/swarmera/`。直接双击 HTML 的 `file://` 模式不支持 ES 模块。生产目录 `dist/` 含 28 个目录索引与独立 404，无须单页路由回退。
+浏览器打开 `http://localhost:4176/swarmera/`。直接双击 HTML 的 `file://` 模式不支持 ES 模块。生产目录 `dist/` 含 29 个目录索引与独立 404，无须单页路由回退。
 
 默认依赖随 `assets/vendor/` 本地交付，运行构建不需要访问 CDN。`package-lock.json` 固定 Three.js 0.160.1、LinkeDOM 与 Playwright Core。测试用依赖可通过 `npm ci` 重新准备；本环境开发时复用了相邻项目的已缓存 node_modules，交付压缩包不包含该符号链接。
 

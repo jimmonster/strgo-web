@@ -18,6 +18,7 @@
 | [全站后台需求](ADMIN-SYSTEM.md) | 统一管理入口、账号治理、审计与验收 |
 | [GPU调度与恢复](GPU-SCHEDULING.md) | AI / Workflow中央互斥、卸载确认与人工恢复 |
 | [整仓 review：2026-10-23](PROJECT-REVIEW.md) | 已修复问题、验证结果与待完成项目 |
+| [虫潮生存](SWARM-SURVIVAL.md) | 飞天蜘蛛、变异大蜈蚣、技能升级与验证边界 |
 | [Codex 技能](../codex/README.md) | 后续开发和 review 的可复用流程 |
 
 ## 现有专题文档

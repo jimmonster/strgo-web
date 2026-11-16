@@ -36,6 +36,7 @@ export const pages=[
  {path:'/',name:pair('虫族狂潮','SWARMERA'),kind:'home'},
  {...primary[0],kind:'queen'}, {...primary[1],kind:'mechs'}, {...primary[2],kind:'world'}, {...primary[3],kind:'factions'},
  {path:'/characters/',name:pair('角色机甲','CHARACTERS & MECHS'),kind:'characters'},
+ {path:'/survival/',name:pair('虫潮生存','SWARM SURVIVAL'),tag:pair('飞天蜘蛛与变异大蜈蚣','Flying spiders & mutant centipedes'),kind:'survival'},
  {path:'/showcase/',name:pair('交互战场','THE INTERACTIVE BATTLEFIELD'),kind:'showcase'},
  {path:'/media/trailer/',name:pair('女皇降临','THE DESCENT'),kind:'media'},
  {path:'/news/',name:pair('前线档案','FIELD ARCHIVES'),kind:'news'},
@@ -48,6 +49,6 @@ export const pages=[
  ...news.map(d=>({...d,path:`/news/${d.id}/`,kind:'article'})),
  ...discussions.map(d=>({...d,path:`/community/${d.id}/`,kind:'discussion'}))
 ];
-export const nav=[['/','首页','HOME'],['/world/','世界观','WORLD'],['/factions/','阵营势力','FACTIONS'],['/characters/','角色机甲','CHARACTERS'],['/showcase/','实机展示','SHOWCASE'],['/news/','新闻资讯','ARCHIVES'],['/community/','社区','COMMUNITY']];
+export const nav=[['/','首页','HOME'],['/world/','世界观','WORLD'],['/factions/','阵营势力','FACTIONS'],['/characters/','角色机甲','CHARACTERS'],['/survival/','虫潮生存','PLAY'],['/showcase/','实机展示','SHOWCASE'],['/news/','新闻资讯','ARCHIVES'],['/community/','社区','COMMUNITY']];
 export function searchPages(q){const query=q.trim().normalize('NFKC').toLowerCase().slice(0,100);return query?pages.filter(p=>[...locales.flatMap(locale=>[localized(p.name,locale),localized(p.tag||[],locale),localized(p.desc||[],locale)]),p.path].join(' ').normalize('NFKC').toLowerCase().includes(query)):[];}
 export const presets=[pair('女皇降临','THE QUEEN DESCENDS'),pair('机甲开道','THE PATH OF THE SWARM'),pair('裂隙虫潮','BEYOND THE RIFT')];

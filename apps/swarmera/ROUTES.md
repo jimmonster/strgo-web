@@ -20,6 +20,7 @@
 | `/factions/defenders/` | 文明防线：护盾与炮火 |
 | `/factions/symbiotes/` | 共生议会：机械与生物构件显隐 |
 | `/characters/` | 女皇与四型机甲统一目录 |
+| `/survival/` | 可玩虫潮生存：飞天蜘蛛、分节大蜈蚣、技能、升级与本地最佳击杀 |
 | `/showcase/` | 选择、移动、发射、命中、分享与 JSON |
 | `/media/trailer/` | 42 秒实时三维演示，无 CG 视频 |
 | `/news/` | 三篇实际概念文章与类型筛选 |

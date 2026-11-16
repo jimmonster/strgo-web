@@ -2,13 +2,14 @@ import {createHash} from 'node:crypto';
 import {mkdir, readFile, readdir, writeFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {pages} from '../src/data.js';
 import {base, target, policy, renderSnippet, extendHost} from './deploy-config.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dist = path.join(root, 'dist');
 const artifacts = path.join(root, 'artifacts/deployment');
 const info = JSON.parse(await readFile(path.join(dist, 'build-info.json'), 'utf8'));
-if (info.base !== base || info.paths.length !== 28) {
+if (info.base !== base || info.paths.length !== pages.length) {
   throw Error('Run SWARMERA_BASE=/swarmera/ npm run build before preparing deployment.');
 }
 const files = [];
