@@ -478,7 +478,13 @@ try {
   await privacyContext.close(); check('account changes erase generation drafts and discard delayed private results; anonymous users see login without creating tasks');
 
   const mobile=await browser.newContext({viewport:{width:375,height:812},isMobile:true,hasTouch:true,locale:'zh-CN',reducedMotion:'reduce'});
-  await mobile.addInitScript(()=>Object.defineProperty(HTMLElement.prototype,'requestFullscreen',{value:undefined,configurable:true}));
+  await mobile.addInitScript(() => {
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', { value: undefined, configurable: true });
+    Object.defineProperty(DeviceOrientationEvent, 'requestPermission', { configurable: true, value() {
+      window.motionPermissionFromClick = navigator.userActivation.isActive;
+      return Promise.resolve(window.motionPermission || 'denied');
+    } });
+  });
   const phone=await mobile.newPage(); await stubAPI(phone,{user:null}); await phone.goto(preview.origin+'/360/'); await galleryReady(phone);
   assert.ok(await phone.locator('#open-generation').isVisible());
   assert.ok(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -502,7 +508,68 @@ try {
   await phone.setViewportSize({width:812,height:375}); assert.ok(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await phone.setViewportSize({width:320,height:640});
   assert.ok(await phone.locator('#fullscreen').evaluate(el=>el.getBoundingClientRect().right<=innerWidth));
-  await mobile.close(); check('phone touch rotation, pinch, fullscreen fallback, Escape and portrait/landscape layouts');
+  check('phone touch rotation, pinch, fullscreen fallback, Escape and portrait/landscape layouts');
+
+  const motion = phone.locator('#motion-toggle'), motionFeedback = phone.locator('#motion-feedback');
+  const pose = (alpha, beta, gamma) => phone.evaluate(angles => {
+    window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', angles));
+  }, { alpha, beta, gamma });
+  const expectLook = (yaw, pitch) => phone.waitForFunction(({ yaw, pitch }) => {
+    const current = document.querySelector('#viewport').dataset;
+    return Math.abs(Number(current.yaw) - yaw) < .02 && Math.abs(Number(current.pitch) - pitch) < .02;
+  }, { yaw, pitch });
+  await pose(10, 110, 0); await expectLook(0, 0);
+  await motion.click();
+  await phone.waitForFunction(() => document.querySelector('#motion-feedback').textContent.includes('未获得'));
+  assert.equal(await motion.getAttribute('aria-pressed'), 'false');
+  assert.ok(await phone.evaluate(() => window.motionPermissionFromClick));
+  await phone.evaluate(() => { window.motionPermission = 'granted'; });
+  await motion.click();
+  await phone.waitForFunction(() => document.querySelector('#motion-feedback').textContent.includes('正在等待'));
+  await pose(340, 90, 0); await expectLook(0, 0);
+  assert.equal(await motionFeedback.isVisible(), false);
+  const centered = await phone.locator('#viewport canvas').screenshot();
+  await pose(10, 110, 0); await expectLook(30, 20);
+  assert.notDeepEqual(await phone.locator('#viewport canvas').screenshot(), centered);
+  await phone.setViewportSize({ width: 812, height: 375 });
+  await pose(100, 180, -70); await expectLook(30, 20);
+  assert.ok(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await phone.locator('#viewport').focus(); await phone.keyboard.press('ArrowLeft');
+  await pose(100, 180, -70); await expectLook(35, 20);
+  await phone.locator('#reset').click();
+  await pose(100, 180, -70); await expectLook(0, 0);
+  await pose(110, 180, -70); await expectLook(10, 0);
+  await motion.click();
+  await pose(120, 180, -70); await expectLook(10, 0);
+  assert.equal(await motion.getAttribute('aria-pressed'), 'false');
+  check('phone motion requests permission from the tap, follows both axes through landscape and preserves manual alignment');
+
+  await phone.evaluate(() => { delete DeviceOrientationEvent.requestPermission; });
+  await motion.click();
+  await pose(null, null, null);
+  await phone.waitForFunction(() => document.querySelector('#motion-feedback').textContent.includes('未收到'));
+  assert.equal(await motion.getAttribute('aria-pressed'), 'false');
+  await motion.click();
+  await pose(0, 90, 0); await pose(20, 90, 0); await expectLook(30, 0);
+  await phone.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await pose(45, 120, 0); await expectLook(30, 0);
+  assert.equal(await motion.getAttribute('aria-pressed'), 'false');
+  await phone.evaluate(() => {
+    delete document.hidden;
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await motion.click();
+  await pose(20, 90, 0); await pose(40, 90, 0); await expectLook(50, 0);
+  await backToGallery(phone);
+  await pose(60, 90, 0); await expectLook(50, 0);
+  await openCampus(phone);
+  assert.equal(await motion.getAttribute('aria-pressed'), 'false');
+  await expectLook(0, 0);
+  await mobile.close();
+  check('phone motion without a permission method handles missing sensor data and stops when the viewer closes or goes into the background');
 
   const fallback=await browser.newContext({viewport:{width:768,height:900},locale:'zh-CN'});
   await fallback.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/.test(type)?null:original.call(this,type,...args);};});

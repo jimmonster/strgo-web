@@ -117,7 +117,11 @@
             <button type="button" id="zoom-out" data-view-control aria-label="缩小" title="缩小" disabled>−</button>
             <button type="button" id="reset" data-view-control disabled><span aria-hidden="true">↺</span> <span>重置视角</span></button>
           </div>
-          <button type="button" id="fullscreen" aria-pressed="false"><span data-fullscreen-label>全屏浏览</span> <span id="fullscreen-icon" aria-hidden="true"></span></button>
+          <div class="viewer-options">
+            <button type="button" id="motion-toggle" aria-pressed="false" hidden disabled>随手机转动</button>
+            <button type="button" id="fullscreen" aria-pressed="false"><span data-fullscreen-label>全屏浏览</span> <span id="fullscreen-icon" aria-hidden="true"></span></button>
+          </div>
+          <p id="motion-feedback" class="feedback motion-feedback" role="status" hidden></p>
         </div>
         <nav id="fixed-camera-bar" class="fixed-camera-bar" aria-label="固定机位" hidden><div id="fixed-camera-buttons"></div><button type="button" id="download-fixed-panorama">下载当前机位全景</button></nav>
       </section>

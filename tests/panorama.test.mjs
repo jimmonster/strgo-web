@@ -9,6 +9,24 @@ import { translate } from '../src/shared/i18n.js';
 import { itemText, MAX_TITLE_LENGTH, MAX_CONTENT_LENGTH } from '../src/panorama/store.js';
 import { matchesPanorama } from '../src/panorama/items.js';
 import { panoramaPrompt } from '../src/panorama/generation.js';
+import { deviceLook } from '../src/panorama/motion.js';
+
+test('phone orientation tracks heading and tilt in portrait and landscape', () => {
+  const check = (angles, yaw, pitch) => {
+    const look = deviceLook(angles);
+    assert.ok(Math.abs(look.yaw - yaw) < 1e-8);
+    assert.ok(Math.abs(look.pitch - pitch) < 1e-8);
+  };
+  check({ alpha: 0, beta: 90, gamma: 0 }, 0, 0);
+  check({ alpha: 270, beta: 0, gamma: 90 }, 0, 0);
+  check({ alpha: 90, beta: 0, gamma: -90 }, 0, 0);
+  check({ alpha: 10, beta: 110, gamma: 0 }, 10, 20);
+  check({ alpha: 100, beta: 180, gamma: -70 }, 10, 20);
+  check({ alpha: 350, beta: 60, gamma: 0 }, -10, -30);
+  assert.deepEqual(deviceLook({ alpha: 20, beta: 0, gamma: 0 }), { yaw: null, pitch: -90 });
+  assert.equal(deviceLook({ alpha: null, beta: 90, gamma: 0 }), null);
+  assert.equal(deviceLook({ alpha: 0, beta: Infinity, gamma: 0 }), null);
+});
 
 test('panorama generation appends the selected server template and validates the combined prompt', () => {
   assert.equal(panoramaPrompt('  校园喷泉  ', '  360° panorama, equirectangular  '), '校园喷泉\n\n360° panorama, equirectangular');

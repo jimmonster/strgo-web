@@ -5,6 +5,7 @@ import { icon } from '../shared/icons.js';
 import { setupItems } from './items.js';
 import { setupGeneration } from './generation.js';
 import { setupFixedTours } from './fixed.js';
+import { setupMotion } from './motion.js';
 
 setupI18n();
 const $ = selector => document.querySelector(selector);
@@ -17,6 +18,11 @@ let view = { ...DEFAULT_VIEW }, engine, initializing, current, loadController, r
 let feedback = '正在载入全景…', feedbackError = false, retrySource = campus, immersive = false, previousFocus;
 let libraryController, librarySerial = 0, libraryOwner, nextCursor = null, libraryBusy = false, privateOwner;
 const pointers = new Map();
+const motion = setupMotion({
+  button: $('#motion-toggle'), feedback: $('#motion-feedback'),
+  getView: () => view, setView,
+  isReady: () => ready && !viewerPage.hidden, isDragging: () => pointers.size > 0
+});
 const savedItems = setupItems({
   open: openPanorama,
   updated: item => {
@@ -70,7 +76,7 @@ const fixedTours = setupFixedTours({ ...generationViewer, readCurrent: async () 
 async function openPanorama(source) {
   if (viewerPage.hidden) {
     previousFocus = document.activeElement;
-    gallery.hidden = true; viewerPage.hidden = false;
+    gallery.hidden = true; viewerPage.hidden = false; motion.render();
     viewerPage.scrollIntoView({ block: 'start' });
     viewport.focus({ preventScroll: true });
   }
@@ -78,7 +84,7 @@ async function openPanorama(source) {
 }
 function closeViewer() {
   version.next(); loadController?.abort(); retrySource = current || campus;
-  viewerPage.hidden = true; gallery.hidden = false;
+  viewerPage.hidden = true; gallery.hidden = false; motion.stop();
   if (previousFocus && gallery.contains(previousFocus) && previousFocus.isConnected) previousFocus.focus();
   else $('#items-heading').focus();
 }
@@ -98,17 +104,26 @@ function updateLabels() {
   $('#feedback').textContent = t(feedback);
   $('#feedback').classList.toggle('error', feedbackError);
   $('[data-fullscreen-label]').textContent = t(document.fullscreenElement || immersive ? '退出全屏' : '全屏浏览');
+  motion.render();
+}
+function updateZoomButtons() {
+  $('#zoom-in').disabled = !ready || view.fov <= MIN_FOV;
+  $('#zoom-out').disabled = !ready || view.fov >= MAX_FOV;
 }
 function setReady(value) {
   ready = value;
   viewport.dataset.ready = String(value);
   document.querySelectorAll('[data-view-control]').forEach(button => { button.disabled = !value; });
-  if (value) { $('#zoom-in').disabled = view.fov <= MIN_FOV; $('#zoom-out').disabled = view.fov >= MAX_FOV; }
+  updateZoomButtons();
+  if (value) motion.render(); else motion.stop();
 }
 function setView(next) {
   view = normalizeView(next); engine?.setView(view);
   viewport.dataset.yaw = view.yaw.toFixed(2); viewport.dataset.pitch = view.pitch.toFixed(2); viewport.dataset.fov = view.fov.toFixed(2);
-  $('#view-readout').value = `${Math.round(view.fov)}°`; setReady(ready);
+  $('#view-readout').value = `${Math.round(view.fov)}°`; updateZoomButtons();
+}
+function aimView(next) {
+  setView(next); motion.rebase();
 }
 function zoom(amount) { if (ready) setView({ ...view, fov: view.fov + amount }); }
 async function initialize() {
@@ -184,7 +199,7 @@ async function load(source) {
     renderer.setImage(image); current = source; privateOwner = owner;
     $('#fallback').hidden = true;
     $('#source-info').textContent = `${image.naturalWidth} × ${image.naturalHeight} · 2:1`;
-    setReady(true); setView(source.preserveView ? view : DEFAULT_VIEW); updateLabels(); status('全景已就绪。');
+    setReady(true); aimView(source.preserveView ? view : DEFAULT_VIEW); updateLabels(); status('全景已就绪。');
     fixedTours.selectionChanged(source);
     viewport.dataset.source = source.kind;
     if (source.kind !== 'campus' && !source.itemId && !source.skipSave) {
@@ -219,7 +234,7 @@ $('#panorama-file').addEventListener('change', event => {
 $('#campus').addEventListener('click', () => openPanorama(campus));
 $('#retry').addEventListener('click', () => load(retrySource));
 $('#save-current').addEventListener('click', () => { if (current && !current.itemId) load(current); });
-$('#reset').addEventListener('click', () => setView(DEFAULT_VIEW));
+$('#reset').addEventListener('click', () => aimView(DEFAULT_VIEW));
 $('#zoom-in').addEventListener('click', () => zoom(-5));
 $('#zoom-out').addEventListener('click', () => zoom(5));
 
@@ -233,10 +248,15 @@ viewport.addEventListener('pointermove', event => {
   const previous = pointers.get(event.pointerId);
   if (!previous || !ready) return;
   const before = distance(); pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-  if (pointers.size === 1) setView(dragView(view, event.clientX - previous.x, event.clientY - previous.y, viewport.clientHeight));
+  if (pointers.size === 1) aimView(dragView(view, event.clientX - previous.x, event.clientY - previous.y, viewport.clientHeight));
   else if (pointers.size === 2) setView(pinchView(view, before, distance()));
 });
-const release = event => { pointers.delete(event.pointerId); if (!pointers.size) viewport.classList.remove('dragging'); };
+const release = event => {
+  if (pointers.delete(event.pointerId) && !pointers.size) {
+    viewport.classList.remove('dragging');
+    motion.rebase();
+  }
+};
 for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) viewport.addEventListener(name, release);
 viewport.addEventListener('wheel', event => {
   if (!ready) return;
@@ -251,10 +271,10 @@ viewport.addEventListener('keydown', event => {
   event.preventDefault();
   if (event.key.toLowerCase() === 'f') { toggleFullscreen(); return; }
   if (!ready) return;
-  if (event.key.toLowerCase() === 'r') setView(DEFAULT_VIEW);
+  if (event.key.toLowerCase() === 'r') aimView(DEFAULT_VIEW);
   else if (['+', '='].includes(event.key)) zoom(-5);
   else if (['-', '_'].includes(event.key)) zoom(5);
-  else setView({ ...view, yaw: view.yaw + (event.key === 'ArrowLeft' ? 5 : event.key === 'ArrowRight' ? -5 : 0), pitch: view.pitch + (event.key === 'ArrowUp' ? 5 : event.key === 'ArrowDown' ? -5 : 0) });
+  else aimView({ ...view, yaw: view.yaw + (event.key === 'ArrowLeft' ? 5 : event.key === 'ArrowRight' ? -5 : 0), pitch: view.pitch + (event.key === 'ArrowUp' ? 5 : event.key === 'ArrowDown' ? -5 : 0) });
 });
 
 function fallbackFullscreen(enabled) {
@@ -339,7 +359,7 @@ function clearPrivate() {
   return false;
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { if (dialog.open) dialog.close(); clearPrivate(); savedItems.clearPrivate(); pointers.clear(); viewport.classList.remove('dragging'); }
+  if (document.hidden) { motion.stop(); if (dialog.open) dialog.close(); clearPrivate(); savedItems.clearPrivate(); pointers.clear(); viewport.classList.remove('dragging'); }
   else { if (!viewerPage.hidden && !current) load(campus); engine?.resize(); savedItems.refreshAccount(); }
 });
 window.addEventListener('focus', async () => {
@@ -352,12 +372,13 @@ window.addEventListener('focus', async () => {
   } catch { if (dialog.open) dialog.close(); if (clearPrivate() && !viewerPage.hidden) load(campus); }
 });
 window.addEventListener('pagehide', event => {
+  motion.stop();
   if (dialog.open) dialog.close(); clearPrivate(); savedItems.clearPrivate();
   if (!event.persisted) { disposed = true; version.next(); loadController?.abort(); engine?.dispose(); savedItems.dispose(); }
 });
 window.addEventListener('pageshow', event => { if (event.persisted) { if (!viewerPage.hidden && !current) load(campus); savedItems.refreshAccount(); } });
 window.addEventListener('strgo:localechange', updateLabels);
-setView(DEFAULT_VIEW);
+setReady(false); setView(DEFAULT_VIEW);
 const imageId = requestedImage(location.search);
 if (imageId) {
   // URLs carry an opaque ID only. No arbitrary remote URLs or signed assets.
