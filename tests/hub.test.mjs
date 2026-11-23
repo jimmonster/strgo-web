@@ -10,13 +10,17 @@ import { escapeHTML as esc } from '../src/hub/core.js';
 
 const registry = JSON.parse(await readFile(new URL('../content/app-registry.json', import.meta.url)));
 test('public catalogue hides administrative routes and searches Chinese, English and paths', () => {
-  assert.equal(registry.entries.length, 28);
-  assert.equal(registry.entries.filter(e => e.group === '沉浸空间').length, 9);
-  assert.equal(filterEntries(registry.entries, { role: 'guest' }).length, 25);
-  assert.equal(filterEntries(registry.entries, { role: 'admin' }).length, 28);
+  assert.equal(registry.entries.length, 29);
+  assert.equal(registry.entries.filter(e => e.group === '沉浸空间').length, 10);
+  assert.equal(filterEntries(registry.entries, { role: 'guest' }).length, 26);
+  assert.equal(filterEntries(registry.entries, { role: 'admin' }).length, 29);
   assert.equal(filterEntries(registry.entries, { query: '/home' })[0].id, 'S01');
   assert.equal(filterEntries(registry.entries, { query: '  音乐  ' })[0].id, 'C03');
   assert.deepEqual(filterEntries(registry.entries, { group: '我的收藏', favorites: ['A01'] }), []);
+  for (const query of ['虫潮生存', '蟲潮生存', 'Swarm Survival', 'スウォーム・サバイバル', '군단 생존', '/swarmera/survival/']) {
+    const results = filterEntries(registry.entries, { role: 'guest', query });
+    assert.deepEqual(results.map(entry => entry.id), ['S10'], query);
+  }
 });
 test('preferences tolerate corruption, filter unknown IDs and separate account keys', () => {
   const data = new Map(), storage = { getItem: k => data.get(k), setItem: (k,v) => data.set(k,v) };
@@ -100,6 +104,14 @@ test('root hub opens its registered spaces and preserves classic root anchors', 
   assert.equal(page.location.hash, '#space-panorama');
   page.window.dispatchEvent(new page.dom.Event('hashchange'));
   assert.equal(page.document.querySelector('a.entry-link').getAttribute('href'), '/360/');
+
+  const spaces = mount('#spaces');
+  const survival = spaces.document.querySelector('.space-card[data-open="S10"]');
+  assert.ok(survival);
+  survival.dispatchEvent(new spaces.dom.Event('click', { bubbles:true, cancelable:true }));
+  assert.equal(spaces.location.hash, '#space-survival');
+  spaces.window.dispatchEvent(new spaces.dom.Event('hashchange'));
+  assert.equal(spaces.document.querySelector('a.entry-link').getAttribute('href'), '/swarmera/survival/');
 
   for (const hash of ['home','projects','stack','lab','contact']) {
     assert.equal(mount('#'+hash).redirected, '/classic/#'+hash);

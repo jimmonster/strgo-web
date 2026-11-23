@@ -29,6 +29,14 @@ test('shared language picker updates live navigation and persists the selected l
     assert.equal(document.documentElement.lang,'ja');
     await navigation.open();
     assert.match(root.querySelector('.results').textContent, /日差しの寝室/);
+    const search = root.querySelector('input');
+    search.value = 'スウォーム・サバイバル';
+    search.dispatchEvent(new window.Event('input'));
+    const survival = root.querySelector('.results a[data-entry="S10"]');
+    assert.equal(survival?.getAttribute('href'), '/swarmera/survival/');
+    assert.match(survival.textContent, /スウォーム・サバイバル/);
+    search.value = '';
+    search.dispatchEvent(new window.Event('input'));
     picker.value='ko'; picker.dispatchEvent(new window.Event('change'));
     assert.equal(root.querySelector('.label').textContent,'모든 기능');
     assert.match(root.querySelector('.results').textContent, /햇살 가득한 침실/);
