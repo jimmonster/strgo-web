@@ -1,6 +1,8 @@
 // Fixed interface text only: source, Simplified, Traditional, English, Japanese, Korean.
 // Identity, formulas, model output, saved names and user text stay outside this table.
 export const completionRows = [
+ ['虫潮生存', '虫潮生存', '蟲潮生存', 'Swarm Survival', 'スウォーム・サバイバル', '군단 생존'],
+ ['驾驶机甲对抗飞天蜘蛛与变异大蜈蚣。', '驾驶机甲对抗飞天蜘蛛与变异大蜈蚣。', '駕駛機甲對抗飛天蜘蛛與變異大蜈蚣。', 'Pilot a mech against flying spiders and giant mutant centipedes.', 'メカを操縦し、飛行グモと巨大な変異ムカデを迎え撃とう。', '기갑을 조종해 비행 거미와 거대 돌연변이 지네에 맞서세요.'],
  ['最高', '最高', '最高', 'Maximum', '最高', '최고'],
  ['单边最多 3840 像素，总像素不超过 8,294,400；无需为 64 的倍数。', '单边最多 3840 像素，总像素不超过 8,294,400；无需为 64 的倍数。', '單邊最多 3840 像素，總像素不超過 8,294,400；無需為 64 的倍數。', 'Up to 3840 pixels per side and 8,294,400 total pixels; multiples of 64 are not required.', '各辺は最大 3840 ピクセル、総画素数は 8,294,400 以下。64 の倍数である必要はありません。', '한 변은 최대 3840픽셀, 총 픽셀 수는 8,294,400 이하입니다. 64의 배수일 필요는 없습니다.'],
  ['自定义宽、高需为正整数，单边最多 3840 像素，总像素不超过 8,294,400。', '自定义宽、高需为正整数，单边最多 3840 像素，总像素不超过 8,294,400。', '自訂寬、高需為正整數，單邊最多 3840 像素，總像素不超過 8,294,400。', 'Custom width and height must be positive integers, up to 3840 pixels per side and 8,294,400 total pixels.', '幅と高さは正の整数で、各辺は最大 3840 ピクセル、総画素数は 8,294,400 以下にしてください。', '너비와 높이는 양의 정수여야 하며, 한 변은 최대 3840픽셀, 총 픽셀 수는 8,294,400 이하여야 합니다.'],

@@ -25,7 +25,9 @@ if (rootBuilt && (all || options.has('--root'))) {
   node('Root Node regression', ['--test', ...tests]);
   py('Root Python regression', ['-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py', '-v']);
 }
-if (all || options.has('--apps')) {
+const verifyApps = all || options.has('--apps');
+let swarmeraBuilt = false;
+if (verifyApps) {
   for (const app of ['dreams', 'polyverse', 'meow', 'swarmera', 'nexus']) {
     const directory = 'apps/' + app;
     if (!node('Build ' + app, ['scripts/build.mjs'], directory, { BASE_PATH: '/polyverse/', MEOW_BASE: '/meow/' })) continue;
@@ -40,7 +42,10 @@ if (all || options.has('--apps')) {
       node('MEOW Node regression', ['--test', ...files.map(name => 'tests/' + name)], directory);
       if (process.platform === 'win32') console.log('SKIP: MEOW Bash deployment regression requires Linux.');
     }
-    if (app === 'swarmera' && rootBuilt) for (const test of ['core.test.mjs', 'scene.test.mjs', 'runtime.test.mjs', 'deployment.test.mjs']) node('SWARMERA ' + test, ['tests/' + test], directory);
+    if (app === 'swarmera') {
+      swarmeraBuilt = true;
+      if (rootBuilt) node('SWARMERA regressions', ['--test'], directory);
+    }
     if (app === 'nexus') { node('NEXUS interactions', ['tests/interactions.mjs'], directory); node('NEXUS integration parity', ['scripts/sync-strgo.mjs', '--check'], directory); }
   }
 }
@@ -60,6 +65,10 @@ if (rootBuilt && options.has('--browser')) {
   node('Workflow browser regression', ['tests/local-studio-browser.mjs']);
   node('Image browser regression', ['tests/image-browser.mjs']);
   node('360 panorama browser regression', ['tests/panorama-browser.mjs']);
+  const directory = 'apps/swarmera';
+  if (swarmeraBuilt || (!verifyApps && node('Build SWARMERA for browser regression', ['scripts/build.mjs'], directory))) {
+    node('SWARMERA survival browser regression', ['tests/survival-browser.mjs'], directory);
+  }
 }
 console.log('\nVerification results:');
 for (const result of results) console.log((result.passed ? 'PASS ' : 'FAIL ') + result.name);

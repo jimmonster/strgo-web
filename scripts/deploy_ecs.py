@@ -70,6 +70,7 @@ def ensure_idle(database):
     pending = [
         ('jobs', 'status', ('queued', 'generating', 'uploading')),
         ('local_jobs', 'status', ('queued', 'running')),
+        ('panorama_tours', 'status', ('queued', 'submitting', 'generating')),
         ('ai_tasks', 'state', ('QUEUED', 'DISPATCHING', 'RUNNING', 'SAVING',
                                'CANCEL_REQUESTED', 'RECONCILING')),
     ]
@@ -86,6 +87,13 @@ def ensure_idle(database):
                 raise DeploymentError(f'{table} 还有 {count} 个未完成或待核对任务，请处理后重试。')
 
 
+def ensure_node_version(project):
+    result = run(['node', '-p', 'process.versions.node'], project, capture=True)
+    version = tuple(int(part) for part in result.stdout.strip().split('.'))
+    if version < (22, 13, 0):
+        raise DeploymentError('需要 Node.js 22.13.0 或更新版本。')
+
+
 def preflight(project, skip_terminal):
     if not hasattr(os, 'geteuid') or os.geteuid() != 0:
         raise DeploymentError('请在 ECS 的普通 SSH / Workbench 终端以 root 执行。')
@@ -97,7 +105,7 @@ def preflight(project, skip_terminal):
     for name in ('git', 'node', 'npm', 'python3', 'nginx', 'curl', 'systemctl', 'ffmpeg'):
         if not shutil.which(name):
             raise DeploymentError('缺少命令：' + name + '。请先按 DEPLOYMENT.md 准备环境。')
-    run(['node', '-e', 'if (Number(process.versions.node.split(".")[0]) < 22) throw Error("需要 Node.js 22 或更新版本")'], project)
+    ensure_node_version(project)
     run(['python3', '-c', 'import venv, ensurepip, socket; socket.socket().close()'], project)
     if run(['git', 'branch', '--show-current'], project, capture=True).stdout.strip() != 'main':
         raise DeploymentError('请先切换到 main，并 git pull --ff-only origin main。')
@@ -200,9 +208,22 @@ def publish(target):
     run(['nginx', '-t'], target.project)
     services = ['nginx', 'strgo-image'] + (['strgo-terminal', 'strgo-terminal-broker'] if target.terminal else [])
     run(['systemctl', 'is-active', '--quiet', *services], target.project)
-    for route in ('/', '/hub/', '/forum/', '/admin/', '/ai/', '/polyverse/', '/meow/', '/swarmera/'):
-        run(['curl', '--noproxy', '*', '--fail', '--silent', '--show-error', '--max-time', '15',
-             '--resolve', 'strgo.com:443:127.0.0.1', 'https://strgo.com' + route, '-o', '/dev/null'], target.project)
+    verify_https_routes(target)
+
+
+def verify_https_routes(target):
+    routes = ['/', '/hub/', '/forum/', '/admin/', '/ai/', '/image-playground/',
+              '/360/', '/polyverse/', '/meow/', '/swarmera/', '/swarmera/survival/']
+    if target.terminal:
+        routes.append('/terminal/')
+    for route in routes:
+        url = 'https://strgo.com' + route
+        response = run(['curl', '--noproxy', '*', '--silent', '--show-error', '--max-time', '15',
+                        '--resolve', 'strgo.com:443:127.0.0.1', '--output', '/dev/null',
+                        '--write-out', '%{http_code}', url], target.project, capture=True)
+        status = response.stdout.strip()
+        if status != '200':
+            raise DeploymentError(f'{url} 返回 HTTP {status}，预期 HTTP 200。')
 
 
 def main(argv=None):

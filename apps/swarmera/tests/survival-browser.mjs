@@ -42,10 +42,11 @@ try {
   await shot('desktop-upgrade');await page.locator('[data-survival=upgrade]').first().click();
   await page.waitForFunction(()=>swarmera.survival.game.state==='playing');
   report.checks.push('Crystal collection freezes the simulation and offers three functional upgrades');
-  // Reproducible dense-wave fixture exercises the actual renderer and collision engine.
+  // Keep the stress fixture populated while still exercising rendering and bullet collisions.
   await page.evaluate(()=>{
     const g=swarmera.survival.game;g.enemies=[];g.gems=[];g.xp=0;g.requiredXp=100000;g.player.x=1300;g.player.y=1300;g.player.invulnerable=1000;
     g.tick=44*60;g.time=44;g.difficulty='swarm';g.fireInterval=.09;g.multishot=4;g.pierce=2;
+    g.bullets=[];g.damage=0;
     for(let i=0;i<300;i++){const e=g.spawnSpider(),a=i*2.3999,r=180+(i%20)*21;e.x=1300+Math.cos(a)*r;e.y=1300+Math.sin(a)*r;}
     const boss=g.spawnCentipede();boss.x=1570;boss.y=1370;boss.segments=Array.from({length:14},(_,i)=>({x:1570+i*3,y:1370+i*25}));
   });
@@ -55,13 +56,14 @@ try {
     let frames=0,start=performance.now(),startTick=swarmera.survival.game.tick;
     function frame(now){frames++;if(now-start<1500)requestAnimationFrame(frame);else resolve({frames,seconds:(now-start)/1000,simulationTicks:swarmera.survival.game.tick-startTick,population:swarmera.survival.game.enemies.length});}requestAnimationFrame(frame);
   }));
-  assert.ok(report.performance.population>150);assert.ok(report.performance.simulationTicks>20);
+  assert.ok(report.performance.population>=300, 'the dense fixture must remain populated during sampling');
+  assert.ok(report.performance.simulationTicks>20, 'combat must advance while the dense scene is rendered');
   report.checks.push('Hundreds of spiders and articulated centipedes render and simulate together');
   await page.locator('[data-survival=pause]').click();
   const progress=await page.evaluate(()=>({kills:swarmera.survival.game.kills,level:swarmera.survival.game.level}));
   for(const locale of ['zh-TW','en','ja','ko','zh-CN']){
     await page.evaluate(locale=>window.strgoI18n.setLocale(locale),locale);
-    await page.waitForFunction(locale=>document.documentElement.lang===locale&&swarmera.survival.game.state==='paused',locale);
+    await page.waitForFunction(locale=>document.documentElement.lang===locale&&window.swarmera?.survival?.game.state==='paused',locale);
     assert.deepEqual(await page.evaluate(()=>({kills:swarmera.survival.game.kills,level:swarmera.survival.game.level})),progress);
     assert.equal(await page.locator('canvas').count(),1);
   }
@@ -80,10 +82,12 @@ try {
   const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
   await mobile.addInitScript(()=>localStorage.setItem('strgo:locale:v1','zh-CN'));
   const mp=await mobile.newPage();mp.on('pageerror',e=>report.errors.push(e.message));
-  await mp.goto(root+'survival/');await mp.waitForFunction(()=>swarmera.survival?.game);
+  await mp.goto(root+'survival/');await mp.waitForFunction(()=>window.swarmera?.survival?.game);
   assert.equal(await mp.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+  assert.ok(await mp.evaluate(()=>navigator.maxTouchPoints>0), 'the mobile context must expose touch input');
   await mp.screenshot({path:dir+'/mobile-ready.png',fullPage:true});report.screenshots.push('mobile-ready.png');
   await mp.locator('[data-survival=start]').tap();
+  await mp.locator('#survival-stick').waitFor({state:'visible',timeout:10000});
   await mp.locator('#survival-stick').scrollIntoViewIfNeeded();
   const rect=await mp.locator('#survival-stick').boundingBox();assert.ok(rect);
   const x=rect.x+rect.width/2,y=rect.y+rect.height/2;
@@ -101,6 +105,7 @@ try {
   report.checks.push('390px touch device supports real joystick dragging and skill taps without horizontal overflow');
   await mp.locator('[data-survival=pause]').tap();
   await mp.setViewportSize({width:844,height:390});
+  assert.ok(await mp.locator('#survival-stick').isVisible());
   assert.equal(await mp.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   await mobile.close();assert.deepEqual(report.errors,[]);report.status='passed';
 } catch(error){report.status=/EPERM|Operation not permitted|HTTP server blocked/.test(String(error))?'blocked':'failed';report.errors.push(String(error.stack||error));process.exitCode=1;}

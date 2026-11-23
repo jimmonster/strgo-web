@@ -18,7 +18,7 @@ const paths = {
   fullscreen: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
   mark: '<circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-35 12 12)"/><path d="M5 4 19 20"/>',
 };
-const aliases = { studio:'image', overview:'catalog', workflow:'tasks', login:'arrow', classic:'hub', room:'hub', dance:'music', dreams:'spaces', nexus:'spaces', polyverse:'spaces', meow:'spaces', swarmera:'spaces', archive:'spaces', forum:'chat', projects:'assets', updates:'tasks', about:'hub', lab:'spaces', contact:'arrow' };
+const aliases = { studio:'image', overview:'catalog', workflow:'tasks', login:'arrow', classic:'hub', room:'hub', dance:'music', dreams:'spaces', nexus:'spaces', polyverse:'spaces', meow:'spaces', swarmera:'spaces', survival:'spaces', archive:'spaces', forum:'chat', projects:'assets', updates:'tasks', about:'hub', lab:'spaces', contact:'arrow' };
 export function icon(name, className = '') {
   return `<svg class="strgo-icon ${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[aliases[name] || name] || paths.catalog}</svg>`;
 }

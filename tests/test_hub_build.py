@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 import subprocess
 import sys
 
@@ -33,6 +34,14 @@ class HubBuildTests(unittest.TestCase):
             self.assertNotIn('PRIVATE', (output / 'hub/registry.js').read_text())
             self.assertEqual(json.loads((output / 'shared/registry.json').read_text()), registry)
             self.assertEqual('/admin/', next(e for e in registry['entries'] if e['id'] == 'A01')['route'])
+            self.assertEqual('/swarmera/survival/', next(e for e in registry['entries'] if e['id'] == 'S10')['route'])
+            sitemap = ET.parse(output / 'sitemap.xml')
+            urls = [element.text for element in sitemap.iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
+            self.assertEqual(len(urls), len(set(urls)))
+            for route in ('/polyverse/', '/meow/', '/swarmera/', '/swarmera/survival/'):
+                self.assertIn('https://strgo.com' + route, urls)
+            for route in ('/admin/', '/forum/', '/ai/assets/', '/360/fixed-render.html'):
+                self.assertNotIn('https://strgo.com' + route, urls)
             workflow = (output / 'local-studio/index.html').read_text()
             self.assertIn('./_strgo/design-system.css', workflow)
             self.assertIn('data-session="none"', workflow)

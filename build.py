@@ -287,7 +287,12 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     from hub_build import build_hub
     build_hub(ROOT, output, config, context, replace)
     (output / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nSitemap: {origin}/sitemap.xml\n', encoding='utf-8')
-    (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ''.join(f'<url><loc>{html.escape(origin + path)}</loc></url>' for path in ['/', '/hub/', '/classic/', '/360/', '/home/', '/dance/', '/nexus/', '/terminal', *dream_paths, *content_paths]) + '</urlset>\n', encoding='utf-8')
+    public_paths = ['/', '/hub/', '/classic/', '/360/', '/home/', '/dance/', '/nexus/', '/terminal',
+                    '/polyverse/', '/meow/', '/swarmera/', '/swarmera/survival/', *dream_paths, *content_paths]
+    sitemap_entries = ''.join(f'<url><loc>{html.escape(origin + path)}</loc></url>' for path in public_paths)
+    (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
+                                       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                                       + sitemap_entries + '</urlset>\n', encoding='utf-8')
     manifest = {'version': version, 'homeVariant': config['HOME_VARIANT'], 'mode': 'production' if not missing else 'offline-preview', 'vendors': enabled, 'missingVendors': missing}
     (output / 'build-manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     print(f'Built {output} for {origin} ({manifest["mode"]})')

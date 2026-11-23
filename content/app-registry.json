@@ -177,6 +177,17 @@
       "symbol": "◎"
     },
     {
+      "id": "S10",
+      "name": "虫潮生存",
+      "en": "SWARM SURVIVAL",
+      "group": "沉浸空间",
+      "route": "/swarmera/survival/",
+      "description": "驾驶机甲对抗飞天蜘蛛与变异大蜈蚣。",
+      "type": "survival",
+      "access": "本地体验",
+      "symbol": "⋈"
+    },
+    {
       "id": "N01",
       "name": "交流社区",
       "en": "COMMUNITY",

@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from scripts.deploy_ecs import DeploymentError, ensure_idle, read_env, terminal_manifest, validate_configuration
+from scripts.deploy_ecs import (DeploymentError, Target, ensure_idle, ensure_node_version,
+                                publish, read_env, terminal_manifest, validate_configuration)
 
 
 class ECSDeployTests(unittest.TestCase):
@@ -32,6 +33,7 @@ class ECSDeployTests(unittest.TestCase):
         with closing(sqlite3.connect(path)) as db, db:
             db.execute('CREATE TABLE jobs(status TEXT)')
             db.execute('CREATE TABLE local_jobs(status TEXT)')
+            db.execute('CREATE TABLE panorama_tours(status TEXT)')
             db.execute('CREATE TABLE ai_tasks(state TEXT)')
         return path
 
@@ -54,6 +56,9 @@ class ECSDeployTests(unittest.TestCase):
         path = self.database()
         for table, column, status in [('jobs', 'status', 'uploading'),
                                       ('local_jobs', 'status', 'running'),
+                                      ('panorama_tours', 'status', 'queued'),
+                                      ('panorama_tours', 'status', 'submitting'),
+                                      ('panorama_tours', 'status', 'generating'),
                                       ('ai_tasks', 'state', 'RECONCILING')]:
             with self.subTest(table=table):
                 with closing(sqlite3.connect(path)) as db, db:
@@ -71,11 +76,13 @@ class ECSDeployTests(unittest.TestCase):
             db.execute("INSERT INTO jobs VALUES('complete')")
             db.execute("INSERT INTO local_jobs VALUES('succeeded')")
             db.execute("INSERT INTO ai_tasks VALUES('SUCCEEDED')")
+            db.executemany("INSERT INTO panorama_tours VALUES(?)", [(state,) for state in ('ready', 'unknown', 'failed')])
         before = path.read_bytes()
         ensure_idle(path)
         self.assertEqual(path.read_bytes(), before)
         with closing(sqlite3.connect(path)) as db, db:
             db.execute('DROP TABLE local_jobs')
+            db.execute('DROP TABLE panorama_tours')
             db.execute('DROP TABLE ai_tasks')
         before = path.read_bytes()
         ensure_idle(path)
@@ -103,6 +110,40 @@ class ECSDeployTests(unittest.TestCase):
                         ensure_idle(path)
                     with self.assertRaises(sqlite3.ProgrammingError):
                         connection.execute('SELECT 1')
+
+    def test_preflight_checks_node_minor_version_required_by_pdf_viewer(self):
+        with patch('scripts.deploy_ecs.run') as run:
+            for version in ('20.19.0', '22.12.9', '22.13.0', '24.2.0'):
+                with self.subTest(version=version):
+                    run.return_value.stdout = version + '\n'
+                    if version in ('20.19.0', '22.12.9'):
+                        with self.assertRaisesRegex(DeploymentError, r'22\.13\.0'):
+                            ensure_node_version(self.root)
+                    else:
+                        ensure_node_version(self.root)
+            run.assert_called_with(['node', '-p', 'process.versions.node'], self.root, capture=True)
+
+    def test_publish_checks_panorama_survival_and_installed_terminal_routes(self):
+        for terminal in (False, True):
+            with self.subTest(terminal=terminal), patch('scripts.deploy_ecs.run') as run:
+                run.return_value.stdout = '200'
+                publish(Target(self.root, self.root, self.root, self.root, terminal))
+                https = [call.args[0] for call in run.call_args_list if call.args[0][0] == 'curl']
+                urls = [command[-1] for command in https]
+                for route in ('/360/', '/swarmera/survival/', '/image-playground/'):
+                    self.assertIn('https://strgo.com' + route, urls)
+                self.assertEqual('https://strgo.com/terminal/' in urls, terminal)
+                self.assertTrue(all('strgo.com:443:127.0.0.1' in command for command in https))
+
+    def test_publish_rejects_redirect_or_missing_page(self):
+        for status in ('302', '404'):
+            with self.subTest(status=status), patch('scripts.deploy_ecs.run') as run:
+                def response(command, cwd, **options):
+                    http_code = status if command[-1] == 'https://strgo.com/swarmera/survival/' else '200'
+                    return subprocess.CompletedProcess(command, 0, stdout=http_code)
+                run.side_effect = response
+                with self.assertRaisesRegex(DeploymentError, '/swarmera/survival/.*' + status):
+                    publish(Target(self.root, self.root, self.root, self.root, False))
 
     @unittest.skipUnless(shutil.which('sha256sum'), 'requires Linux sha256sum')
     def test_terminal_manifest_matches_publisher_and_rejects_tampering(self):

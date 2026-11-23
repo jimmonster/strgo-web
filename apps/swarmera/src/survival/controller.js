@@ -11,6 +11,8 @@ export function mountSurvival(root, locale, previousGame) {
   const arena = $('#survival-arena');
   const overlay = $('#survival-overlay');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const touch = navigator.maxTouchPoints > 0 || matchMedia('(any-pointer: coarse), (hover: none)').matches;
+  root.toggleAttribute('data-survival-touch', touch);
   let renderer;
   try { renderer = new SurvivalRenderer(canvas, { reduced }); }
   catch { overlay.querySelector('p').textContent = t('unavailable'); overlay.querySelector('button').disabled = true; return { dispose() {} }; }
@@ -58,7 +60,7 @@ export function mountSurvival(root, locale, previousGame) {
     if (state === 'upgrade') {
       dialog.innerHTML = `<span class="survival-kicker">EVOLUTION / ${String(game.level).padStart(2, '0')}</span><h2>${t('upgrade')}</h2><p>${t('choose')}</p><div class="survival-upgrades">${game.choices.map((choice, i) => `<button type="button" data-survival="upgrade" data-upgrade="${choice}"><span>0${i + 1} / ${['damage', 'rate', 'multishot', 'repair', 'speed', 'pierce'].indexOf(choice) + 1}</span><strong>${t(choice)}</strong><small>${t(choice + 'Desc')}</small><b>↗</b></button>`).join('')}</div>`;
     } else if (state === 'paused') {
-      dialog.innerHTML = `<span class="survival-kicker">OPERATION ON HOLD</span><h2>${t('paused')}</h2><p>${t(matchMedia('(pointer: coarse)').matches?'touch':'controls')}</p><button type="button" class="survival-primary" data-survival="resume">${t('resume')} ↗</button>`;
+      dialog.innerHTML = `<span class="survival-kicker">OPERATION ON HOLD</span><h2>${t('paused')}</h2><p>${t(touch ? 'touch' : 'controls')}</p><button type="button" class="survival-primary" data-survival="resume">${t('resume')} ↗</button>`;
     } else {
       let failed = false;
       if (!saved) {

@@ -26,6 +26,7 @@ test('deployment manifest fingerprints every file and references 29 actual direc
  await execute(process.execPath,['scripts/prepare-deployment.mjs'],{cwd:fileURLToPath(new URL('../',import.meta.url)),env:{...process.env,SWARMERA_NGINX_CONFIG:config}});
  const manifest=JSON.parse(await readFile(new URL('../artifacts/deployment/manifest.json',import.meta.url)));
  assert.equal(manifest.routes.length,29);
+ assert.ok(manifest.routes.includes('/swarmera/survival/'));
  for(const f of manifest.files){const data=await readFile(new URL('../dist/'+f.path,import.meta.url));assert.equal(createHash('sha256').update(data).digest('hex'),f.sha256,f.path);}
 });
 test('STRGO hub and classic navigation expose SWARMERA, deploy preserves route',async()=>{
@@ -33,6 +34,9 @@ test('STRGO hub and classic navigation expose SWARMERA, deploy preserves route',
  const {document}=parseHTML(await readFile(new URL('../../../dist/classic/index.html',import.meta.url),'utf8'));
  const deploy=await readFile(new URL('../../../deploy.sh',import.meta.url),'utf8');
  assert.equal(registry.entries.find(entry=>entry.id==='S07')?.route,'/swarmera/');
+ assert.equal(registry.entries.find(entry=>entry.id==='S10')?.route,'/swarmera/survival/');
+ const standalone = JSON.parse(await readFile(new URL('../dist/_strgo/registry.json',import.meta.url),'utf8'));
+ assert.equal(standalone.entries.find(entry=>entry.id==='S10')?.route,'/swarmera/survival/');
  assert.equal(document.querySelector('.space-portal.portal-swarmera')?.getAttribute('href'),'/swarmera/');
  assert.equal(document.querySelector('.mobile-menu .nav-swarmera')?.getAttribute('href'),'/swarmera/');
  assert.ok(deploy.includes("include /etc/nginx/snippets/swarmera.conf;"));
