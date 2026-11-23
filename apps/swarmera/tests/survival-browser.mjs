@@ -42,10 +42,11 @@ try {
   await shot('desktop-upgrade');await page.locator('[data-survival=upgrade]').first().click();
   await page.waitForFunction(()=>swarmera.survival.game.state==='playing');
   report.checks.push('Crystal collection freezes the simulation and offers three functional upgrades');
-  // Reproducible dense-wave fixture exercises the actual renderer and collision engine.
+  // Keep the stress fixture populated while still exercising rendering and bullet collisions.
   await page.evaluate(()=>{
     const g=swarmera.survival.game;g.enemies=[];g.gems=[];g.xp=0;g.requiredXp=100000;g.player.x=1300;g.player.y=1300;g.player.invulnerable=1000;
     g.tick=44*60;g.time=44;g.difficulty='swarm';g.fireInterval=.09;g.multishot=4;g.pierce=2;
+    g.bullets=[];g.damage=0;
     for(let i=0;i<300;i++){const e=g.spawnSpider(),a=i*2.3999,r=180+(i%20)*21;e.x=1300+Math.cos(a)*r;e.y=1300+Math.sin(a)*r;}
     const boss=g.spawnCentipede();boss.x=1570;boss.y=1370;boss.segments=Array.from({length:14},(_,i)=>({x:1570+i*3,y:1370+i*25}));
   });
@@ -55,7 +56,8 @@ try {
     let frames=0,start=performance.now(),startTick=swarmera.survival.game.tick;
     function frame(now){frames++;if(now-start<1500)requestAnimationFrame(frame);else resolve({frames,seconds:(now-start)/1000,simulationTicks:swarmera.survival.game.tick-startTick,population:swarmera.survival.game.enemies.length});}requestAnimationFrame(frame);
   }));
-  assert.ok(report.performance.population>150);assert.ok(report.performance.simulationTicks>20);
+  assert.ok(report.performance.population>=300, 'the dense fixture must remain populated during sampling');
+  assert.ok(report.performance.simulationTicks>20, 'combat must advance while the dense scene is rendered');
   report.checks.push('Hundreds of spiders and articulated centipedes render and simulate together');
   await page.locator('[data-survival=pause]').click();
   const progress=await page.evaluate(()=>({kills:swarmera.survival.game.kills,level:swarmera.survival.game.level}));
