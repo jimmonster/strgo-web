@@ -428,11 +428,14 @@ test('An administrator can cancel an unsaved preset without a write', async () =
 
 test('Saved images use authenticated paths, prompt content stays text, and library is searchable', async () => {
   const prompt = '<img src=x onerror="alert(1)">山川';
-  const job = { id: 'a'.repeat(32), prompt, model: 'model', size: '1024x1024', quality: '', count: 1, created: 1700000000, status: 'complete', error: '', images: [{ id: 'b'.repeat(32), state: 'saved', favorite: false, error: '', url: '/api/image/assets/' + 'b'.repeat(32), downloadUrl: '/api/image/assets/' + 'b'.repeat(32) + '?download=1' }] };
+  const job = { ...savedJob(), prompt };
   const env = await environment({ loggedIn: true, initialJobs: [job] });
   assert.equal(env.document.querySelectorAll('img[onerror]').length, 0);
   assert.equal(env.document.querySelector('.job-prompt').textContent, prompt);
+  assert.equal(env.document.querySelector('.image-open img').getAttribute('src'), job.images[0].thumbnailUrl);
+  assert.equal(env.document.querySelector('#preview-image').hasAttribute('src'), false);
   env.click('.image-open'); assert.equal(env.document.querySelector('#image-dialog').open, true);
+  assert.equal(env.document.querySelector('#preview-image').getAttribute('src'), job.images[0].url);
   assert.equal(env.document.querySelector('#panorama-image').getAttribute('href'), panoramaPath(job.images[0].id));
   assert.equal(env.document.querySelector('#preview-prompt').textContent, prompt);
   assert.equal(env.document.querySelector('#download-image').getAttribute('href'), job.images[0].downloadUrl);
@@ -445,7 +448,8 @@ test('Saved images use authenticated paths, prompt content stays text, and libra
 function savedJob(imageCount = 1) {
   return { id: 'a'.repeat(32), userId: 'owner', username: 'creator', prompt: 'Saved photo', model: 'model', size: '1024x1024', quality: '', count: imageCount, created: 1700000000, status: 'complete', error: '', images: Array.from({ length: imageCount }, (_, index) => {
     const id = (index ? 'c' : 'b').repeat(32);
-    return { id, state: 'saved', favorite: false, error: '', url: '/api/image/assets/' + id, downloadUrl: '/api/image/assets/' + id + '?download=1' };
+    const url = '/api/image/assets/' + id;
+    return { id, state: 'saved', favorite: false, error: '', url, thumbnailUrl: url + '/thumbnail', downloadUrl: url + '?download=1' };
   }) };
 }
 

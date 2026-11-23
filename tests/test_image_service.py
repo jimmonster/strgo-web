@@ -2,6 +2,7 @@ import base64
 from contextlib import closing
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+from io import BytesIO
 import json
 from pathlib import Path
 import sqlite3
@@ -10,6 +11,8 @@ import threading
 import time
 import unittest
 from unittest.mock import patch
+
+from PIL import Image
 import uuid
 
 from cryptography.fernet import Fernet
@@ -374,6 +377,35 @@ class ImageServiceTests(unittest.TestCase):
         self.assertEqual(self.call('GET', '/jobs', session=self.admin)[1]['jobs'], [])
         self.assert_problem(404, lambda: self.call('GET', '/assets/' + image['id'] + '?download=1', session=self.admin))
         self.assertTrue(self.call('GET', '/session', session=self.admin)[1]['config']['hasKey'])
+
+    def test_asset_thumbnail_is_small_and_keeps_the_original_access_policy(self):
+        owner = self.register('preview-owner')
+        original = (Path(__file__).resolve().parents[1] / 'src/assets/panoramas/campus.webp').read_bytes()
+        job = self.create_job(owner)
+        with patch.object(self.provider, 'image_bytes', return_value=original):
+            self.app.run_job(job['id'])
+        image = self.call('GET', '/jobs/' + job['id'], session=owner)[1]['images'][0]
+        asset_id = image['id']
+        asset = '/assets/' + asset_id
+        preview = asset + '/thumbnail'
+        self.assertEqual(image['thumbnailUrl'], API + preview)
+        with patch.object(self.cloud, 'get', wraps=self.cloud.get) as read:
+            status, thumbnail, headers = self.call('GET', preview, session=owner)
+            self.assertEqual((status, headers), (200, {
+                'Content-Type': 'image/webp', 'X-Image-Width': '1774', 'X-Image-Height': '887',
+            }))
+            with Image.open(BytesIO(thumbnail)) as image:
+                self.assertEqual(image.size, (320, 160))
+            self.assertLess(len(thumbnail), len(original) // 10)
+            self.assertEqual(self.call('GET', preview, session=owner)[1], thumbnail)
+            self.assertEqual(read.call_count, 1)
+        self.assert_problem(401, lambda: self.call('GET', preview))
+        other = self.register('different-member')
+        self.assert_problem(404, lambda: self.call('GET', preview, session=other))
+        self.assertEqual(self.call('GET', preview, session=self.admin)[1], thumbnail)
+        self.assertEqual(self.call('GET', asset, session=owner)[1], original)
+        self.call('DELETE', '/images/' + asset_id, session=owner)
+        self.assert_problem(404, lambda: self.call('GET', preview, session=owner))
 
     def test_deletion_requires_owner_session_csrf_and_same_origin(self):
         job = self.create_job()

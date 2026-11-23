@@ -31,6 +31,10 @@ export async function checkPanoramaHTTP({ browser, origin, directory }) {
     await adminPage.locator('#panorama-preset-prompt').fill(template); await adminPage.locator('#save-panorama-preset').click();
     await adminPage.waitForFunction(()=>document.querySelector('#panorama-preset-form').hidden);
     page=await member.newPage(); const errors=[]; page.on('pageerror',error=>errors.push(error.message));
+    const originalRequests=[];
+    page.on('request', request => {
+      if (/^\/api\/image\/assets\/[a-f0-9]{32}$/.test(new URL(request.url()).pathname)) originalRequests.push(request.url());
+    });
     page.on('requestfailed', request => network.push({url:request.url(),error:request.failure()?.errorText}));
     page.on('response', async response => { if (response.url().endsWith('/splat') || /\/api\/image\/assets\//.test(response.url())) network.push({kind:response.url().endsWith('/splat')?'splat':'image',status:response.status(),length:response.headers()['content-length'],done:String(await response.finished().catch(error=>error.message))}); });
     await page.goto(origin+'/360/'); await page.locator('#open-generation').click();
@@ -43,8 +47,13 @@ export async function checkPanoramaHTTP({ browser, origin, directory }) {
     await page.locator('#panorama-scene').fill('阳光下的校园广场，四周是教学楼、树木和喷泉。');
     await page.locator('#generate-panorama').click();
     const card = page.locator('#saved-items .saved-item');
+    await card.locator('.item-preview').scrollIntoViewIfNeeded();
+    await card.locator('img').evaluate(img => img.decode());
+    assert.equal(await card.locator('img').evaluate(img => img.naturalWidth),320);
+    assert.equal(originalRequests.length,0);
     await card.locator('.item-preview').click();
     await page.waitForFunction(()=>document.querySelector('#viewport').dataset.source==='ai' && document.querySelector('#viewport').getAttribute('aria-busy')==='false',{},{timeout:30000});
+    assert.equal(originalRequests.length,1);
     assert.equal(new URL(page.url()).pathname,'/360/');
     assert.equal(await page.locator('#saved-items .saved-item').count(),1);
     const jobs=await (await member.request.get(origin+'/api/image/jobs')).json();

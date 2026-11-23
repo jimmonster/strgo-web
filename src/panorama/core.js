@@ -54,6 +54,8 @@ export function assetPath(id) {
   return '/api/image/assets/' + id;
 }
 
+export function assetThumbnailPath(id) { return assetPath(id) + '/thumbnail'; }
+
 // The newest selection wins, including when an older decode fails late.
 export class SelectionVersion {
   value = 0;

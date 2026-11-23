@@ -228,8 +228,12 @@ function renderImage(image, job) {
   const own = job.userId === state.user?.id;
   const card = el('article', 'image-card');
   const button = el('button', 'image-open'); button.type = 'button'; button.setAttribute('aria-label', '预览作品：' + job.prompt);
-  const img = el('img'); img.src = image.url; img.alt = job.prompt; img.loading = 'lazy';
-  img.addEventListener('error', () => { button.setAttribute('aria-label', '图片暂时无法读取，点击重试'); });
+  const img = el('img'); img.alt = job.prompt; img.loading = 'lazy'; img.decoding = 'async';
+  img.addEventListener('error', () => {
+    img.remove();
+    button.setAttribute('aria-label', '图片暂时无法读取，点击重试');
+  }, { once: true });
+  if (image.thumbnailUrl) img.src = image.thumbnailUrl;
   button.append(img); button.addEventListener('click', () => openImage(image, job)); card.append(button);
   const bar = el('div', 'image-toolbar');
   const status = el('span', 'status-label ' + (image.state === 'saved' ? 'saved' : 'failed'), image.state === 'saved' ? '已保存' : '待保存');
@@ -723,6 +727,12 @@ let searchTimer;
 $('#search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => refreshLibrary().catch(error => toast(error.message)), 300); });
 $('#favorite-filter').addEventListener('click', () => { state.favoriteOnly = !state.favoriteOnly; $('#favorite-filter').setAttribute('aria-pressed', String(state.favoriteOnly)); refreshLibrary().catch(error => toast(error.message)); });
 $('#close-image').addEventListener('click', () => $('#image-dialog').close());
+$('#image-dialog').addEventListener('close', () => {
+  if ($('#image-dialog').open) return;
+  $('#preview-image').removeAttribute('src');
+  $('#download-image').removeAttribute('href');
+  state.preview = null;
+});
 $('#image-dialog').addEventListener('click', event => { if (event.target === $('#image-dialog')) { const box = event.target.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) event.target.close(); } });
 $('#reuse-prompt').addEventListener('click', () => {
   if (!state.preview) return;

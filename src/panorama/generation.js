@@ -1,6 +1,5 @@
 import { requestJSON } from '../shared/catalog.js';
 import { translate as t } from '../shared/i18n.js';
-import { assetPath } from './core.js';
 
 export function panoramaPrompt(scene, template) {
   scene = String(scene || '').trim(); template = String(template || '').trim();
@@ -156,7 +155,7 @@ export function setupGeneration({ saveResult, showGallery }) {
       if (image && !applied) {
         try {
           const scene = submittedScene || String(job.prompt || '');
-          await saveResult({ kind: 'ai', generated: true, url: assetPath(image.id), owner: session.user.id,
+          await saveResult({ kind: 'ai', generated: true, assetId: image.id, owner: session.user.id,
             name: scene.split('\n')[0].trim().slice(0, 80) || t('未命名作品'), content: scene.slice(0, 5000) }, controller.signal);
           if (ticket !== epoch || document.hidden) return;
           applied = true;

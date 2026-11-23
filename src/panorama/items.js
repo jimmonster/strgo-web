@@ -1,5 +1,5 @@
 import { PanoramaStore, MAX_TITLE_LENGTH } from './store.js';
-import { assetPath } from './core.js';
+import { assetPath, assetThumbnailPath } from './core.js';
 import { requestJSON } from '../shared/catalog.js';
 import { translate as t } from '../shared/i18n.js';
 
@@ -41,7 +41,7 @@ export function setupItems({ open, updated, removed }) {
       preview.append(label);
       if (item.kind === 'ai' || item.thumbnail) {
         const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy'; image.decoding = 'async';
-        if (item.kind === 'ai') image.src = assetPath(item.assetId);
+        if (item.kind === 'ai') image.src = assetThumbnailPath(item.assetId);
         else { image.src = URL.createObjectURL(item.thumbnail); urls.add(image.src); }
         image.addEventListener('error', () => image.remove(), { once: true });
         preview.append(image);
@@ -94,7 +94,7 @@ export function setupItems({ open, updated, removed }) {
   function storageError(e) {
     return e.name === 'QuotaExceededError' ? '浏览器空间不足，请删除部分条目后重试保存。' : '保存失败，请允许浏览器存储后重试。';
   }
-  async function remember(source, image, account, signal) {
+  async function remember(source, { width, height, image, owner: account }, signal) {
     let thumbnail;
     if (source.kind === 'local') {
       const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 160;
@@ -103,8 +103,8 @@ export function setupItems({ open, updated, removed }) {
     }
     try {
       const item = await store.create({ kind: source.kind, name: source.name.slice(0, MAX_TITLE_LENGTH), content: source.content || '',
-        owner: account, generated: source.generated, assetId: source.kind === 'ai' ? source.url.split('/').at(-1) : undefined,
-        file: source.file, thumbnail, width: image.naturalWidth, height: image.naturalHeight }, signal);
+        owner: account, generated: source.generated, assetId: source.assetId,
+        file: source.file, thumbnail, width, height }, signal);
       // Mutate the source immediately after commit so retry cannot duplicate it.
       source.itemId = item.id; source.name = item.name; source.content = item.content;
       if (source.kind === 'ai' && !document.hidden) { serial++; owner = account; }

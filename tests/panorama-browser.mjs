@@ -10,6 +10,7 @@ import { checkFixedPanoramas } from './panorama-fixed-browser.mjs';
 const directory = fileURLToPath(new URL('../artifacts/panorama/', import.meta.url));
 await mkdir(directory, { recursive: true });
 const image = await readFile(new URL('../src/assets/panoramas/campus.webp', import.meta.url));
+const thumbnail = await readFile(new URL('../src/assets/panoramas/campus-thumb.webp', import.meta.url));
 const id = 'a'.repeat(32), secondId = 'b'.repeat(32);
 const checks = [], errors = [];
 let browser, server;
@@ -72,10 +73,17 @@ async function stubAPI(page, state) {
       const next = !!url.searchParams.get('cursor');
       return route.fulfill({ json: { user_id: state.user, items: [{ id: next ? secondId : id, source:'image', title:next ? '第二张全景' : '<script>PRIVATE ARTWORK</script>' }], sources:[{id:'image',status:'ok'}], next_cursor:next ? null : 'next-page', partial:false } });
     }
-    if (url.pathname.startsWith('/api/image/assets/')) {
+    if (/^\/api\/image\/assets\/[a-f0-9]{32}\/thumbnail$/.test(url.pathname)) {
+      state.thumbnailRequests = (state.thumbnailRequests || 0) + 1;
+      if (state.denyAsset) return route.fulfill({status:403,json:{error:'forbidden'}});
+      const [width, height] = state.generatedDimensions || [1774, 887];
+      return route.fulfill({contentType:'image/webp',body:thumbnail,headers:{'X-Image-Width':String(width),'X-Image-Height':String(height)}});
+    }
+    if (/^\/api\/image\/assets\/[a-f0-9]{32}$/.test(url.pathname)) {
+      state.originalRequests = (state.originalRequests || 0) + 1;
       if (state.denyAsset) return route.fulfill({status:403,json:{error:'forbidden'}});
       if (state.holdAsset && route.request().resourceType() !== 'image') { state.pending = route; return; }
-      return route.fulfill({contentType:'image/webp',body:state.generatedAsset && url.pathname.endsWith('c'.repeat(32)) ? state.generatedAsset : image});
+      return route.fulfill({contentType:'image/webp',body:image});
     }
     return route.fulfill({json:{}});
   });
@@ -85,6 +93,8 @@ try {
   browser = await chromium.launch({ executablePath, headless:true, args:['--no-sandbox','--disable-dev-shm-usage','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
   const context = await browser.newContext({viewport:{width:1440,height:1000},locale:'zh-CN',reducedMotion:'reduce'});
   const page = await context.newPage(); const state={user:'owner-one'}; await stubAPI(page,state);
+  let campusRequests = 0;
+  page.on('request', request => { if (new URL(request.url()).pathname === '/assets/panoramas/campus.webp') campusRequests++; });
   await page.goto(preview.origin+'/360/'); await galleryReady(page);
   assert.equal(await page.title(),'360° 全景 · STRGO');
   const generate = page.locator('#open-generation');
@@ -94,8 +104,12 @@ try {
   assert.equal(await generate.evaluate(button=>getComputedStyle(button).backgroundColor),primaryBackground);
   assert.equal(await page.locator('#viewport canvas').count(),0);
   assert.ok(await page.locator('#campus').isVisible());
+  await page.locator('#campus img').evaluate(img => img.decode());
+  assert.equal(await page.locator('#campus img').evaluate(img => img.naturalWidth),320);
+  assert.equal(campusRequests,0);
   await page.screenshot({path:directory+'gallery-desktop.png',fullPage:true});
   await openCampus(page);
+  assert.equal(campusRequests,1);
   check('opening /360/ shows a preview gallery and prominent generation action before starting WebGL');
   assert.equal(await page.locator('#viewport canvas').count(),1);
   assert.equal(await page.locator('#source-info').textContent(),'1774 × 887 · 2:1');
@@ -132,6 +146,9 @@ try {
   await page.locator('#open-ai').click(); await page.waitForSelector('.ai-item');
   assert.equal(await page.locator('#ai-items script').count(),0);
   await page.locator('#ai-more').click(); await page.waitForFunction(()=>document.querySelectorAll('.ai-item').length===2);
+  await page.locator('.ai-item img').first().evaluate(img => img.decode());
+  assert.ok(state.thumbnailRequests > 0);
+  assert.equal(state.originalRequests || 0,0);
   await page.locator('.ai-item').first().click(); await waitSource(page,'ai');
   assert.equal(await page.locator('#source-name').textContent(),'<script>PRIVATE ARTWORK</script>');
   state.user='owner-two'; await page.evaluate(()=>window.dispatchEvent(new Event('focus'))); await waitSource(page,'campus');
@@ -266,8 +283,14 @@ try {
   records=await persisted(); const aiRecord=records.find(item=>item.kind==='ai');
   assert.equal(aiRecord.owner,'items-owner'); assert.equal(aiRecord.assetId,id); assert.equal(aiRecord.hasFile,false); assert.equal(aiRecord.thumbnail,undefined);
   const aiCard=itemsPage.locator(`[data-item-id="${aiRecord.id}"]`);
+  itemState.originalRequests=0;
   await itemsPage.reload(); await galleryReady(itemsPage); await waitCount(2);
+  await aiCard.locator('.item-preview').scrollIntoViewIfNeeded();
+  await aiCard.locator('img').evaluate(img => img.decode());
+  assert.equal(await aiCard.locator('img').getAttribute('src'),'/api/image/assets/'+id+'/thumbnail');
+  assert.equal(itemState.originalRequests,0);
   await aiCard.locator('[data-item-action=open]').click(); await waitSource(itemsPage,'ai'); assert.equal(await cards.count(),2);
+  assert.equal(itemState.originalRequests,1);
   await backToGallery(itemsPage);
   await aiCard.locator('[data-item-action=edit]').click();
   itemState.user='different-owner'; await itemsPage.evaluate(()=>window.dispatchEvent(new Event('focus')));
@@ -344,7 +367,9 @@ try {
   await backToGallery(generatePage);
   await generatePage.locator('#show-panorama-gallery').click();
   await generatePage.waitForFunction(()=>document.querySelector('#saved-items img')?.naturalWidth>0);
+  assert.equal(generationState.originalRequests || 0,0);
   await generatePage.locator(savedCards).locator('.item-preview').click(); await waitSource(generatePage,'ai');
+  assert.equal(generationState.originalRequests,1);
   assert.equal(new URL(generatePage.url()).pathname,'/360/');
   assert.equal(generationState.posts.length,1);
   assert.equal(generationState.posts[0].prompt,scene+'\n\n'+latestTemplate);
@@ -400,8 +425,7 @@ try {
   assert.equal(edgeState.posts?.length||0,0);
   edgeState.presetLoadError=false; await edgePage.locator('#refresh-panorama-presets').click();
   await edgePage.waitForFunction(()=>!document.querySelector('#generate-panorama').disabled);
-  const invalidPanorama=await edgePage.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=64;return c.toDataURL('image/png').split(',')[1];});
-  edgeState.generatedAsset=Buffer.from(invalidPanorama,'base64');
+  edgeState.generatedDimensions=[64,64];
   await edgePage.locator('#panorama-scene').fill('模型返回错误比例的场景'); await edgePage.locator('#generate-panorama').click();
   await edgePage.waitForFunction(()=>document.querySelector('#panorama-job-error').textContent.includes('2:1'));
   assert.equal(await edgePage.locator('#viewport canvas').count(),0);

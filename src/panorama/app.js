@@ -1,4 +1,4 @@
-import { DEFAULT_VIEW, MIN_FOV, MAX_FOV, normalizeView, dragView, pinchView, validateFile, validateDimensions, requestedImage, assetPath, SelectionVersion } from './core.js';
+import { DEFAULT_VIEW, MIN_FOV, MAX_FOV, normalizeView, dragView, pinchView, validateFile, validateDimensions, requestedImage, assetPath, assetThumbnailPath, SelectionVersion } from './core.js';
 import { requestJSON } from '../shared/catalog.js';
 import { setupI18n, translate as t } from '../shared/i18n.js';
 import { icon } from '../shared/icons.js';
@@ -37,8 +37,18 @@ const generationViewer = {
 };
 setupGeneration({
   async saveResult(source, signal) {
-    const { image, owner } = await readSource(source, signal);
-    await savedItems.remember(source, image, owner, signal);
+    const response = await fetch(assetThumbnailPath(source.assetId), {
+      credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(30000)])
+    });
+    if (!response.ok) throw new Error('作品无法读取，请确认登录状态和访问权限。');
+    const width = Number(response.headers.get('X-Image-Width'));
+    const height = Number(response.headers.get('X-Image-Height'));
+    await response.blob();
+    validateDimensions(width, height);
+    const session = await requestJSON('/api/image/session', { signal });
+    if (session.user?.id !== source.owner) throw new Error('账号已变化，请重新选择作品。');
+    if (document.hidden) throw new DOMException('Aborted', 'AbortError');
+    await savedItems.remember(source, { width, height, owner: source.owner }, signal);
   },
   showGallery() { $('#items-heading').scrollIntoView({ block: 'start' }); $('#items-heading').focus({ preventScroll: true }); }
 });
@@ -178,7 +188,10 @@ async function load(source) {
     fixedTours.selectionChanged(source);
     viewport.dataset.source = source.kind;
     if (source.kind !== 'campus' && !source.itemId && !source.skipSave) {
-      try { await savedItems.remember(source, image, owner, controller.signal); if (version.isCurrent(ticket)) updateLabels(); }
+      try {
+        await savedItems.remember(source, { width: image.naturalWidth, height: image.naturalHeight, image, owner }, controller.signal);
+        if (version.isCurrent(ticket)) updateLabels();
+      }
       catch (error) {
         if (error.name === 'AbortError') throw error;
         if (version.isCurrent(ticket)) {
@@ -288,10 +301,14 @@ async function fetchLibrary(append = false) {
     for (const item of result.items) {
       if (item.source !== 'image' || !/^[a-f0-9]{32}$/.test(item.id)) continue;
       const button = document.createElement('button'); button.type = 'button'; button.className = 'ai-item';
-      const image = document.createElement('img'); image.src = assetPath(item.id); image.alt = ''; image.loading = 'lazy';
+      const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy'; image.decoding = 'async';
+      image.src = assetThumbnailPath(item.id); image.addEventListener('error', () => image.remove(), { once: true });
       const title = document.createElement('span'); title.textContent = item.title || t('未命名作品'); title.setAttribute('data-strgo-user-content', '');
       button.append(image, title);
-      button.addEventListener('click', () => { const source = { kind: 'ai', url: assetPath(item.id), name: item.title || t('AI 生图作品'), content: '', owner: libraryOwner }; dialog.close(); openPanorama(source); });
+      button.addEventListener('click', () => {
+        const source = { kind: 'ai', assetId: item.id, url: assetPath(item.id), name: item.title || t('AI 生图作品'), content: '', owner: libraryOwner };
+        dialog.close(); openPanorama(source);
+      });
       $('#ai-items').append(button);
     }
     nextCursor = result.next_cursor; $('#ai-more').hidden = !nextCursor;
@@ -344,5 +361,5 @@ setView(DEFAULT_VIEW);
 const imageId = requestedImage(location.search);
 if (imageId) {
   // URLs carry an opaque ID only. No arbitrary remote URLs or signed assets.
-  openPanorama({ kind: 'ai', url: assetPath(imageId), name: t('AI 生图作品') });
+  openPanorama({ kind: 'ai', assetId: imageId, url: assetPath(imageId), name: t('AI 生图作品') });
 }

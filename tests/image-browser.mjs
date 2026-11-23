@@ -6,18 +6,31 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
 const directory = fileURLToPath(new URL('../artifacts/image-playground/', import.meta.url));
+const original = await readFile(resolve(root, 'assets/panoramas/campus.webp'));
+const thumbnail = await readFile(resolve(root, 'assets/panoramas/campus-thumb.webp'));
+const imageId = 'c'.repeat(32), asset = '/api/image/assets/' + imageId;
+const savedJob = {
+  id: 'b'.repeat(32), userId: 'test', prompt: 'Test gallery image', model: 'test-model',
+  size: '2048x1024', quality: '', count: 1, status: 'complete', error: '', created: 1700000000,
+  images: [{ id: imageId, state: 'saved', favorite: false, error: '', url: asset, thumbnailUrl: asset + '/thumbnail', downloadUrl: asset + '?download=1' }],
+};
 const report = { status: 'running', mode: 'browser UI with mocked API; no model or remote storage requests', checks: [] };
 await mkdir(directory, { recursive: true });
 let browser;
 try {
-  browser = await chromium.launch({ executablePath: '/opt/google/chrome/chrome', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  browser = await chromium.launch({ executablePath: process.env.STRGO_CHROME || '/opt/google/chrome/chrome', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   for (const width of [320, 390, 768, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 920 }, reducedMotion: 'reduce' });
     let loggedIn = false, submittedReference = null, submittedJob = null;
+    let originalRequests = 0;
     const presets = [{ id: 'd'.repeat(32), title: '自然美颜', description: '保留真实皮肤纹理', prompt: '保持人物身份与自然光线。', sortOrder: 10, created: 1700000000, updated: 1700000000 }];
     await context.route('https://strgo.test/**', async route => {
       const request = route.request(), path = new URL(request.url()).pathname;
       if (path.startsWith('/api/image/')) {
+        if (path === asset || path === asset + '/thumbnail') {
+          if (path === asset) originalRequests++;
+          return route.fulfill({ contentType: 'image/webp', body: path === asset ? original : thumbnail });
+        }
         let value;
         if (path.endsWith('/login') || path.endsWith('/register')) { loggedIn = true; value = { user: { id: 'test', username: 'creator', role: 'admin' }, csrf: 'test' }; }
         else if (path.endsWith('/session')) value = { user: loggedIn ? { id: 'test', username: 'creator', role: 'admin' } : null, csrf: 'test', storageReady: true, config: { endpoint: 'https://api.example/v1/images/generations', model: 'test-model', hasKey: true }, generationQuota: loggedIn ? { dailyImageLimit: null, used: 0, remaining: null, exempt: true, resetsAt: 1790000000, timezone: 'Asia/Shanghai' } : null };
@@ -40,6 +53,7 @@ try {
           value = { id: 'a'.repeat(32), prompt: body.prompt, model: 'test-model', size: body.size, count: body.count, hasReference: true, status: 'queued', error: '', created: 1700000000, images: [] };
         }
         else if (path.endsWith('/inspirations')) value = { inspirations: [], hasMore: false };
+        else if (path.endsWith('/jobs')) value = { jobs: [savedJob], hasMore: false };
         else value = { jobs: [], hasMore: false };
         return route.fulfill({ status: 200, json: value });
       }
@@ -57,6 +71,7 @@ try {
     await page.locator('[data-auth=register]').click(); await page.locator('#invite').fill('TEST-INVITE');
     await page.locator('#username').fill('creator'); await page.locator('#password').fill('test-private-password');
     await page.locator('#auth-submit').click(); await page.locator('#workspace').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#current-output .image-open img').getAttribute('src'), asset + '/thumbnail');
     assert.deepEqual(await page.locator('[data-size]').evaluateAll(nodes => nodes.map(node => node.dataset.size)), ['3840x2160', '2160x3840', 'custom']);
     assert.equal(await page.locator('#quality').inputValue(), 'xhigh');
     await page.locator('[data-size="custom"]').click();
@@ -70,9 +85,28 @@ try {
     assert.equal(await page.locator('#size-height').isDisabled(), true);
     for (const view of ['create', 'library', 'inspirations', 'settings']) {
       await page.locator(`[data-view=${view}]`).click();
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, width + ' ' + view + ' overflow');
+      const overflow = await page.evaluate(() => {
+        if (document.documentElement.scrollWidth <= innerWidth + 1) return [];
+        return Array.from(document.querySelectorAll('body *'))
+          .filter(element => element.getBoundingClientRect().right > innerWidth + 1)
+          .map(element => element.id || element.getAttribute('class') || element.localName).slice(0, 12);
+      });
+      assert.deepEqual(overflow, [], width + ' ' + view + ' overflow');
       await page.screenshot({ path: directory + `${width}-${view}.png`, fullPage: true });
     }
+    await page.locator('[data-view=library]').click();
+    const card = page.locator('#library-list .image-open');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => document.querySelector('#library-list .image-open img')?.naturalWidth === 320);
+    assert.equal(originalRequests, 0);
+    await card.click();
+    await page.locator('#preview-image').evaluate(image => image.decode());
+    assert.equal(await page.locator('#preview-image').evaluate(image => image.naturalWidth), 1774);
+    assert.equal(originalRequests, 1);
+    assert.equal(await page.locator('#download-image').getAttribute('href'), asset + '?download=1');
+    await page.locator('#close-image').click();
+    await page.waitForFunction(() => !document.querySelector('#preview-image').hasAttribute('src'));
+    report.checks.push({ name: 'results and library load thumbnails, opening loads the original', width, status: 'passed' });
     await page.locator('[data-view=inspirations]').click();
     await page.locator('.edit-preset').waitFor({ state: 'visible' });
     await page.locator('#new-preset').click();
@@ -120,7 +154,8 @@ try {
         return blob.size;
       });
       assert.ok(originalBytes > 2_000_000);
-      await page.waitForFunction(() => document.querySelector('#reference-status').classList.contains('success'));
+      await page.locator('#reference-status:is(.success,.error)').waitFor();
+      assert.equal(await page.locator('#reference-status.success').count(), 1, await page.locator('#reference-status').textContent());
       await page.locator('#reference-thumbnail').evaluate(image => image.decode());
       const compressed = await page.locator('#reference-thumbnail').evaluate(image => ({
         width: image.naturalWidth, height: image.naturalHeight,
@@ -133,7 +168,8 @@ try {
       assert.ok(['image/webp', 'image/jpeg'].includes(compressed.mime));
       await page.locator('#prompt').fill('Retouch the reference while preserving identity and composition.');
       await page.locator('#generate').click();
-      await page.waitForFunction(() => document.querySelector('#generation-message').textContent.includes('任务已创建'));
+      await page.locator('#generation-message:is(.success,.error)').waitFor();
+      assert.equal(await page.locator('#generation-message.success').count(), 1, await page.locator('#generation-message').textContent());
       assert.equal(submittedJob.size, '3840x2160');
       assert.equal(submittedJob.quality, 'xhigh');
       assert.deepEqual(submittedReference, { mime: compressed.mime, data: compressed.data });

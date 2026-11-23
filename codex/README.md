@@ -5,7 +5,7 @@
 | 技能 | 适用任务 |
 | --- | --- |
 | [strgo-development](skills/strgo-development/SKILL.md) | STRGO Web 开发、构建、模块集成和排错 |
-| [strgo-review](skills/strgo-review/SKILL.md) | 整仓或模块审查、风险分级、验证和审查文档 |
+| [strgo-review](skills/strgo-review/SKILL.md) | 整仓或模块审查、用户流程验收、合入前回归和线上核验 |
 
 ## 下次如何使用
 

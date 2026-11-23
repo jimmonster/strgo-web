@@ -1,5 +1,6 @@
 import concurrent.futures
 import base64
+from collections import OrderedDict
 from datetime import datetime, timezone
 import hashlib
 from http import cookies
@@ -20,6 +21,7 @@ from .cloud import ImageProvider
 from .security import Problem, digest, encryption_key, image_type, password_hash, password_matches, validate_endpoint
 from .storage import create_storage
 from .store import Store
+from .thumbnails import MAX_SOURCE_BYTES, make_thumbnail
 from . import forum
 from . import local_studio
 from . import admin
@@ -69,6 +71,8 @@ class Service:
         self.inflight = set()
         self.inflight_lock = threading.Lock()
         self.image_locks = tuple(threading.RLock() for _ in range(64))
+        self.thumbnail_lock = threading.Lock()
+        self.thumbnails = OrderedDict()
         self.backup_due = threading.Event()
         from .ai_service import AIService
         self.ai = AIService(self, start_worker=start_worker)
@@ -405,9 +409,29 @@ class Service:
                 'id': row['id'], 'state': row['state'], 'mime': row['mime'], 'bytes': row['bytes'],
                 'favorite': bool(row['favorite']), 'error': row['error'],
                 'url': f'{API}/assets/{row["id"]}',
+                'thumbnailUrl': f'{API}/assets/{row["id"]}/thumbnail',
                 'downloadUrl': f'{API}/assets/{row["id"]}?download=1',
             })
         return value
+
+    def read_image(self, record):
+        data = self.storage.get(record['object_key']) if record['state'] == 'saved' else self.store.pending_bytes(record['id'])
+        if hashlib.sha256(data).hexdigest() != record['sha256']:
+            raise Problem(502, '图片内容校验失败，请联系管理员检查原文件或恢复备份。')
+        return data
+
+    def image_thumbnail(self, record):
+        if record['bytes'] > MAX_SOURCE_BYTES:
+            raise Problem(422, '图片过大，无法生成预览。')
+        key = record['sha256']
+        # Keep one decoder active on the ECS and bound the disposable cache.
+        with self.thumbnail_lock:
+            if key not in self.thumbnails:
+                self.thumbnails[key] = make_thumbnail(self.read_image(record))
+                if len(self.thumbnails) > 128:
+                    self.thumbnails.popitem(last=False)
+            self.thumbnails.move_to_end(key)
+            return self.thumbnails[key]
 
     def dispatch(self, method, target, payload=None, headers=None, ip='local'):
         headers = {key.lower(): value for key, value in (headers or {}).items()}
@@ -734,6 +758,16 @@ class Service:
                 if not row:
                     raise Problem(404, '任务不存在。')
                 return 200, self.job_public(row, db), {}
+        match = re.fullmatch(API + r'/assets/([a-f0-9]{32})/thumbnail', path)
+        if match and method == 'GET':
+            owner_filter = '' if user['role'] == 'admin' else ' AND user_id=?'
+            with self.store.connect() as db:
+                record = db.execute("SELECT * FROM images WHERE id=? AND state NOT IN ('deleting','deleted')" + owner_filter,
+                                    (match[1],) if user['role'] == 'admin' else (match[1], user['id'])).fetchone()
+            if not record:
+                raise Problem(404, '图片不存在。')
+            data, width, height = self.image_thumbnail(record)
+            return 200, data, {'Content-Type': 'image/webp', 'X-Image-Width': str(width), 'X-Image-Height': str(height)}
         match = re.fullmatch(API + r'/(?:assets|images)/([a-f0-9]{32})(/retry|/favorite)?', path)
         if match:
             with self.store.connect() as db:
@@ -761,9 +795,7 @@ class Service:
                 self.dirty()
                 return 200, {'favorite': payload['favorite']}, {}
             if not match[2] and method == 'GET' and path.startswith(API + '/assets/'):
-                data = self.storage.get(record['object_key']) if record['state'] == 'saved' else self.store.pending_bytes(record['id'])
-                if hashlib.sha256(data).hexdigest() != record['sha256']:
-                    raise Problem(502, '图片内容校验失败，请联系管理员检查原文件或恢复备份。')
+                data = self.read_image(record)
                 disposition = ('attachment' if query.get('download') == ['1'] else 'inline') + f'; filename="strgo-{record["id"]}.{record["extension"]}"'
                 return 200, data, {'Content-Type': record['mime'], 'Content-Disposition': disposition}
         if path == API + '/invites' and method == 'POST':
