@@ -65,7 +65,7 @@ export async function checkFixedPanoramas({ browser, origin, directory }) {
   });
   try {
     await page.goto(origin + '/360/');
-    await page.waitForFunction(() => document.querySelector('#viewport').dataset.ready === 'true');
+    await page.locator('#gallery').waitFor();
     await page.locator('#open-fixed-generation').click();
     await page.waitForFunction(() => !document.querySelector('#generate-fixed-panorama').disabled);
     await page.locator('#fixed-reference').setInputFiles({ name: 'reference.webp', mimeType: 'image/webp', buffer: panorama });
@@ -80,7 +80,7 @@ export async function checkFixedPanoramas({ browser, origin, directory }) {
     assert.equal(posts[0].requestId, posts[1].requestId);
     assert.equal(posts[0].scene, ''); assert.ok(posts[0].referenceImage.data); assert.equal(posts[0].cameraCount, 3);
     assert.equal(await page.locator('[data-fixed-camera]').count(), 3);
-    assert.equal(await page.locator('.saved-item').count(), 0);
+    assert.equal(await page.locator('#saved-items .saved-item').count(), 0);
     const capture = async (index, name) => {
       await page.locator(`[data-fixed-camera="${index}"]`).click();
       await page.waitForFunction(index => document.querySelector('#source-name').textContent.endsWith('机位 ' + (index + 1)) && document.querySelector('#viewport').getAttribute('aria-busy') === 'false', index);
@@ -109,6 +109,7 @@ export async function checkFixedPanoramas({ browser, origin, directory }) {
     await page.waitForSelector('#fixed-open-project:visible');
     await page.locator('#fixed-open-project').click(); await page.waitForSelector('#fixed-camera-bar:visible', { timeout: 90000 });
     assert.equal(starts, 1); assert.equal(posts.length, 2);
+    await page.locator('#back-to-gallery').click();
     await page.locator('#fixed-reference').setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
     await page.waitForFunction(() => document.querySelector('#fixed-error').textContent.length > 0);
     assert.equal(await page.locator('#generate-fixed-panorama').isDisabled(), true);
@@ -119,6 +120,7 @@ export async function checkFixedPanoramas({ browser, origin, directory }) {
     await page.waitForFunction(() => document.querySelectorAll('[data-fixed-camera]').length === 5 && !document.querySelector('#fixed-camera-bar').hidden, null, { timeout: 90000 });
     assert.equal(starts, 2); assert.equal(posts.length, 3); assert.equal(posts[2].cameraCount, 5); assert.equal(posts[2].referenceImage, undefined);
     assert.equal(await page.locator('#source-name script').count(), 0);
+    await page.locator('#back-to-gallery').click();
     enabled = false; await page.locator('#fixed-connect').click();
     await page.waitForFunction(() => document.querySelector('#generate-fixed-panorama').disabled);
     assert.equal(await page.locator('[data-fixed-camera]').count(), 5);
@@ -131,7 +133,8 @@ export async function checkFixedPanoramas({ browser, origin, directory }) {
     await page.waitForFunction(() => document.querySelector('#fixed-projects').children.length === 0);
     await heldAsset.fulfill({ contentType: 'application/octet-stream', body: fixture }).catch(() => {});
     assert.equal(await page.locator('#fixed-camera-bar').isVisible(), false);
-    assert.equal(await page.locator('#viewport').getAttribute('data-source'), 'campus');
+    assert.ok(await page.locator('#gallery').isVisible());
+    assert.equal(await page.locator('#viewport canvas').isVisible(), false);
     assert.equal(await page.locator('#fixed-reference-preview').isVisible(), false);
     assert.deepEqual(errors, []);
     return ['fixed viewpoints render actual distinct panoramas from one shared 3D scene; returning to a camera reuses identical pixels',

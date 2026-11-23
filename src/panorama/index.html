@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#070b10">
-  <meta name="description" content="在 STRGO 探索 360° 校园全景，或导入本地与 AI 生图作品。">
+  <meta name="description" content="生成、管理和浏览你的 360° 全景图。">
   <title>360° 全景 · STRGO</title>
   <link rel="canonical" href="{{origin}}/360/">
   <link rel="stylesheet" href="/hub/tokens.css?v={{asset_version}}">
@@ -12,94 +12,122 @@
   <link rel="stylesheet" href="/360/style.css?v={{asset_version}}">
 </head>
 <body>
-  <a class="skip" href="#viewport">跳到全景画面</a>
+  <a class="skip" href="#main">跳到内容</a>
   <header class="topbar">
     <a class="brand" href="/hub/" aria-label="返回统一主页">STRGO<span> / 360</span></a>
     <strgo-navigation></strgo-navigation>
   </header>
-  <main id="main">
-    <div class="intro"><div><p class="eyebrow">A DIFFERENT POINT OF VIEW</p><h1>转身，发现另一面。</h1></div><p>从校园的阳光出发，走进你的全景世界。</p></div>
-    <section class="viewer" id="viewer" aria-label="360° 全景浏览器">
-      <div class="viewport" id="viewport" tabindex="0" role="region" aria-label="全景画面" aria-describedby="gesture-hint keyboard-hint" aria-busy="true">
-        <img class="fallback" id="fallback" src="/assets/panoramas/campus.webp" alt="阳光下的大学校园广场全景" draggable="false">
-        <div class="scene-label"><span class="tag">360° / PANORAMA</span><span id="source-kind">校园全景</span></div>
-        <p class="gesture-hint" id="gesture-hint">拖动画面环顾四周 · 滚轮或双指缩放</p>
-        <span class="crosshair" aria-hidden="true"></span>
-      </div>
-      <div class="viewer-toolbar" role="group" aria-label="全景操作">
-        <div class="view-controls">
-          <button type="button" id="zoom-in" data-view-control aria-label="放大" title="放大" disabled>＋</button>
-          <output id="view-readout" aria-label="视野角度">75°</output>
-          <button type="button" id="zoom-out" data-view-control aria-label="缩小" title="缩小" disabled>−</button>
-          <button type="button" id="reset" data-view-control disabled><span aria-hidden="true">↺</span> <span>重置视角</span></button>
+  <main id="main" tabindex="-1">
+    <section id="gallery" aria-labelledby="gallery-heading">
+      <div class="gallery-intro">
+        <div>
+          <h1 id="gallery-heading">360° 全景图库</h1>
+          <p>点击预览进入全景。生成或导入的图片会加入你的图库。</p>
         </div>
-        <button type="button" id="fullscreen" aria-pressed="false"><span data-fullscreen-label>全屏浏览</span> <span id="fullscreen-icon" aria-hidden="true"></span></button>
+        <button type="button" id="open-generation" class="primary generate-cta" aria-expanded="false" aria-controls="generation-panel">生成 360° 全景图</button>
       </div>
-      <nav id="fixed-camera-bar" class="fixed-camera-bar" aria-label="固定机位" hidden><div id="fixed-camera-buttons"></div><button type="button" id="download-fixed-panorama">下载当前机位全景</button></nav>
-    </section>
-    <div class="scene-meta"><div><h2 id="source-name" data-strgo-user-content>阳光下的大学校园广场</h2><p id="source-info">1774 × 887 · 2:1</p><p id="source-content" data-strgo-user-content hidden></p></div><span class="tag">EXPLORE / 001</span></div>
-    <div class="feedback-row"><p class="feedback" id="feedback" role="status" aria-live="polite">正在载入全景…</p><button type="button" id="retry" hidden>重试加载</button></div>
-    <button type="button" id="save-current" hidden>重试保存</button>
-    <section class="import-panel" aria-labelledby="import-heading">
-      <div><p class="eyebrow">YOUR NEXT HORIZON</p><h2 id="import-heading">把你的世界，带到这里。</h2><p>导入 2:1 等距柱状投影图片。普通照片不会自动变成全景。</p><p class="fine">JPG / PNG / WebP · 最大 40 MB · 导入后自动保存为新条目</p></div>
-      <div class="import-actions"><button type="button" id="open-fixed-generation" class="primary" aria-expanded="false" aria-controls="fixed-generation-panel">生成固定机位全景</button><button type="button" id="open-generation" aria-expanded="false" aria-controls="generation-panel">文生图</button><label class="file-button" for="panorama-file">导入本地图片<input type="file" id="panorama-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"></label><button type="button" id="open-ai">导入已有 AI 作品</button><button type="button" id="campus">返回校园全景</button></div>
-    </section>
-    <section id="fixed-generation-panel" class="generation-panel" aria-labelledby="fixed-generation-heading" hidden>
-      <div class="items-heading"><h2 id="fixed-generation-heading">一个空间，多个机位</h2><button type="button" id="close-fixed-generation">收起</button></div>
-      <p class="fine">输入文字或上传示例图，生成同一个空间的固定机位全景，点击机位即可切换。</p>
-      <p id="fixed-status" class="feedback" role="status" aria-live="polite"></p>
-      <div class="generation-links"><a id="fixed-login" href="/ai/login/?next=%2F360%2F" hidden>登录后生成全景 ↗</a><button type="button" id="fixed-connect">刷新连接</button></div>
-      <div id="fixed-workspace" hidden>
-        <form id="fixed-generation-form">
-          <label class="item-field" for="fixed-scene"><span>描述空间（有示例图时可留空）</span><textarea id="fixed-scene" rows="3" maxlength="4000" data-strgo-user-content></textarea></label>
-          <div class="generation-actions"><label class="file-button" for="fixed-reference">上传示例图<input id="fixed-reference" type="file" accept="image/*"></label><button type="button" id="fixed-use-current">以当前全景为示例</button><button type="button" id="fixed-remove-reference" hidden>移除示例图</button></div>
-          <div id="fixed-reference-preview" class="fixed-reference-preview" hidden><img id="fixed-reference-image" alt="示例图预览"><p id="fixed-reference-info" class="fine" data-strgo-user-content></p></div>
-          <label class="item-field" for="fixed-camera-count"><span>固定机位数量</span><select id="fixed-camera-count"><option value="3">3</option><option value="5">5</option></select></label>
-          <p class="fine">所有机位来自同一次空间生成，保持共同的结构和遮挡关系。空间模型单独计费；不会逐机位调用生图。</p>
-          <div class="generation-actions"><button type="submit" id="generate-fixed-panorama" class="primary" disabled>生成固定机位全景</button><span id="fixed-quota" class="fine"></span></div>
-        </form>
-        <p id="fixed-error" class="feedback error" role="alert" hidden data-strgo-user-content></p>
-        <div class="generation-actions"><button type="button" id="fixed-refresh-job" hidden>刷新生成状态</button><button type="button" id="fixed-open-project" hidden>打开固定机位</button></div>
-        <h3 id="fixed-projects-heading">我的固定机位项目</h3><div id="fixed-projects" class="fixed-projects"></div>
+      <div class="gallery-actions">
+        <label class="file-button" for="panorama-file">导入本地图片<input type="file" id="panorama-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"></label>
+        <button type="button" id="open-ai">导入已有 AI 作品</button>
+        <button type="button" id="open-fixed-generation" aria-expanded="false" aria-controls="fixed-generation-panel">生成固定机位全景</button>
       </div>
+      <section id="fixed-generation-panel" class="generation-panel" aria-labelledby="fixed-generation-heading" hidden>
+        <div class="items-heading"><h2 id="fixed-generation-heading">一个空间，多个机位</h2><button type="button" id="close-fixed-generation">收起</button></div>
+        <p class="fine">输入文字或上传示例图，生成同一个空间的固定机位全景，点击机位即可切换。</p>
+        <p id="fixed-status" class="feedback" role="status" aria-live="polite"></p>
+        <div class="generation-links"><a id="fixed-login" href="/ai/login/?next=%2F360%2F" hidden>登录后生成全景 ↗</a><button type="button" id="fixed-connect">刷新连接</button></div>
+        <div id="fixed-workspace" hidden>
+          <form id="fixed-generation-form">
+            <label class="item-field" for="fixed-scene"><span>描述空间（有示例图时可留空）</span><textarea id="fixed-scene" rows="3" maxlength="4000" data-strgo-user-content></textarea></label>
+            <div class="generation-actions"><label class="file-button" for="fixed-reference">上传示例图<input id="fixed-reference" type="file" accept="image/*"></label><button type="button" id="fixed-use-current">以当前全景为示例</button><button type="button" id="fixed-remove-reference" hidden>移除示例图</button></div>
+            <div id="fixed-reference-preview" class="fixed-reference-preview" hidden><img id="fixed-reference-image" alt="示例图预览"><p id="fixed-reference-info" class="fine" data-strgo-user-content></p></div>
+            <label class="item-field" for="fixed-camera-count"><span>固定机位数量</span><select id="fixed-camera-count"><option value="3">3</option><option value="5">5</option></select></label>
+            <p class="fine">所有机位来自同一次空间生成，保持共同的结构和遮挡关系。空间模型单独计费；不会逐机位调用生图。</p>
+            <div class="generation-actions"><button type="submit" id="generate-fixed-panorama" class="primary" disabled>生成固定机位全景</button><span id="fixed-quota" class="fine"></span></div>
+          </form>
+          <p id="fixed-error" class="feedback error" role="alert" hidden data-strgo-user-content></p>
+          <div class="generation-actions"><button type="button" id="fixed-refresh-job" hidden>刷新生成状态</button><button type="button" id="fixed-open-project" hidden>打开固定机位</button></div>
+          <h3 id="fixed-projects-heading">我的固定机位项目</h3><div id="fixed-projects" class="fixed-projects"></div>
+        </div>
+      </section>
+      <section id="generation-panel" class="generation-panel" aria-labelledby="generation-heading" hidden>
+        <div class="items-heading"><h2 id="generation-heading">生成 360° 全景图</h2><button type="button" id="close-generation">收起</button></div>
+        <p class="fine">描述你想探索的场景，生成成功后自动加入全景预览。</p>
+        <div class="generation-links"><a id="generation-login" href="/ai/login/?next=%2F360%2F" hidden>登录后生成全景 ↗</a><a id="generation-settings" href="/image-playground/#settings" hidden>配置生图接口 ↗</a><button type="button" id="generation-connect">刷新连接</button></div>
+        <p id="generation-status" class="feedback" role="status" aria-live="polite"></p>
+        <div id="generation-workspace" hidden>
+          <form id="panorama-generation-form">
+            <label class="item-field" for="panorama-scene"><span>描述你的全景世界</span><textarea id="panorama-scene" rows="4" maxlength="4000" placeholder="例如：阳光下的校园广场，四周是教学楼、树木和喷泉。" required data-strgo-user-content></textarea></label>
+            <p class="fine">每次生成 1 张 2048 × 1024 图片，使用当前账号的模型和生图额度。</p>
+            <div class="generation-actions"><button type="submit" id="generate-panorama" class="primary" disabled>生成并保存</button><span id="panorama-quota" class="fine"></span></div>
+          </form>
+          <div class="generation-actions"><button type="button" id="refresh-panorama-job" hidden>刷新生成状态</button><button type="button" id="show-panorama-gallery" hidden>查看预览列表</button></div>
+          <p id="panorama-job-error" class="feedback error" data-strgo-user-content hidden></p>
+          <div class="template-heading"><h3>全景提示词模板</h3><div class="item-actions"><button type="button" id="refresh-panorama-presets">刷新模板</button><button type="button" id="new-panorama-preset" hidden>新增模板</button></div></div>
+          <p class="fine">选择的模板会自动附加到你的场景描述，管理员可修改全站模板。</p>
+          <p id="panorama-preset-status" class="feedback" role="status"></p><div id="panorama-presets" class="panorama-presets"></div>
+          <form id="panorama-preset-form" class="preset-editor" hidden>
+            <h3 id="panorama-preset-editor-heading">编辑全景模板</h3>
+            <label class="item-field" for="panorama-preset-title"><span>模板名称</span><input id="panorama-preset-title" maxlength="80" required data-strgo-user-content></label>
+            <label class="item-field" for="panorama-preset-description"><span>模板简介</span><input id="panorama-preset-description" maxlength="200" data-strgo-user-content></label>
+            <label class="item-field" for="panorama-preset-prompt"><span>全景提示词</span><textarea id="panorama-preset-prompt" rows="5" maxlength="8000" required data-strgo-user-content></textarea></label>
+            <p id="panorama-preset-error" class="feedback error" role="alert"></p>
+            <div class="dialog-actions"><button type="button" id="cancel-panorama-preset">取消</button><button type="submit" id="save-panorama-preset" class="primary">保存模板</button></div>
+          </form>
+        </div>
+      </section>
+      <section class="items-panel" aria-labelledby="items-heading">
+        <div class="items-heading">
+          <h2 id="items-heading" tabindex="-1">全景预览</h2>
+          <div class="gallery-search">
+            <input type="search" id="items-search" maxlength="160" aria-label="搜索全景" placeholder="搜索标题或描述">
+            <button type="button" id="refresh-items">刷新列表</button>
+          </div>
+        </div>
+        <p id="items-feedback" class="feedback" role="status" aria-live="polite"></p>
+        <p id="items-empty" class="fine">生成或导入一张 2:1 全景图，即可创建自己的条目。</p>
+        <div class="saved-grid">
+          <div id="saved-items"></div>
+          <article class="saved-item" id="campus-card">
+            <button type="button" id="campus" class="item-preview" aria-label="打开校园全景">
+              <img src="/assets/panoramas/campus.webp" alt="">
+            </button>
+            <div class="item-body">
+              <h3>阳光下的大学校园广场</h3>
+              <p class="fine"><span>校园全景</span> · 1774 × 887</p>
+            </div>
+          </article>
+        </div>
+        <p class="fine gallery-storage">条目保存在当前浏览器，刷新后仍可打开。清除网站数据会移除条目，暂不跨设备同步。</p>
+      </section>
     </section>
-    <section id="generation-panel" class="generation-panel" aria-labelledby="generation-heading" hidden>
-      <div class="items-heading"><h2 id="generation-heading">文字变成全景</h2><button type="button" id="close-generation">收起</button></div>
-      <p class="fine">描述你想探索的场景，生成完成后会直接在上方 360° 画面展示。</p>
-      <div class="generation-links"><a id="generation-login" href="/ai/login/?next=%2F360%2F" hidden>登录后生成全景 ↗</a><a id="generation-settings" href="/image-playground/#settings" hidden>配置生图接口 ↗</a><button type="button" id="generation-connect">刷新连接</button></div>
-      <p id="generation-status" class="feedback" role="status" aria-live="polite"></p>
-      <div id="generation-workspace" hidden>
-        <form id="panorama-generation-form">
-          <label class="item-field" for="panorama-scene"><span>描述你的全景世界</span><textarea id="panorama-scene" rows="4" maxlength="4000" placeholder="例如：阳光下的校园广场，四周是教学楼、树木和喷泉。" required data-strgo-user-content></textarea></label>
-          <p class="fine">每次生成 1 张 2048 × 1024 图片，使用当前账号的模型和生图额度。</p>
-          <div class="generation-actions"><button type="submit" id="generate-panorama" class="primary" disabled>生成并展示</button><span id="panorama-quota" class="fine"></span></div>
-        </form>
-        <div class="generation-actions"><button type="button" id="refresh-panorama-job" hidden>刷新生成状态</button><button type="button" id="show-generated-panorama" hidden>在 360° 中打开</button></div>
-        <p id="panorama-job-error" class="feedback error" data-strgo-user-content hidden></p>
-        <div class="template-heading"><h3>全景提示词模板</h3><div class="item-actions"><button type="button" id="refresh-panorama-presets">刷新模板</button><button type="button" id="new-panorama-preset" hidden>新增模板</button></div></div>
-        <p class="fine">选择的模板会自动附加到你的场景描述，管理员可修改全站模板。</p>
-        <p id="panorama-preset-status" class="feedback" role="status"></p><div id="panorama-presets" class="panorama-presets"></div>
-        <form id="panorama-preset-form" class="preset-editor" hidden>
-          <h3 id="panorama-preset-editor-heading">编辑全景模板</h3>
-          <label class="item-field" for="panorama-preset-title"><span>模板名称</span><input id="panorama-preset-title" maxlength="80" required data-strgo-user-content></label>
-          <label class="item-field" for="panorama-preset-description"><span>模板简介</span><input id="panorama-preset-description" maxlength="200" data-strgo-user-content></label>
-          <label class="item-field" for="panorama-preset-prompt"><span>全景提示词</span><textarea id="panorama-preset-prompt" rows="5" maxlength="8000" required data-strgo-user-content></textarea></label>
-          <p id="panorama-preset-error" class="feedback error" role="alert"></p>
-          <div class="dialog-actions"><button type="button" id="cancel-panorama-preset">取消</button><button type="submit" id="save-panorama-preset" class="primary">保存模板</button></div>
-        </form>
-      </div>
+    <section id="viewer-page" aria-label="360° 全景浏览器" hidden>
+      <div class="viewer-header"><button type="button" id="back-to-gallery">返回全景预览</button></div>
+      <section class="viewer" id="viewer" aria-label="360° 全景浏览器">
+        <div class="viewport" id="viewport" tabindex="0" role="region" aria-label="全景画面" aria-describedby="gesture-hint keyboard-hint" aria-busy="true">
+          <img class="fallback" id="fallback" src="/assets/panoramas/campus.webp" alt="阳光下的大学校园广场全景" draggable="false">
+          <div class="scene-label"><span class="tag">360° / PANORAMA</span><span id="source-kind">校园全景</span></div>
+          <p class="gesture-hint" id="gesture-hint">拖动画面环顾四周 · 滚轮或双指缩放</p>
+          <span class="crosshair" aria-hidden="true"></span>
+        </div>
+        <div class="viewer-toolbar" role="group" aria-label="全景操作">
+          <div class="view-controls">
+            <button type="button" id="zoom-in" data-view-control aria-label="放大" title="放大" disabled>＋</button>
+            <output id="view-readout" aria-label="视野角度">75°</output>
+            <button type="button" id="zoom-out" data-view-control aria-label="缩小" title="缩小" disabled>−</button>
+            <button type="button" id="reset" data-view-control disabled><span aria-hidden="true">↺</span> <span>重置视角</span></button>
+          </div>
+          <button type="button" id="fullscreen" aria-pressed="false"><span data-fullscreen-label>全屏浏览</span> <span id="fullscreen-icon" aria-hidden="true"></span></button>
+        </div>
+        <nav id="fixed-camera-bar" class="fixed-camera-bar" aria-label="固定机位" hidden><div id="fixed-camera-buttons"></div><button type="button" id="download-fixed-panorama">下载当前机位全景</button></nav>
+      </section>
+      <div class="scene-meta"><div><h2 id="source-name" data-strgo-user-content>阳光下的大学校园广场</h2><p id="source-info">1774 × 887 · 2:1</p><p id="source-content" data-strgo-user-content hidden></p></div></div>
+      <div class="feedback-row"><p class="feedback" id="feedback" role="status" aria-live="polite">正在载入全景…</p><button type="button" id="retry" hidden>重试加载</button></div>
+      <button type="button" id="save-current" hidden>重试保存</button>
+      <p id="keyboard-hint" class="fine keyboard-hint">键盘：方向键旋转，＋ / − 缩放，R 重置，F 全屏，Esc 退出全屏。</p>
     </section>
-    <section class="items-panel" aria-labelledby="items-heading">
-      <div class="items-heading"><h2 id="items-heading" tabindex="-1">我的全景条目</h2><button type="button" id="refresh-items">刷新列表</button></div>
-      <p class="fine">条目保存在当前浏览器，刷新后仍可打开。清除网站数据会移除条目，暂不跨设备同步。</p>
-      <p class="fine">AI 条目仅当前账号可见，打开时检查原作品权限；删除条目不会删除 AI 原作品。</p>
-      <p id="items-feedback" class="feedback" role="status" aria-live="polite"></p>
-      <p id="items-empty" class="fine">还没有全景条目，导入图片即可创建。</p>
-      <div id="saved-items" class="saved-grid"></div>
-    </section>
-    <p id="keyboard-hint" class="fine keyboard-hint">键盘：方向键旋转，＋ / − 缩放，R 重置，F 全屏，Esc 退出全屏。</p>
   </main>
-  <footer><span>STRGO / SPACES</span><a href="/hub/#spaces">探索更多空间 ↗</a></footer>
+  <footer><a href="/hub/#spaces">探索更多空间 ↗</a></footer>
   <dialog id="ai-dialog" aria-labelledby="ai-heading">
     <div class="dialog-head"><h2 id="ai-heading">选择 AI 生图作品</h2><button type="button" id="close-ai" aria-label="关闭作品选择">×</button></div>
     <p>选择已有的 2:1 全景作品，或直接在本页输入文字生成。</p>
@@ -119,11 +147,11 @@
   <dialog id="delete-dialog" aria-labelledby="delete-heading">
     <h2 id="delete-heading">删除条目</h2>
     <p id="delete-name" data-strgo-user-content></p>
-    <p>确定删除此条目及其本地图片？此操作无法撤销。</p>
+    <p>确定从图库删除此条目？如果它来自 AI 生图，原作品仍会保留。</p>
     <p id="delete-error" class="feedback error" role="alert"></p>
     <div class="dialog-actions"><button type="button" id="cancel-delete">取消</button><button type="button" id="confirm-delete" class="danger">确认删除</button></div>
   </dialog>
-  <noscript><p>请启用 JavaScript 以旋转全景。你仍可查看上方校园图片。</p></noscript>
+  <noscript><p>请启用 JavaScript 以打开和管理全景。</p></noscript>
   <script type="module" src="/360/app.js?v={{asset_version}}"></script>
 </body>
 </html>

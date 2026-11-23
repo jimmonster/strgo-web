@@ -59,16 +59,30 @@ export class PanoramaStore {
       tx.objectStore('files').get(id).onsuccess = event => result(event.target.result?.file);
     });
   }
-  create({ kind, name, content, owner, assetId, file, thumbnail, width, height }, signal) {
+  create({ kind, name, content, owner, assetId, generated, file, thumbnail, width, height }, signal) {
     const text = itemText(name, content);
     validateDimensions(width, height);
     if (kind === 'local') validateFile(file);
     else if (kind === 'ai' && owner) assetPath(assetId);
     else throw new Error('图片无法读取，请换一张图片。');
-    const item = { id: crypto.randomUUID(), kind, ...text, width, height, createdAt: Date.now(), updatedAt: Date.now(),
+    const generatedId = kind === 'ai' && generated ? 'generated-' + assetId : null;
+    const item = { id: generatedId || crypto.randomUUID(), kind, ...text, width, height, createdAt: Date.now(), updatedAt: Date.now(),
       ...(kind === 'ai' ? { owner, assetId } : { thumbnail }) };
-    return this.transaction(['items', 'files'], 'readwrite', (tx, result) => {
-      tx.objectStore('items').add(item);
+    return this.transaction(['items', 'files'], 'readwrite', (tx, result, fail) => {
+      const items = tx.objectStore('items');
+      if (generatedId) {
+        // A completed job can be recovered more than once. Keep the existing
+        // record (including edits) when a tab retries the same generated asset.
+        items.get(generatedId).onsuccess = event => {
+          const existing = event.target.result;
+          if (existing) {
+            if (existing.owner !== owner) { fail(new Error('条目不存在，请刷新列表。')); return; }
+            result(existing);
+          } else { items.add(item); result(item); }
+        };
+        return;
+      }
+      items.add(item);
       if (kind === 'local') tx.objectStore('files').add({ id: item.id, file });
       result(item);
     }, signal);

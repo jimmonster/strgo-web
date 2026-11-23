@@ -9,30 +9,39 @@ import { setupFixedTours } from './fixed.js';
 setupI18n();
 const $ = selector => document.querySelector(selector);
 const viewport = $('#viewport'), viewer = $('#viewer'), dialog = $('#ai-dialog');
+const gallery = $('#gallery'), viewerPage = $('#viewer-page');
 $('#fullscreen-icon').innerHTML = icon('fullscreen');
 const campus = { url: '/assets/panoramas/campus.webp', name: '阳光下的大学校园广场', kind: 'campus' };
 const version = new SelectionVersion();
 let view = { ...DEFAULT_VIEW }, engine, initializing, current, loadController, ready = false, disposed = false;
-let feedback = '正在载入全景…', feedbackError = false, retrySource = campus, immersive = false;
+let feedback = '正在载入全景…', feedbackError = false, retrySource = campus, immersive = false, previousFocus;
 let libraryController, librarySerial = 0, libraryOwner, nextCursor = null, libraryBusy = false, privateOwner;
 const pointers = new Map();
 const savedItems = setupItems({
-  open: source => load(source),
+  open: openPanorama,
   updated: item => {
     if (current?.itemId === item.id) { current.name = item.name; current.content = item.content; updateLabels(); }
   },
-  removed: item => { if (current?.itemId === item.id || retrySource?.itemId === item.id) load(campus); }
+  removed: item => {
+    if (current?.itemId === item.id || retrySource?.itemId === item.id) {
+      current = null; retrySource = campus; privateOwner = null; engine?.clear(); setReady(false);
+    }
+  }
 });
 const generationViewer = {
   captureSelection: () => version.value,
   showResult: async (source, selection) => {
     if (selection !== undefined && selection !== version.value) return false;
-    const shown = await load(source);
-    if (shown) { viewport.scrollIntoView({ block: 'center' }); viewport.focus({ preventScroll: true }); }
-    return shown;
+    return openPanorama(source);
   }
 };
-setupGeneration(generationViewer);
+setupGeneration({
+  async saveResult(source, signal) {
+    const { image, owner } = await readSource(source, signal);
+    await savedItems.remember(source, image, owner, signal);
+  },
+  showGallery() { $('#items-heading').scrollIntoView({ block: 'start' }); $('#items-heading').focus({ preventScroll: true }); }
+});
 const fixedTours = setupFixedTours({ ...generationViewer, readCurrent: async () => {
   if (!current || !ready) throw new Error('请先打开一张全景。');
   const source = current, ticket = version.value;
@@ -47,6 +56,23 @@ const fixedTours = setupFixedTours({ ...generationViewer, readCurrent: async () 
   await verify();
   return { blob, name: source.name };
 } });
+
+async function openPanorama(source) {
+  if (viewerPage.hidden) {
+    previousFocus = document.activeElement;
+    gallery.hidden = true; viewerPage.hidden = false;
+    viewerPage.scrollIntoView({ block: 'start' });
+    viewport.focus({ preventScroll: true });
+  }
+  return load(source);
+}
+function closeViewer() {
+  version.next(); loadController?.abort(); retrySource = current || campus;
+  viewerPage.hidden = true; gallery.hidden = false;
+  if (previousFocus && gallery.contains(previousFocus) && previousFocus.isConnected) previousFocus.focus();
+  else $('#items-heading').focus();
+}
+$('#back-to-gallery').addEventListener('click', closeViewer);
 
 function status(text, error = false) {
   feedback = text; feedbackError = error;
@@ -102,6 +128,39 @@ function decodeImage(blob, signal) {
     if (signal.aborted) abort(); else image.src = url;
   });
 }
+async function readSource(source, signal) {
+  if (source.readFile) {
+    const file = await source.readFile();
+    if (!file) throw new Error('条目不存在，请刷新列表。');
+    source.file = file;
+  }
+  signal.throwIfAborted();
+  let owner;
+  if (source.kind === 'ai') {
+    const session = await requestJSON('/api/image/session', { signal });
+    if (!session.user) throw new Error('请先登录，再导入 AI 生图作品。');
+    owner = session.user.id;
+    if (source.owner && source.owner !== owner) throw new Error('账号已变化，请重新选择作品。');
+    if (document.hidden) throw new DOMException('Aborted', 'AbortError');
+  }
+  let blob = source.file;
+  if (!blob) {
+    const response = await fetch(source.url, { credentials: 'same-origin', cache: source.kind === 'ai' ? 'no-store' : 'default', signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]) });
+    if (!response.ok) throw new Error(source.kind === 'ai' ? '作品无法读取，请确认登录状态和访问权限。' : '校园全景加载失败，请重试。');
+    if (Number(response.headers.get('content-length')) > 40 * 1024 * 1024) throw new Error('图片需小于 40 MB。');
+    blob = await response.blob();
+  }
+  validateFile(blob);
+  const image = await decodeImage(blob, signal);
+  validateDimensions(image.naturalWidth, image.naturalHeight);
+  if (owner) {
+    const session = await requestJSON('/api/image/session', { signal });
+    if (session.user?.id !== owner) throw new Error('账号已变化，请重新选择作品。');
+    if (document.hidden) throw new DOMException('Aborted', 'AbortError');
+  }
+  signal.throwIfAborted();
+  return { image, owner };
+}
 async function load(source) {
   const ticket = version.next(); loadController?.abort();
   const controller = new AbortController(); loadController = controller;
@@ -110,36 +169,8 @@ async function load(source) {
   viewport.setAttribute('aria-busy', 'true'); $('#retry').hidden = true; status('正在载入全景…');
   try {
     const renderer = await initialize();
-    let blob, owner;
-    if (source.readFile) {
-      const file = await source.readFile();
-      if (!file) throw new Error('条目不存在，请刷新列表。');
-      source.file = file;
-    }
-    controller.signal.throwIfAborted();
-    if (source.kind === 'ai') {
-      const session = await requestJSON('/api/image/session', { signal: controller.signal });
-      if (!session.user) throw new Error('请先登录，再导入 AI 生图作品。');
-      owner = session.user.id;
-      if (source.owner && source.owner !== owner) throw new Error('账号已变化，请重新选择作品。');
-      if (document.hidden) throw new DOMException('Aborted', 'AbortError');
-    }
-    if (source.file) { validateFile(source.file); blob = source.file; }
-    else {
-      const response = await fetch(source.url, { credentials: 'same-origin', cache: source.kind === 'ai' ? 'no-store' : 'default', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]) });
-      if (!response.ok) throw new Error(source.kind === 'ai' ? '作品无法读取，请确认登录状态和访问权限。' : '校园全景加载失败，请重试。');
-      if (Number(response.headers.get('content-length')) > 40 * 1024 * 1024) throw new Error('图片需小于 40 MB。');
-      blob = await response.blob(); validateFile(blob);
-    }
-    const image = await decodeImage(blob, controller.signal);
-    validateDimensions(image.naturalWidth, image.naturalHeight);
+    const { image, owner } = await readSource(source, controller.signal);
     if (!version.isCurrent(ticket) || disposed) return;
-    if (source.kind === 'ai') {
-      // A session may have changed while a large image was decoding.
-      const session = await requestJSON('/api/image/session', { signal: controller.signal });
-      if (session.user?.id !== owner) throw new Error('账号已变化，请重新选择作品。');
-      if (!version.isCurrent(ticket) || document.hidden) return;
-    }
     renderer.setImage(image); current = source; privateOwner = owner;
     $('#fallback').hidden = true;
     $('#source-info').textContent = `${image.naturalWidth} × ${image.naturalHeight} · 2:1`;
@@ -169,10 +200,10 @@ async function load(source) {
 $('#panorama-file').addEventListener('change', event => {
   const file = event.target.files?.[0]; event.target.value = '';
   if (!file) return;
-  try { validateFile(file); load({ file, name: file.name, kind: 'local' }); }
-  catch (error) { status(error.message, true); }
+  try { validateFile(file); openPanorama({ file, name: file.name, kind: 'local' }); }
+  catch (error) { savedItems.status(error.message, true); }
 });
-$('#campus').addEventListener('click', () => load(campus));
+$('#campus').addEventListener('click', () => openPanorama(campus));
 $('#retry').addEventListener('click', () => load(retrySource));
 $('#save-current').addEventListener('click', () => { if (current && !current.itemId) load(current); });
 $('#reset').addEventListener('click', () => setView(DEFAULT_VIEW));
@@ -260,7 +291,7 @@ async function fetchLibrary(append = false) {
       const image = document.createElement('img'); image.src = assetPath(item.id); image.alt = ''; image.loading = 'lazy';
       const title = document.createElement('span'); title.textContent = item.title || t('未命名作品'); title.setAttribute('data-strgo-user-content', '');
       button.append(image, title);
-      button.addEventListener('click', () => { const source = { kind: 'ai', url: assetPath(item.id), name: item.title || t('AI 生图作品'), content: '', owner: libraryOwner }; dialog.close(); load(source); });
+      button.addEventListener('click', () => { const source = { kind: 'ai', url: assetPath(item.id), name: item.title || t('AI 生图作品'), content: '', owner: libraryOwner }; dialog.close(); openPanorama(source); });
       $('#ai-items').append(button);
     }
     nextCursor = result.next_cursor; $('#ai-more').hidden = !nextCursor;
@@ -292,7 +323,7 @@ function clearPrivate() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { if (dialog.open) dialog.close(); clearPrivate(); savedItems.clearPrivate(); pointers.clear(); viewport.classList.remove('dragging'); }
-  else { if (!current) load(campus); engine?.resize(); savedItems.refreshAccount(); }
+  else { if (!viewerPage.hidden && !current) load(campus); engine?.resize(); savedItems.refreshAccount(); }
 });
 window.addEventListener('focus', async () => {
   savedItems.refreshAccount();
@@ -300,18 +331,18 @@ window.addEventListener('focus', async () => {
   const owner = privateOwner || libraryOwner;
   try {
     const session = await requestJSON('/api/image/session');
-    if (session.user?.id !== owner) { if (dialog.open) dialog.close(); if (clearPrivate()) load(campus); }
-  } catch { if (dialog.open) dialog.close(); if (clearPrivate()) load(campus); }
+    if (session.user?.id !== owner) { if (dialog.open) dialog.close(); if (clearPrivate() && !viewerPage.hidden) load(campus); }
+  } catch { if (dialog.open) dialog.close(); if (clearPrivate() && !viewerPage.hidden) load(campus); }
 });
 window.addEventListener('pagehide', event => {
   if (dialog.open) dialog.close(); clearPrivate(); savedItems.clearPrivate();
   if (!event.persisted) { disposed = true; version.next(); loadController?.abort(); engine?.dispose(); savedItems.dispose(); }
 });
-window.addEventListener('pageshow', event => { if (event.persisted) { if (!current) load(campus); savedItems.refreshAccount(); } });
+window.addEventListener('pageshow', event => { if (event.persisted) { if (!viewerPage.hidden && !current) load(campus); savedItems.refreshAccount(); } });
 window.addEventListener('strgo:localechange', updateLabels);
 setView(DEFAULT_VIEW);
 const imageId = requestedImage(location.search);
 if (imageId) {
   // URLs carry an opaque ID only. No arbitrary remote URLs or signed assets.
-  load({ kind: 'ai', url: assetPath(imageId), name: t('AI 生图作品') });
-} else load(campus);
+  openPanorama({ kind: 'ai', url: assetPath(imageId), name: t('AI 生图作品') });
+}
