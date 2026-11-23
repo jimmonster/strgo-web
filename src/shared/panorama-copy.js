@@ -1,5 +1,11 @@
 // UI copy only. User filenames, prompts and artwork titles are never translated.
 const rows = [
+  ['全屏时点按画面显示或隐藏控件。','全螢幕時點按畫面顯示或隱藏控制項。','In fullscreen, tap the panorama to show or hide controls.','全画面でパノラマをタップすると操作ボタンの表示を切り替えられます。','전체 화면에서 파노라마를 탭해 조작 버튼을 표시하거나 숨길 수 있습니다.'],
+  ['正在请求手机方向权限…','正在請求手機方向權限…','Requesting motion permission…','端末の動きへのアクセスを確認しています…','움직임 센서 권한을 요청하는 중…'],
+  ['正在等待手机方向数据…','正在等待手機方向資料…','Waiting for phone orientation…','端末の向きのデータを待っています…','휴대폰 방향 데이터를 기다리는 중…'],
+  ['浏览器无法读取手机方向，仍可拖动全景。','瀏覽器無法讀取手機方向，仍可拖動全景。','Motion tracking is unavailable. You can drag the panorama.','このブラウザーでは端末の向きを取得できません。ドラッグで操作できます。','이 브라우저에서는 휴대폰 방향을 읽을 수 없습니다. 파노라마를 드래그할 수 있습니다.'],
+  ['未获得手机方向权限，仍可拖动全景。','未取得手機方向權限，仍可拖動全景。','Motion permission was not granted. You can drag the panorama.','端末の動きへのアクセスが許可されていません。ドラッグで操作できます。','움직임 센서 권한이 허용되지 않았습니다. 파노라마를 드래그할 수 있습니다.'],
+  ['未收到手机方向数据，仍可拖动全景。','未收到手機方向資料，仍可拖動全景。','No orientation data was received. You can drag the panorama.','端末の向きのデータを取得できませんでした。ドラッグで操作できます。','휴대폰 방향 데이터를 받지 못했습니다. 파노라마를 드래그할 수 있습니다.'],
   ['360° 全景图库','360° 全景圖庫','360° Panorama Gallery','360° パノラマギャラリー','360° 파노라마 갤러리'],
   ['点击预览进入全景。生成或导入的图片会加入你的图库。','點擊預覽進入全景。產生或匯入的圖片會加入你的圖庫。','Open a preview to explore in 360°. Generated and imported images appear in your gallery.','プレビューから全景を表示できます。生成・読み込みした画像はギャラリーに追加されます。','미리보기를 열어 360°로 둘러보세요. 생성하거나 가져온 이미지는 갤러리에 추가됩니다.'],
   ['生成 360° 全景图','生成 360° 全景圖','Generate a 360° panorama','360° パノラマを生成','360° 파노라마 생성'],
