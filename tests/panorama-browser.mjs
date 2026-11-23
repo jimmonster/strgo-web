@@ -87,7 +87,11 @@ try {
   const page = await context.newPage(); const state={user:'owner-one'}; await stubAPI(page,state);
   await page.goto(preview.origin+'/360/'); await galleryReady(page);
   assert.equal(await page.title(),'360° 全景 · STRGO');
-  assert.equal(await page.locator('#open-generation').textContent(),'生成 360° 全景图');
+  const generate = page.locator('#open-generation');
+  assert.equal(await generate.textContent(),'生成 360° 全景图');
+  const primaryBackground = await generate.evaluate(button=>getComputedStyle(button).backgroundColor);
+  await generate.hover();
+  assert.equal(await generate.evaluate(button=>getComputedStyle(button).backgroundColor),primaryBackground);
   assert.equal(await page.locator('#viewport canvas').count(),0);
   assert.ok(await page.locator('#campus').isVisible());
   await page.screenshot({path:directory+'gallery-desktop.png',fullPage:true});

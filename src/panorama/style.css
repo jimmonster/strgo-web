@@ -28,18 +28,14 @@
 }
 .gallery-intro h1 { margin: 0; font-size: clamp(28px, 4vw, 48px); }
 .gallery-intro p { margin: 8px 0 0; color: var(--strgo-muted); }
+button.primary:not(:disabled):hover {
+  background: var(--strgo-accent);
+  border-color: var(--strgo-accent);
+  filter: brightness(1.08);
+}
 .gallery-intro .generate-cta { min-height: 52px; padding: 12px 24px; font-size: 16px; }
 .gallery-actions, .gallery-search { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .gallery-actions { margin: 14px 0 0; }
-.gallery-actions .file-button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 9px 16px;
-  border: 1px solid var(--strgo-border);
-  border-radius: var(--strgo-control-radius);
-  background: var(--strgo-surface);
-}
 .gallery-search input {
   min-height: 44px;
   min-width: 0;
