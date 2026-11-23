@@ -13,14 +13,16 @@ export function panoramaPrompt(scene, template) {
 
 const running = job => ['queued', 'generating', 'uploading'].includes(job?.status);
 const validId = id => /^[a-f0-9]{32}$/.test(id || '');
-const jobKey = owner => 'strgo.panorama.job.' + owner;
+const jobPrefix = 'strgo.panorama.job.';
+const jobKey = owner => jobPrefix + owner;
+const savedImage = job => job?.images?.find(image => image.state === 'saved' && validId(image.id));
 
-export function setupGeneration({ captureSelection, showResult }) {
+export function setupGeneration({ saveResult, showGallery }) {
   const $ = selector => document.querySelector(selector), panel = $('#generation-panel');
   let session, verified = false, expanded = false, initialized = false, disposed = false;
   let epoch = 0, connectionSerial = 0, presetSerial = 0, controller = new AbortController(), timer;
   let presets = [], selected, templatesReady = false, editing, saving = false;
-  let pending, job, result, submittedScene = '', selection, posting = false, polling = false, applied = false;
+  let pending, job, submittedScene = '', posting = false, polling = false, applied = false;
   let feedback = '', failed = false, presetFeedback = '';
   const api = (path, options = {}) => requestJSON('/api/image' + path, { ...options, csrf: session?.csrf, signal: controller.signal });
   function status(text, error = false) { feedback = text; failed = error; $('#generation-status').textContent = t(text); $('#generation-status').classList.toggle('error', error); }
@@ -37,15 +39,15 @@ export function setupGeneration({ captureSelection, showResult }) {
     $('#generation-connect').hidden = !!user && !!session.config?.hasKey && !!session.storageReady;
     $('#new-panorama-preset').hidden = !user || user.role !== 'admin';
     $('#generate-panorama').disabled = !user || active || (!pending && (!templatesReady || !selected || !session.config?.hasKey || !session.storageReady || session.generationQuota?.remaining === 0));
-    $('#generate-panorama').textContent = t(posting || running(job) ? '生成中…' : pending ? '重试提交' : '生成并展示');
+    $('#generate-panorama').textContent = t(posting || running(job) ? '生成中…' : pending ? '重试提交' : '生成并保存');
     $('#panorama-scene').disabled = frozen;
     $('#panorama-scene').placeholder = t('例如：阳光下的校园广场，四周是教学楼、树木和喷泉。');
     $('#save-panorama-preset').disabled = saving;
     panel.setAttribute('aria-busy', String(posting || polling));
-    $('#refresh-panorama-job').hidden = !job;
+    $('#refresh-panorama-job').hidden = !job || applied;
     $('#refresh-panorama-job').disabled = posting || polling;
-    $('#show-generated-panorama').hidden = !result;
-    $('#show-generated-panorama').disabled = posting || polling;
+    $('#show-panorama-gallery').hidden = !applied;
+    $('#show-panorama-gallery').disabled = posting || polling;
     $('#panorama-preset-status').textContent = t(presetFeedback);
     const quota = session?.generationQuota;
     $('#panorama-quota').textContent = !user || !quota ? '' : quota.remaining == null ? t('当前账号生图额度不限。') : `${t('今日剩余张数：')}${quota.remaining}`;
@@ -58,7 +60,7 @@ export function setupGeneration({ captureSelection, showResult }) {
   }
   function reset() {
     epoch++; connectionSerial++; presetSerial++; clearTimeout(timer); controller.abort(); controller = new AbortController();
-    session = null; verified = false; pending = job = result = selected = null;
+    session = null; verified = false; pending = job = selected = null;
     presets = []; templatesReady = posting = polling = saving = applied = false; submittedScene = '';
     $('#panorama-scene').value = ''; $('#panorama-presets').replaceChildren(); closeEditor(); clearError();
     presetFeedback = ''; update();
@@ -128,25 +130,15 @@ export function setupGeneration({ captureSelection, showResult }) {
       panel.hidden = !expanded;
       if (!info.user) { status('请先登录后使用文生图。'); update(); return; }
       if (info.user.role !== 'admin') closeEditor();
-      status(!info.config?.hasKey ? '先配置生图接口，再生成全景。' : !info.storageReady ? '服务器存储尚未就绪，暂不能生成图片。' : pending ? '提交结果尚未确认，请重试同一次提交。' : '请输入场景描述，生成后将在此页展示。');
+      status(!info.config?.hasKey ? '先配置生图接口，再生成全景。' : !info.storageReady ? '服务器存储尚未就绪，暂不能生成图片。' : pending ? '提交结果尚未确认，请重试同一次提交。' : applied ? '全景已加入预览列表。' : '请输入场景描述，生成后会加入预览列表。');
       await refreshPresets();
       if (connectedEpoch !== epoch || session?.user?.id !== info.user.id || document.hidden) return;
       if (!job) {
         let id; try { id = sessionStorage.getItem(jobKey(info.user.id)); } catch { /* Storage may be disabled. */ }
-        if (validId(id)) { job = { id, status: 'queued' }; selection = captureSelection(); }
+        if (validId(id)) job = { id, status: 'queued' };
       }
-      update(); if (running(job)) poll();
+      update(); if (running(job) || (!applied && savedImage(job))) poll();
     } catch (error) { if (ticket === epoch && serial === connectionSerial) failure(error, '无法连接生图服务，请刷新连接。'); }
-  }
-  async function display(force = false) {
-    if (!result) return;
-    const ticket = epoch;
-    try {
-      await checkSession();
-      const shown = await showResult(result, force ? undefined : selection);
-      if (ticket !== epoch || document.hidden) return;
-      status(shown ? '全景已在上方展示。' : '图片已生成，可点击在 360° 中打开。', !shown);
-    } catch (error) { if (ticket === epoch) failure(error, '图片已生成，可点击在 360° 中打开。'); }
   }
   async function poll() {
     if (!job || polling || posting || document.hidden || disposed) return;
@@ -158,14 +150,21 @@ export function setupGeneration({ captureSelection, showResult }) {
       if (value.userId !== session.user.id || !validId(value.id)) throw new Error('任务账号不匹配，请刷新连接。');
       job = value; clearError();
       successful = true;
-      status(({ queued: '等待生成全景…', generating: '正在生成全景…', uploading: '正在保存全景…', failed: '生成失败，请查看错误信息。' })[job.status] || '生成已完成，正在打开全景…', job.status === 'failed');
+      status(({ queued: '等待生成全景…', generating: '正在生成全景…', uploading: '正在保存全景…', failed: '生成失败，请查看错误信息。' })[job.status] || '生成已完成，正在保存到列表…', job.status === 'failed');
       if (job.error) serverError(new Error(job.error));
-      const image = job.images?.find(item => item.state === 'saved' && validId(item.id));
+      const image = savedImage(job);
       if (image && !applied) {
-        applied = true;
-        const scene = submittedScene || job.prompt;
-        result = { kind: 'ai', url: assetPath(image.id), owner: session.user.id, name: scene.split('\n')[0].slice(0, 80), content: scene.slice(0, 5000) };
-        await display();
+        try {
+          const scene = submittedScene || String(job.prompt || '');
+          await saveResult({ kind: 'ai', generated: true, url: assetPath(image.id), owner: session.user.id,
+            name: scene.split('\n')[0].trim().slice(0, 80) || t('未命名作品'), content: scene.slice(0, 5000) }, controller.signal);
+          if (ticket !== epoch || document.hidden) return;
+          applied = true;
+          status('全景已加入预览列表。');
+        } catch (error) {
+          if (ticket === epoch) failure(error, '全景已生成，保存到列表失败，请刷新状态重试。');
+          return;
+        }
       }
       if (!running(job)) {
         rememberJob(null);
@@ -173,7 +172,7 @@ export function setupGeneration({ captureSelection, showResult }) {
       }
     } catch (error) {
       if (ticket === epoch) {
-        if (error.status === 404 || error.status === 410) { rememberJob(null); job = result = null; }
+        if (error.status === 404 || error.status === 410) { rememberJob(null); job = null; }
         failure(error, '状态读取失败，点击刷新继续。');
       }
     }
@@ -195,14 +194,14 @@ export function setupGeneration({ captureSelection, showResult }) {
         if (ticket !== epoch || document.hidden) return;
         selected = latest; presets = presets.map(item => item.id === latest.id ? latest : item); renderPresets();
         pending = { prompt: panoramaPrompt(scene, latest.prompt), size: '2048x1024', quality: '', count: 1, requestId: crypto.randomUUID() };
-        submittedScene = scene; selection = captureSelection();
-        job = result = null; applied = false;
+        submittedScene = scene;
+        job = null; applied = false;
       }
       status('正在提交全景任务…'); update();
       const value = await api('/jobs', { method: 'POST', body: pending });
       if (ticket !== epoch || document.hidden) return;
       if (!validId(value.id) || value.userId !== session.user.id) throw new Error('任务账号不匹配，请刷新连接。');
-      job = value; pending = null; result = null; applied = false;
+      job = value; pending = null; applied = false;
       if (job.generationQuota) session.generationQuota = job.generationQuota;
       rememberJob(job.id); status('等待生成全景…');
     } catch (error) {
@@ -246,7 +245,7 @@ export function setupGeneration({ captureSelection, showResult }) {
   $('#new-panorama-preset').addEventListener('click', () => openEditor());
   $('#cancel-panorama-preset').addEventListener('click', closeEditor);
   $('#refresh-panorama-job').addEventListener('click', poll);
-  $('#show-generated-panorama').addEventListener('click', () => display(true));
+  $('#show-panorama-gallery').addEventListener('click', showGallery);
   window.addEventListener('strgo:localechange', () => { renderPresets(); update(); });
   document.addEventListener('visibilitychange', () => {
     if (!initialized) return;
@@ -261,4 +260,7 @@ export function setupGeneration({ captureSelection, showResult }) {
     if (!event.persisted) disposed = true;
   });
   window.addEventListener('pageshow', event => { if (event.persisted) { controller = new AbortController(); posting = polling = false; if (initialized) connect(); } });
+  try {
+    if (Object.keys(sessionStorage).some(key => key.startsWith(jobPrefix) && validId(sessionStorage.getItem(key)))) connect();
+  } catch { /* Explicit generation still works without session storage. */ }
 }

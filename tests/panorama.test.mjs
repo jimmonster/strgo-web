@@ -7,6 +7,7 @@ import { panoramaCopy } from '../src/shared/panorama-copy.js';
 import { filterEntries } from '../src/shared/catalog.js';
 import { translate } from '../src/shared/i18n.js';
 import { itemText, MAX_TITLE_LENGTH, MAX_CONTENT_LENGTH } from '../src/panorama/store.js';
+import { matchesPanorama } from '../src/panorama/items.js';
 import { panoramaPrompt } from '../src/panorama/generation.js';
 
 test('panorama generation appends the selected server template and validates the combined prompt', () => {
@@ -35,6 +36,13 @@ test('saved panorama titles and content validate without interpreting user text'
   assert.deepEqual(itemText('a'.repeat(MAX_TITLE_LENGTH), 'x'.repeat(MAX_CONTENT_LENGTH)), { name: 'a'.repeat(MAX_TITLE_LENGTH), content: 'x'.repeat(MAX_CONTENT_LENGTH) });
   for (const name of ['', '  ', 'a'.repeat(MAX_TITLE_LENGTH + 1)]) assert.throws(() => itemText(name));
   assert.throws(() => itemText('title', 'x'.repeat(MAX_CONTENT_LENGTH + 1)));
+});
+
+test('the gallery searches title and multiline descriptions with Unicode normalization', () => {
+  const item = { name: 'Ｃａｍｐｕｓ 全景', content: '第一行\n山谷和 Lake' };
+  for (const query of ['  CAMPUS  ', '全景', '山谷', 'lake', '']) assert.ok(matchesPanorama(item, query));
+  assert.equal(matchesPanorama(item, '不存在'), false);
+  assert.equal(matchesPanorama({ name: '只有标题' }, '描述'), false);
 });
 
 test('panorama angles wrap continuously, clamp at poles and reject nonfinite inputs', () => {

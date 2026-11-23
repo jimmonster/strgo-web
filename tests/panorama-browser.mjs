@@ -17,6 +17,13 @@ const executablePath = process.env.STRGO_CHROME || process.env.CHROME_PATH || (e
 const check = name => { checks.push(name); console.log('PASS', name); };
 const ready = page => page.waitForFunction(() => document.querySelector('#viewport')?.dataset.ready === 'true');
 const waitSource = (page, source) => page.waitForFunction(value => document.querySelector('#viewport').dataset.source === value && document.querySelector('#viewport').getAttribute('aria-busy') === 'false', source);
+const galleryReady = page => page.locator('#gallery').waitFor({ state: 'visible' });
+const backToGallery = page => page.locator('#back-to-gallery').click();
+const openCampus = async page => {
+  if (await page.locator('#back-to-gallery').isVisible()) await backToGallery(page);
+  await page.locator('#campus').click(); await waitSource(page, 'campus');
+};
+const savedCards = '#saved-items .saved-item';
 async function stubAPI(page, state) {
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/api/image/**', async route => {
@@ -67,7 +74,7 @@ async function stubAPI(page, state) {
     }
     if (url.pathname.startsWith('/api/image/assets/')) {
       if (state.denyAsset) return route.fulfill({status:403,json:{error:'forbidden'}});
-      if (state.holdAsset) { state.pending = route; return; }
+      if (state.holdAsset && route.request().resourceType() !== 'image') { state.pending = route; return; }
       return route.fulfill({contentType:'image/webp',body:state.generatedAsset && url.pathname.endsWith('c'.repeat(32)) ? state.generatedAsset : image});
     }
     return route.fulfill({json:{}});
@@ -78,8 +85,18 @@ try {
   browser = await chromium.launch({ executablePath, headless:true, args:['--no-sandbox','--disable-dev-shm-usage','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
   const context = await browser.newContext({viewport:{width:1440,height:1000},locale:'zh-CN',reducedMotion:'reduce'});
   const page = await context.newPage(); const state={user:'owner-one'}; await stubAPI(page,state);
-  await page.goto(preview.origin+'/360/'); await ready(page);
+  await page.goto(preview.origin+'/360/'); await galleryReady(page);
   assert.equal(await page.title(),'360° 全景 · STRGO');
+  const generate = page.locator('#open-generation');
+  assert.equal(await generate.textContent(),'生成 360° 全景图');
+  const primaryBackground = await generate.evaluate(button=>getComputedStyle(button).backgroundColor);
+  await generate.hover();
+  assert.equal(await generate.evaluate(button=>getComputedStyle(button).backgroundColor),primaryBackground);
+  assert.equal(await page.locator('#viewport canvas').count(),0);
+  assert.ok(await page.locator('#campus').isVisible());
+  await page.screenshot({path:directory+'gallery-desktop.png',fullPage:true});
+  await openCampus(page);
+  check('opening /360/ shows a preview gallery and prominent generation action before starting WebGL');
   assert.equal(await page.locator('#viewport canvas').count(),1);
   assert.equal(await page.locator('#source-info').textContent(),'1774 × 887 · 2:1');
   const before=await page.locator('#viewport').screenshot();
@@ -97,18 +114,19 @@ try {
   check('desktop renders the actual panorama, drag, wheel, keyboard, reset and fullscreen');
 
   let mutations=0; page.on('request',request=>{if(!['GET','HEAD'].includes(request.method()))mutations++;});
-  await page.locator('#panorama-file').setInputFiles({name:'我的校园.webp',mimeType:'image/webp',buffer:image});
+  await backToGallery(page); await page.locator('#panorama-file').setInputFiles({name:'我的校园.webp',mimeType:'image/webp',buffer:image});
   await waitSource(page,'local'); assert.equal(await page.locator('#source-name').textContent(),'我的校园.webp');
-  await page.locator('#panorama-file').setInputFiles({name:'我的校园.webp',mimeType:'image/webp',buffer:image}); await waitSource(page,'local');
+  await backToGallery(page); await page.locator('#panorama-file').setInputFiles({name:'我的校园.webp',mimeType:'image/webp',buffer:image}); await waitSource(page,'local');
   assert.equal(mutations,0);
   const square=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=64;return c.toDataURL('image/png').split(',')[1];});
-  await page.locator('#panorama-file').setInputFiles({name:'square.png',mimeType:'image/png',buffer:Buffer.from(square,'base64')});
+  await backToGallery(page); await page.locator('#panorama-file').setInputFiles({name:'square.png',mimeType:'image/png',buffer:Buffer.from(square,'base64')});
   await page.waitForFunction(()=>document.querySelector('#feedback').textContent.includes('2:1'));
   assert.equal(await page.locator('#source-name').textContent(),'我的校园.webp');
-  await page.locator('#panorama-file').setInputFiles({name:'broken.png',mimeType:'image/png',buffer:Buffer.from('not an image')});
+  await backToGallery(page); await page.locator('#panorama-file').setInputFiles({name:'broken.png',mimeType:'image/png',buffer:Buffer.from('not an image')});
   await page.waitForFunction(()=>document.querySelector('#feedback').textContent.includes('无法读取'));
   assert.equal(await page.locator('#source-name').textContent(),'我的校园.webp');
-  await page.locator('#campus').click(); await waitSource(page,'campus');
+  await openCampus(page);
+  await backToGallery(page);
   check('local imports and repeat selection stay local; corrupt and non-2:1 imports preserve the current view');
 
   await page.locator('#open-ai').click(); await page.waitForSelector('.ai-item');
@@ -129,24 +147,24 @@ try {
   state.denyAsset=true; await page.goto(preview.origin+'/360/?image='+id);
   await page.waitForFunction(()=>document.querySelector('#feedback').textContent.includes('访问权限'));
   assert.equal(await page.locator('#fallback').isVisible(),true);
-  state.denyAsset=false; state.user=null; await page.locator('#open-ai').click();
+  state.denyAsset=false; state.user=null; await backToGallery(page); await page.locator('#open-ai').click();
   await page.waitForSelector('#ai-login:visible'); assert.equal(await page.locator('.ai-item').count(),0);
   await page.locator('#close-ai').click();
   state.user='owner-one'; await page.goto(preview.origin+'/360/?image='+id); await waitSource(page,'ai');
   check('private deep links use existing authentication, reject forbidden assets and clear hidden private canvases');
 
-  await page.locator('#campus').click(); await waitSource(page,'campus');
+  await openCampus(page); await backToGallery(page);
   state.holdAsset=true; await page.locator('#open-ai').click(); await page.waitForSelector('.ai-item'); await page.locator('.ai-item').first().click();
   await page.waitForFunction(()=>document.querySelector('#viewport').getAttribute('aria-busy')==='true');
   const deadline=Date.now()+10000;
   while(!state.pending && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,20));
   assert.ok(state.pending,'the delayed asset request must start');
-  await page.locator('#panorama-file').setInputFiles({name:'latest.webp',mimeType:'image/webp',buffer:image}); await waitSource(page,'local');
+  await backToGallery(page); await page.locator('#panorama-file').setInputFiles({name:'latest.webp',mimeType:'image/webp',buffer:image}); await waitSource(page,'local');
   await state.pending.fulfill({contentType:'image/webp',body:image}).catch(()=>{}); state.holdAsset=false;
   assert.equal(await page.locator('#source-name').textContent(),'latest.webp');
   check('a delayed AI response cannot replace a newer local import');
 
-  await page.locator('#campus').click(); await waitSource(page,'campus');
+  await openCampus(page);
   await page.evaluate(()=>{window.__panoramaTestContext=document.querySelector('#viewport canvas').getContext('webgl2').getExtension('WEBGL_lose_context');window.__panoramaTestContext.loseContext();});
   await page.waitForFunction(()=>document.querySelector('#viewport').dataset.ready==='false');
   await page.evaluate(()=>window.__panoramaTestContext.restoreContext());
@@ -154,7 +172,7 @@ try {
   for(const locale of ['en','zh-TW','ja','ko','zh-CN']) {
     await page.evaluate(locale=>window.strgoI18n.setLocale(locale),locale);
     assert.equal(await page.locator('html').getAttribute('lang'),locale);
-    if(locale!=='zh-CN')assert.notEqual(await page.locator('#open-ai').textContent(),'从 AI 作品导入');
+    if(locale!=='zh-CN')assert.notEqual(await page.locator('#open-generation').textContent(),'生成 360° 全景图');
   }
   await page.evaluate(async()=>{window.scrollTo(0,0);await document.fonts.ready;});
   await page.screenshot({path:directory+'desktop.png',fullPage:true});
@@ -164,7 +182,7 @@ try {
   assert.equal(new URL(page.url()).pathname,'/');
   await page.locator('.space-card[data-open="S09"]').click();
   assert.equal(new URL(page.url()).hash,'#space-panorama');
-  await page.locator('a.entry-link[href="/360/"]').click(); await ready(page);
+  await page.locator('a.entry-link[href="/360/"]').click(); await galleryReady(page);
   check('root homepage renders the hub and its panorama card reaches /360/');
 
   for (const hash of ['home','projects','stack','lab','contact']) {
@@ -178,7 +196,7 @@ try {
 
   await page.goto(preview.origin+'/hub/#catalog'); await page.waitForSelector('#catalogSearch');
   await page.locator('#catalogSearch').fill('/360/'); await page.waitForSelector('[data-open="S09"]');
-  await page.locator('[data-open="S09"]').click(); await page.locator('a.entry-link[href="/360/"]').click(); await ready(page);
+  await page.locator('[data-open="S09"]').click(); await page.locator('a.entry-link[href="/360/"]').click(); await galleryReady(page);
   await page.locator('strgo-navigation').locator('.trigger').click();
   await page.locator('strgo-navigation').locator('.search input').fill('/360/');
   await page.locator('strgo-navigation').locator('a[data-entry="S09"]').waitFor();
@@ -187,18 +205,18 @@ try {
 
   const saved = await browser.newContext({viewport:{width:1440,height:1000},locale:'zh-CN',reducedMotion:'reduce'});
   const itemsPage = await saved.newPage(), itemState = {user:'items-owner'}; await stubAPI(itemsPage,itemState);
-  await itemsPage.goto(preview.origin+'/360/'); await ready(itemsPage);
-  const cards = itemsPage.locator('.saved-item');
-  const waitCount = count => itemsPage.waitForFunction(n=>document.querySelectorAll('.saved-item').length===n,count);
+  await itemsPage.goto(preview.origin+'/360/'); await galleryReady(itemsPage);
+  const cards = itemsPage.locator(savedCards);
+  const waitCount = count => itemsPage.waitForFunction(n=>document.querySelectorAll('#saved-items .saved-item').length===n,count);
   const persisted = () => itemsPage.evaluate(async()=>{
     const {PanoramaStore} = await import('/360/store.js'); const store = new PanoramaStore();
     const entries=await store.list();
     return Promise.all(entries.map(async item=>({...item,hasFile:!!await store.file(item.id)})));
   });
   await itemsPage.locator('#panorama-file').setInputFiles({name:'保存测试.webp',mimeType:'image/webp',buffer:image});
-  await waitSource(itemsPage,'local'); await waitCount(1);
+  await waitSource(itemsPage,'local'); await waitCount(1); await backToGallery(itemsPage);
   await itemsPage.locator('#panorama-file').setInputFiles({name:'保存测试.webp',mimeType:'image/webp',buffer:image});
-  await waitSource(itemsPage,'local'); await waitCount(2);
+  await waitSource(itemsPage,'local'); await waitCount(2); await backToGallery(itemsPage);
   let records = await persisted(); assert.equal(new Set(records.map(item=>item.id)).size,2);
   assert.ok(records.every(item=>item.hasFile));
   const selectedId=await cards.first().getAttribute('data-item-id');
@@ -214,6 +232,11 @@ try {
   assert.equal(await itemsPage.locator('#source-name').textContent(),title);
   assert.equal(await itemsPage.locator('#source-content').textContent(),content);
   assert.equal(await itemsPage.locator('.item-body script,.item-content img,#source-content img').count(),0);
+  await itemsPage.locator('#items-search').fill('第二行');
+  assert.equal(await cards.count(),1); assert.equal(await selected.locator('h3').textContent(),title);
+  await itemsPage.locator('#items-search').fill('没有这个全景');
+  assert.equal(await cards.count(),0); assert.ok(await itemsPage.locator('#items-empty').isVisible());
+  await itemsPage.locator('#items-search').clear();
   await selected.locator('[data-item-action=edit]').click(); await itemsPage.locator('#item-title').fill('取消的修改');
   await itemsPage.keyboard.press('Escape'); assert.equal(await selected.locator('h3').textContent(),title);
   for(const locale of ['en','zh-TW','ja','ko','zh-CN']) {
@@ -222,14 +245,15 @@ try {
     assert.equal(await selected.locator('.item-content').textContent(),content);
     if(locale!=='zh-CN') assert.notEqual(await selected.locator('[data-item-action=edit]').textContent(),'编辑条目');
   }
-  await itemsPage.reload(); await ready(itemsPage); await waitCount(2);
+  await itemsPage.reload(); await galleryReady(itemsPage); await waitCount(2);
   await selected.locator('[data-item-action=open]').click(); await waitSource(itemsPage,'local');
   assert.equal(await itemsPage.locator('#source-content').textContent(),content); assert.equal(await cards.count(),2);
+  await backToGallery(itemsPage);
   await selected.locator('[data-item-action=delete]').click(); await itemsPage.locator('#cancel-delete').click();
   assert.equal(await cards.count(),2);
   await selected.locator('[data-item-action=delete]').click(); await itemsPage.locator('#confirm-delete').click();
-  await waitCount(1); await waitSource(itemsPage,'campus');
-  await itemsPage.reload(); await ready(itemsPage); await waitCount(1);
+  await waitCount(1); assert.ok(await itemsPage.locator('#gallery').isVisible());
+  await itemsPage.reload(); await galleryReady(itemsPage); await waitCount(1);
   records=await persisted(); assert.equal(records.length,1); assert.ok(records[0].hasFile);
   assert.ok(await cards.first().evaluate(card=>card.querySelector('.item-preview').getBoundingClientRect().bottom<=card.querySelector('h3').getBoundingClientRect().top));
   assert.equal(await itemsPage.evaluate(async id=>{
@@ -242,18 +266,20 @@ try {
   records=await persisted(); const aiRecord=records.find(item=>item.kind==='ai');
   assert.equal(aiRecord.owner,'items-owner'); assert.equal(aiRecord.assetId,id); assert.equal(aiRecord.hasFile,false); assert.equal(aiRecord.thumbnail,undefined);
   const aiCard=itemsPage.locator(`[data-item-id="${aiRecord.id}"]`);
-  await itemsPage.reload(); await ready(itemsPage); await waitCount(2);
+  await itemsPage.reload(); await galleryReady(itemsPage); await waitCount(2);
   await aiCard.locator('[data-item-action=open]').click(); await waitSource(itemsPage,'ai'); assert.equal(await cards.count(),2);
+  await backToGallery(itemsPage);
   await aiCard.locator('[data-item-action=edit]').click();
   itemState.user='different-owner'; await itemsPage.evaluate(()=>window.dispatchEvent(new Event('focus')));
-  await waitSource(itemsPage,'campus'); await waitCount(1);
+  await waitCount(1);
   assert.equal(await itemsPage.locator('#item-dialog').evaluate(dialog=>dialog.open),false);
   assert.equal(await itemsPage.locator('#item-title').inputValue(),'');
   assert.equal(await itemsPage.locator('body').textContent().then(text=>text.includes('PRIVATE ARTWORK')),false);
   itemState.user='items-owner'; await itemsPage.locator('#refresh-items').click(); await waitCount(2);
   itemState.denyAsset=true; await aiCard.locator('[data-item-action=open]').click();
   await itemsPage.waitForFunction(()=>document.querySelector('#feedback').textContent.includes('访问权限'));
-  assert.equal(await itemsPage.locator('#viewport').getAttribute('data-source'),'campus');
+  assert.equal(await itemsPage.locator('#viewport canvas').isVisible(),false);
+  await backToGallery(itemsPage);
   await aiCard.locator('[data-item-action=delete]').click(); await itemsPage.locator('#confirm-delete').click(); await waitCount(1);
   assert.equal((await persisted()).some(item=>item.kind==='ai'),false);
   check('saved AI items persist references only, reopen with permission checks, clear private editors on account change and delete independently');
@@ -273,21 +299,21 @@ try {
     IDBObjectStore.prototype.add=function(...args){if(this.name==='files')throw new DOMException('Test quota','QuotaExceededError');return original.apply(this,args);};
   });
   const storagePage=await storage.newPage(); await stubAPI(storagePage,{user:null});
-  await storagePage.goto(preview.origin+'/360/'); await ready(storagePage);
+  await storagePage.goto(preview.origin+'/360/'); await galleryReady(storagePage);
   await storagePage.locator('#panorama-file').setInputFiles({name:'quota.webp',mimeType:'image/webp',buffer:image});
   await waitSource(storagePage,'local');
-  assert.equal(await storagePage.locator('.saved-item').count(),0);
+  assert.equal(await storagePage.locator(savedCards).count(),0);
   assert.equal(await storagePage.evaluate(async()=>{const {PanoramaStore}=await import('/360/store.js');return (await new PanoramaStore().list()).length;}),0);
   assert.ok((await storagePage.locator('#items-feedback').textContent()).includes('空间不足'));
   assert.equal(await storagePage.locator('#save-current').isVisible(),true);
   await storagePage.evaluate(()=>window.__restorePanoramaStorage()); await storagePage.locator('#save-current').click();
-  await storagePage.waitForFunction(()=>document.querySelectorAll('.saved-item').length===1);
+  await storagePage.waitForSelector(savedCards, {state:'attached'});
   await waitSource(storagePage,'local'); assert.equal(await storagePage.locator('#save-current').isVisible(),false);
   await storage.close(); check('storage failure never claims success or creates a partial item; retry saves exactly one item');
 
   const generationContext=await browser.newContext({viewport:{width:1440,height:1000},locale:'zh-CN',reducedMotion:'reduce'});
   const generatePage=await generationContext.newPage(), generationState={user:'panorama-creator',role:'admin',jobStatuses:['generating','complete']};
-  await stubAPI(generatePage,generationState); await generatePage.goto(preview.origin+'/360/'); await ready(generatePage);
+  await stubAPI(generatePage,generationState); await generatePage.goto(preview.origin+'/360/'); await galleryReady(generatePage);
   await generatePage.locator('#open-ai').click(); await generatePage.locator('#ai-generate-inline').click();
   await generatePage.waitForSelector('[data-edit-panorama-preset]');
   assert.equal(await generatePage.locator('#ai-dialog').evaluate(dialog=>dialog.open),false);
@@ -302,7 +328,7 @@ try {
   generationState.presetWriteError=null; await generatePage.locator('#save-panorama-preset').click();
   await generatePage.waitForFunction(()=>document.querySelector('#panorama-preset-form').hidden);
   assert.equal(generationState.presets[0].prompt,adminPrompt);
-  generationState.role='member'; await generatePage.reload(); await ready(generatePage); await generatePage.locator('#open-generation').click();
+  generationState.role='member'; await generatePage.reload(); await galleryReady(generatePage); await generatePage.locator('#open-generation').click();
   await generatePage.waitForSelector('[data-select-panorama-preset]');
   assert.equal(await generatePage.locator('[data-edit-panorama-preset]').count(),0);
   assert.equal(await generatePage.locator('#new-panorama-preset').isVisible(),false);
@@ -311,20 +337,27 @@ try {
   const scene='阳光校园，四周是树木与喷泉\n用户描述 <script>alert(1)</script>';
   await generatePage.locator('#panorama-scene').fill(scene);
   await generatePage.locator('#generate-panorama').click();
-  await generatePage.waitForFunction(()=>document.querySelector('#show-generated-panorama').hidden===false);
-  await waitSource(generatePage,'ai');
+  await generatePage.waitForFunction(()=>document.querySelector('#generation-status').textContent.includes('正在生成全景'));
+  await openCampus(generatePage);
+  await generatePage.waitForSelector(savedCards,{state:'attached'});
+  assert.equal(await generatePage.locator('#viewport').getAttribute('data-source'),'campus');
+  await backToGallery(generatePage);
+  await generatePage.locator('#show-panorama-gallery').click();
+  await generatePage.waitForFunction(()=>document.querySelector('#saved-items img')?.naturalWidth>0);
+  await generatePage.locator(savedCards).locator('.item-preview').click(); await waitSource(generatePage,'ai');
   assert.equal(new URL(generatePage.url()).pathname,'/360/');
   assert.equal(generationState.posts.length,1);
   assert.equal(generationState.posts[0].prompt,scene+'\n\n'+latestTemplate);
   assert.equal(generationState.posts[0].size,'2048x1024'); assert.equal(generationState.posts[0].count,1);
   assert.equal(await generatePage.locator('#source-content').textContent(),scene);
-  assert.equal(await generatePage.locator('.saved-item').count(),1);
+  assert.equal(await generatePage.locator(savedCards).count(),1);
   assert.equal(await generatePage.locator('#source-content script').count(),0);
-  assert.ok((await generatePage.locator('#generation-status').textContent()).includes('上方展示'));
+  assert.ok((await generatePage.locator('#generation-status').textContent()).includes('加入预览列表'));
+  await backToGallery(generatePage);
   for(const locale of ['en','zh-TW','ja','ko','zh-CN']) {
     await generatePage.evaluate(locale=>window.strgoI18n.setLocale(locale),locale);
     assert.equal(await generatePage.locator('#panorama-scene').inputValue(),scene);
-    if(locale!=='zh-CN')assert.notEqual(await generatePage.locator('#generate-panorama').textContent(),'生成并展示');
+    if(locale!=='zh-CN')assert.notEqual(await generatePage.locator('#generate-panorama').textContent(),'生成并保存');
   }
   await generatePage.locator('#open-generation').click();
   await generatePage.locator('#generation-panel').screenshot({path:directory+'generation-desktop.png'});
@@ -332,29 +365,29 @@ try {
   assert.ok(await generatePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await generatePage.locator('#generation-panel').screenshot({path:directory+'generation-mobile.png'});
   await generationContext.close();
-  check('text-to-image runs on /360/, uses the administrator template, polls the existing job and automatically displays/saves the panorama in five languages');
+  check('text-to-image runs on /360/, uses the administrator template, polls the existing job and automatically previews the saved panorama without interrupting another view in five languages');
 
   const retryContext=await browser.newContext({locale:'zh-CN'}), retryGeneration=await retryContext.newPage();
   const retryState={user:'retry-creator',loseSubmissionOnce:true}; await stubAPI(retryGeneration,retryState);
-  await retryGeneration.goto(preview.origin+'/360/'); await ready(retryGeneration); await retryGeneration.locator('#open-generation').click();
+  await retryGeneration.goto(preview.origin+'/360/'); await galleryReady(retryGeneration); await retryGeneration.locator('#open-generation').click();
   await retryGeneration.waitForSelector('[data-select-panorama-preset]'); await retryGeneration.locator('#panorama-scene').fill('雨后的森林');
   await retryGeneration.locator('#generate-panorama').click();
   await retryGeneration.waitForFunction(()=>document.querySelector('#generate-panorama').textContent==='重试提交');
   assert.equal(await retryGeneration.locator('#panorama-scene').isDisabled(),true);
-  retryState.remaining=0; await retryGeneration.locator('#generate-panorama').click(); await waitSource(retryGeneration,'ai');
+  retryState.remaining=0; await retryGeneration.locator('#generate-panorama').click(); await retryGeneration.waitForSelector(savedCards);
   assert.equal(retryState.posts.length,2); assert.equal(retryState.createdJobs,1);
   assert.equal(retryState.posts[0].requestId,retryState.posts[1].requestId);
-  assert.equal(await retryGeneration.locator('.saved-item').count(),1);
+  assert.equal(await retryGeneration.locator(savedCards).count(),1);
   retryState.remaining=null; retryState.rejectPost=true; await retryGeneration.locator('#open-generation').click();
   await retryGeneration.locator('#generate-panorama').click();
   await retryGeneration.waitForFunction(()=>document.querySelector('#panorama-job-error').textContent.includes('模型不支持'));
   assert.equal(await retryGeneration.locator('#panorama-scene').isDisabled(),false);
-  assert.equal(await retryGeneration.locator('#generate-panorama').textContent(),'生成并展示');
+  assert.equal(await retryGeneration.locator('#generate-panorama').textContent(),'生成并保存');
   await retryContext.close(); check('an unconfirmed generation submission retries the same request ID without duplicate jobs, even after quota reservation');
 
   const edgeContext=await browser.newContext({locale:'zh-CN'}), edgePage=await edgeContext.newPage();
   const edgeState={user:'edge-creator',hasKey:false}; await stubAPI(edgePage,edgeState);
-  await edgePage.goto(preview.origin+'/360/'); await ready(edgePage); await edgePage.locator('#open-generation').click();
+  await edgePage.goto(preview.origin+'/360/'); await galleryReady(edgePage); await edgePage.locator('#open-generation').click();
   await edgePage.waitForSelector('[data-select-panorama-preset]');
   assert.equal(await edgePage.locator('#generate-panorama').isDisabled(),true);
   assert.equal(await edgePage.locator('#generation-settings').isVisible(),true);
@@ -370,31 +403,41 @@ try {
   const invalidPanorama=await edgePage.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=64;return c.toDataURL('image/png').split(',')[1];});
   edgeState.generatedAsset=Buffer.from(invalidPanorama,'base64');
   await edgePage.locator('#panorama-scene').fill('模型返回错误比例的场景'); await edgePage.locator('#generate-panorama').click();
-  await edgePage.waitForFunction(()=>document.querySelector('#feedback').textContent.includes('2:1'));
-  assert.equal(await edgePage.locator('#viewport').getAttribute('data-source'),'campus');
-  assert.equal(await edgePage.locator('.saved-item').count(),0); assert.equal(edgeState.posts.length,1);
+  await edgePage.waitForFunction(()=>document.querySelector('#panorama-job-error').textContent.includes('2:1'));
+  assert.equal(await edgePage.locator('#viewport canvas').count(),0);
+  assert.equal(await edgePage.locator(savedCards).count(),0); assert.equal(edgeState.posts.length,1);
   await edgeContext.close(); check('missing configuration, zero quota and failed templates block submission; non-2:1 generated results preserve the current panorama');
 
   const resumedContext=await browser.newContext({locale:'zh-CN'}), resumedPage=await resumedContext.newPage();
   const resumedState={user:'resume-creator',jobStatus:'generating'}; await stubAPI(resumedPage,resumedState);
-  await resumedPage.goto(preview.origin+'/360/'); await ready(resumedPage); await resumedPage.locator('#open-generation').click();
+  await resumedPage.goto(preview.origin+'/360/'); await galleryReady(resumedPage); await resumedPage.locator('#open-generation').click();
   await resumedPage.waitForSelector('[data-select-panorama-preset]'); await resumedPage.locator('#panorama-scene').fill('刷新后继续的海岸全景');
   await resumedPage.locator('#generate-panorama').click();
   await resumedPage.waitForFunction(()=>document.querySelector('#generation-status').textContent.includes('正在生成全景'));
-  resumedState.jobStatus='complete'; await resumedPage.reload(); await ready(resumedPage); await resumedPage.locator('#open-generation').click();
-  await waitSource(resumedPage,'ai');
-  assert.equal(resumedState.posts.length,1); assert.equal(await resumedPage.locator('.saved-item').count(),1);
+  resumedState.jobStatus='complete'; await resumedPage.reload(); await galleryReady(resumedPage);
+  await resumedPage.waitForSelector(savedCards);
+  assert.equal(resumedState.posts.length,1); assert.equal(await resumedPage.locator(savedCards).count(),1);
+  assert.equal(await resumedPage.locator('#viewport canvas').count(),0);
+  await resumedPage.locator(savedCards).locator('[data-item-action=edit]').click();
+  await resumedPage.locator('#item-title').fill('海岸新标题');
+  await resumedPage.locator('#save-item').click();
+  await resumedPage.waitForFunction(()=>document.querySelector('#saved-items h3').textContent==='海岸新标题');
+  await resumedPage.evaluate(()=>sessionStorage.setItem('strgo.panorama.job.resume-creator','f'.repeat(32)));
+  await resumedPage.reload(); await resumedPage.waitForFunction(()=>!sessionStorage.getItem('strgo.panorama.job.resume-creator'));
+  assert.equal(await resumedPage.locator(savedCards).count(),1);
+  assert.equal(await resumedPage.locator(savedCards).locator('h3').textContent(),'海岸新标题');
   resumedState.missingJob=true;
   await resumedPage.evaluate(()=>sessionStorage.setItem('strgo.panorama.job.resume-creator','f'.repeat(32)));
-  await resumedPage.reload(); await ready(resumedPage); await resumedPage.locator('#open-generation').click();
+  await resumedPage.reload(); await galleryReady(resumedPage);
   await resumedPage.waitForFunction(()=>document.querySelector('#panorama-job-error').textContent.includes('任务不存在'));
-  assert.equal(await resumedPage.locator('#generate-panorama').isDisabled(),false);
+  await resumedPage.locator('#open-generation').click();
+  await resumedPage.waitForFunction(()=>!document.querySelector('#generate-panorama').disabled);
   assert.equal(await resumedPage.evaluate(()=>sessionStorage.getItem('strgo.panorama.job.resume-creator')),null);
-  await resumedContext.close(); check('reopening after a reload resumes the acknowledged job with GET and displays its result without another generation');
+  await resumedContext.close(); check('reopening after a reload resumes the acknowledged job with GET and saves its result once without overwriting edits or starting another generation');
 
   const privacyContext=await browser.newContext({locale:'zh-CN'}), privacyPage=await privacyContext.newPage();
   const privacyState={user:'old-creator',holdJob:true}; await stubAPI(privacyPage,privacyState);
-  await privacyPage.goto(preview.origin+'/360/'); await ready(privacyPage); await privacyPage.locator('#open-generation').click();
+  await privacyPage.goto(preview.origin+'/360/'); await galleryReady(privacyPage); await privacyPage.locator('#open-generation').click();
   await privacyPage.waitForSelector('[data-select-panorama-preset]'); await privacyPage.locator('#panorama-scene').fill('旧账号私有全景');
   await privacyPage.locator('#generate-panorama').click();
   const jobDeadline=Date.now()+10000;
@@ -403,8 +446,8 @@ try {
   privacyState.user='new-creator'; privacyState.holdJob=false; await privacyPage.evaluate(()=>window.dispatchEvent(new Event('focus')));
   await privacyPage.waitForFunction(()=>document.querySelector('#panorama-scene').value==='');
   await privacyState.pendingJob.route.fulfill({json:privacyState.pendingJob.body}).catch(()=>{});
-  assert.equal(await privacyPage.locator('#viewport').getAttribute('data-source'),'campus');
-  assert.equal(await privacyPage.locator('.saved-item').count(),0);
+  assert.equal(await privacyPage.locator('#viewport canvas').count(),0);
+  assert.equal(await privacyPage.locator(savedCards).count(),0);
   assert.equal(privacyState.posts.length,1);
   privacyState.user=null; await privacyPage.evaluate(()=>window.dispatchEvent(new Event('focus'))); await privacyPage.waitForSelector('#generation-login:visible');
   assert.equal(await privacyPage.locator('#generation-workspace').isVisible(),false);
@@ -412,7 +455,11 @@ try {
 
   const mobile=await browser.newContext({viewport:{width:375,height:812},isMobile:true,hasTouch:true,locale:'zh-CN',reducedMotion:'reduce'});
   await mobile.addInitScript(()=>Object.defineProperty(HTMLElement.prototype,'requestFullscreen',{value:undefined,configurable:true}));
-  const phone=await mobile.newPage(); await stubAPI(phone,{user:null}); await phone.goto(preview.origin+'/360/'); await ready(phone);
+  const phone=await mobile.newPage(); await stubAPI(phone,{user:null}); await phone.goto(preview.origin+'/360/'); await galleryReady(phone);
+  assert.ok(await phone.locator('#open-generation').isVisible());
+  assert.ok(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await phone.screenshot({path:directory+'gallery-mobile.png',fullPage:true});
+  await openCampus(phone);
   assert.ok(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   const cdp=await mobile.newCDPSession(phone), b=await phone.locator('#viewport').boundingBox(), x=b.x+b.width/2,y=b.y+b.height/2;
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});
@@ -435,14 +482,14 @@ try {
 
   const fallback=await browser.newContext({viewport:{width:768,height:900},locale:'zh-CN'});
   await fallback.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/.test(type)?null:original.call(this,type,...args);};});
-  const unsupported=await fallback.newPage(); await stubAPI(unsupported,{user:null}); await unsupported.goto(preview.origin+'/360/');
+  const unsupported=await fallback.newPage(); await stubAPI(unsupported,{user:null}); await unsupported.goto(preview.origin+'/360/'); await unsupported.locator('#campus').click();
   await unsupported.waitForFunction(()=>document.querySelector('#feedback').textContent.includes('硬件加速'));
   assert.equal(await unsupported.locator('#fallback').isVisible(),true); assert.equal(await unsupported.locator('#zoom-in').isDisabled(),true);
   await fallback.close(); check('unsupported WebGL keeps a readable static image and an explicit error');
   const recovery=await browser.newContext({viewport:{width:768,height:900},locale:'zh-CN'});
   const retryPage=await recovery.newPage(); await stubAPI(retryPage,{user:null});
   await retryPage.route('**/assets/panoramas/campus.webp',route=>route.fulfill({status:503,body:'unavailable'}));
-  await retryPage.goto(preview.origin+'/360/');
+  await retryPage.goto(preview.origin+'/360/'); await retryPage.locator('#campus').click();
   await retryPage.waitForFunction(()=>document.querySelector('#feedback').textContent.includes('加载失败'));
   await retryPage.unroute('**/assets/panoramas/campus.webp'); await retryPage.locator('#retry').click(); await ready(retryPage);
   assert.equal(await retryPage.locator('#viewport').getAttribute('data-source'),'campus');

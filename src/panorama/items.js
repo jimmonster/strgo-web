@@ -3,10 +3,18 @@ import { assetPath } from './core.js';
 import { requestJSON } from '../shared/catalog.js';
 import { translate as t } from '../shared/i18n.js';
 
+const normalize = value => String(value ?? '').normalize('NFKC').trim().toLowerCase();
+
+export function matchesPanorama(item, query) {
+  const search = normalize(query);
+  return !search || [item.name, item.content].some(value => normalize(value).includes(search));
+}
+
 export function setupItems({ open, updated, removed }) {
   const $ = selector => document.querySelector(selector);
   const store = new PanoramaStore(), grid = $('#saved-items'), editor = $('#item-dialog'), deletion = $('#delete-dialog');
   let items = [], owner = null, serial = 0, editing, deleting, busy = false, message = '', error = false;
+  const search = $('#items-search'), campus = $('#campus-card');
   const urls = new Set();
   const visible = item => item.kind === 'local' || (!!owner && item.owner === owner);
   function status(text, failed = false) {
@@ -16,16 +24,28 @@ export function setupItems({ open, updated, removed }) {
   function render() {
     for (const url of urls) URL.revokeObjectURL(url);
     urls.clear(); grid.replaceChildren();
-    const shown = items.filter(visible).sort((a, b) => b.createdAt - a.createdAt || b.id.localeCompare(a.id));
-    $('#items-empty').hidden = shown.length > 0;
+    const query = search.value.trim();
+    const shown = items.filter(item => visible(item) && matchesPanorama(item, query))
+      .sort((a, b) => b.createdAt - a.createdAt || b.id.localeCompare(a.id));
+    campus.hidden = !matchesPanorama({ name: '阳光下的大学校园广场',
+      content: [t('阳光下的大学校园广场'), t('校园全景'), '校园全景'].join(' ') }, query);
+    const empty = $('#items-empty');
+    empty.hidden = shown.length > 0 || (!!query && !campus.hidden);
+    empty.textContent = t(query ? '没有找到匹配的全景。' : '生成或导入一张 2:1 全景图，即可创建自己的条目。');
+    search.placeholder = t('搜索标题或描述');
     for (const item of shown) {
       const card = document.createElement('article'); card.className = 'saved-item'; card.dataset.itemId = item.id;
       const preview = document.createElement('button'); preview.type = 'button'; preview.className = 'item-preview';
       preview.setAttribute('aria-label', `${t('打开全景')} · ${item.name}`);
-      if (item.kind === 'local' && item.thumbnail) {
-        const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy';
-        image.src = URL.createObjectURL(item.thumbnail); urls.add(image.src); preview.append(image);
-      } else { const label = document.createElement('span'); label.textContent = '360°'; preview.append(label); }
+      const label = document.createElement('span'); label.textContent = '360°'; label.setAttribute('aria-hidden', 'true');
+      preview.append(label);
+      if (item.kind === 'ai' || item.thumbnail) {
+        const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy'; image.decoding = 'async';
+        if (item.kind === 'ai') image.src = assetPath(item.assetId);
+        else { image.src = URL.createObjectURL(item.thumbnail); urls.add(image.src); }
+        image.addEventListener('error', () => image.remove(), { once: true });
+        preview.append(image);
+      }
       preview.addEventListener('click', () => openItem(item));
       const body = document.createElement('div'); body.className = 'item-body';
       const title = document.createElement('h3'); title.textContent = item.name; title.setAttribute('data-strgo-user-content', '');
@@ -83,12 +103,13 @@ export function setupItems({ open, updated, removed }) {
     }
     try {
       const item = await store.create({ kind: source.kind, name: source.name.slice(0, MAX_TITLE_LENGTH), content: source.content || '',
-        owner: account, assetId: source.kind === 'ai' ? source.url.split('/').at(-1) : undefined,
+        owner: account, generated: source.generated, assetId: source.kind === 'ai' ? source.url.split('/').at(-1) : undefined,
         file: source.file, thumbnail, width: image.naturalWidth, height: image.naturalHeight }, signal);
       // Mutate the source immediately after commit so retry cannot duplicate it.
       source.itemId = item.id; source.name = item.name; source.content = item.content;
       if (source.kind === 'ai' && !document.hidden) { serial++; owner = account; }
       status('已保存新条目。');
+      search.value = '';
       items = [item, ...items.filter(existing => existing.id !== item.id)]; render();
       return item;
     } catch (e) {
@@ -117,10 +138,11 @@ export function setupItems({ open, updated, removed }) {
   editor.addEventListener('close', () => { const id = editing?.id; editing = null; $('#item-form').reset(); $('#item-error').textContent = ''; grid.querySelector(`[data-item-id="${id}"] [data-item-action="edit"]`)?.focus(); });
   deletion.addEventListener('close', () => { const id = deleting?.id; deleting = null; $('#delete-name').textContent = ''; $('#delete-error').textContent = ''; (grid.querySelector(`[data-item-id="${id}"] [data-item-action="delete"]`) || $('#items-heading')).focus(); });
   $('#refresh-items').addEventListener('click', () => { refresh().catch(() => status('无法读取已保存条目，请允许浏览器存储后刷新。', true)); refreshAccount(); });
+  search.addEventListener('input', render);
   window.addEventListener('strgo:localechange', render);
   refresh().catch(() => status('无法读取已保存条目，请允许浏览器存储后刷新。', true));
   refreshAccount();
-  return { remember, refreshAccount, clearPrivate,
+  return { remember, status, refreshAccount, clearPrivate,
     dispose() { serial++; for (const url of urls) URL.revokeObjectURL(url); urls.clear(); }
   };
 }

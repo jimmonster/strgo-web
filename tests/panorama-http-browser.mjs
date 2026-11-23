@@ -42,14 +42,17 @@ export async function checkPanoramaHTTP({ browser, origin, directory }) {
     assert.equal(denied.status(),403);
     await page.locator('#panorama-scene').fill('阳光下的校园广场，四周是教学楼、树木和喷泉。');
     await page.locator('#generate-panorama').click();
+    const card = page.locator('#saved-items .saved-item');
+    await card.locator('.item-preview').click();
     await page.waitForFunction(()=>document.querySelector('#viewport').dataset.source==='ai' && document.querySelector('#viewport').getAttribute('aria-busy')==='false',{},{timeout:30000});
     assert.equal(new URL(page.url()).pathname,'/360/');
-    assert.equal(await page.locator('.saved-item').count(),1);
+    assert.equal(await page.locator('#saved-items .saved-item').count(),1);
     const jobs=await (await member.request.get(origin+'/api/image/jobs')).json();
     assert.equal(jobs.jobs.length,1); assert.equal(jobs.jobs[0].status,'complete');
     assert.ok(jobs.jobs[0].prompt.endsWith(template)); assert.equal(jobs.jobs[0].size,'2048x1024');
     // The viewer has fetched, decoded and rendered the actual authenticated image.
     assert.equal(await page.locator('#viewport canvas').isVisible(),true);
+    await page.locator('#back-to-gallery').click();
     await page.locator('#open-fixed-generation').click();
     await page.waitForFunction(()=>!document.querySelector('#generate-fixed-panorama').disabled);
     await page.locator('#fixed-scene').fill('同一个院落的三个固定机位');
