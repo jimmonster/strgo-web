@@ -4,7 +4,7 @@
 
 论坛文档编辑器使用的 PDF.js 构建依赖要求 Node.js 22.13 或更新版本（也支持 Node.js 24）；CI 的 Node.js 22 会获取当前补丁版本。
 
-在仓库根目录工作。生产部署文档使用 Node.js 22、Python 3、Ubuntu/Debian、Bash、Nginx 和 systemd；终端另需 Rust 1.88 与 Docker。开发时建议使用 Python 3.12，后端完整验证优先在 Linux 或 WSL 中执行。
+在仓库根目录工作。生产部署文档使用 Node.js 22.13 或更新版本、Python 3、Ubuntu/Debian、Bash、Nginx 和 systemd；终端另需 Rust 1.88 与 Docker。开发时建议使用 Python 3.12，后端完整验证优先在 Linux 或 WSL 中执行。
 
 Windows 可以运行静态构建和 Node 测试；部分部署测试、磁盘同步与权限操作依赖 Linux。请区分系统能力缺失与业务断言失败。
 
@@ -90,9 +90,9 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 
 ## 统一验证和 CI
 
-安装根及各应用的锁定依赖后运行 `npm run verify`，或使用 `node scripts/verify.mjs --root`、`--apps`、`--terminal` 选择范围。脚本先构建根主站，再按依赖关系构建和测试应用；不发布或调用真实模型。Python不在PATH时设置 `STRGO_PYTHON` 为可执行文件。`--browser` 额外执行需要Chrome及空闲回环8092端口的浏览器验收。
+安装根及各应用的锁定依赖后运行 `npm run verify`，或使用 `node scripts/verify.mjs --root`、`--apps`、`--terminal` 选择范围。脚本先构建根主站，再按依赖关系构建和测试应用；不发布或调用真实模型。Python不在PATH时设置 `STRGO_PYTHON` 为可执行文件。`--browser` 额外执行需要Chrome及空闲回环8092端口的浏览器验收。SWARMERA 生存浏览器回归由该选项在应用构建后执行。
 
-`.github/workflows/verify.yml` 在push、pull_request和手动触发时运行Linux检查：Node22、Python3.12、各应用构建/回归、Bash部署辅助回归，以及Rust1.88终端测试。Actions只读仓库权限，不部署生产。实际Linux结果以对应提交的CI运行记录为准。
+`.github/workflows/verify.yml` 在push、pull_request和手动触发时运行Linux检查：Node22、Python3.12、各应用构建/回归、Bash部署辅助回归，以及Rust1.88终端测试。浏览器步骤同时覆盖后台、AI、论坛、全景和虫潮生存。Actions只读仓库权限，不部署生产。实际Linux结果以对应提交的CI运行记录为准。
 
 Windows明确跳过Bash配置生成、创建符号链接与POSIX0600文件权限检查；这些在Linux CI执行。文件内容、持久化恢复、路径边界及业务断言仍在Windows运行。不能将跳过项记为通过。2026-10-23最终本机根Node91项通过，根Python204项中200项通过、4项平台跳过；终端Python31项中30项通过、1项平台跳过。Linux CI已实际跑通两个job，含终端Rust20项；提交与结果见 [审查记录](PROJECT-REVIEW.md)。
 

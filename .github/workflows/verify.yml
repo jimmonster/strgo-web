@@ -40,7 +40,7 @@ jobs:
       - name: Application builds, integration and deployment helpers
         if: success() || failure()
         run: node scripts/verify.mjs --apps
-      - name: Admin, AI, forum and panorama browser regressions
+      - name: Admin, AI, forum, panorama and SWARMERA browser regressions
         if: success()
         env:
           STRGO_PYTHON: python3
@@ -50,6 +50,7 @@ jobs:
           for test in admin-browser ai-browser forum-browser panorama-browser; do
             node "tests/$test.mjs" || status=1
           done
+          (cd apps/swarmera && npm run test:survival:browser) || status=1
           exit "$status"
   terminal:
     runs-on: ubuntu-latest
