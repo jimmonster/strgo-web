@@ -1,6 +1,6 @@
 // UI copy only. User filenames, prompts and artwork titles are never translated.
 const rows = [
-  ['随手机转动','隨手機轉動','Follow phone motion','端末の動きに連動','휴대폰 움직임 따라가기'],
+  ['全屏时点按画面显示或隐藏控件。','全螢幕時點按畫面顯示或隱藏控制項。','In fullscreen, tap the panorama to show or hide controls.','全画面でパノラマをタップすると操作ボタンの表示を切り替えられます。','전체 화면에서 파노라마를 탭해 조작 버튼을 표시하거나 숨길 수 있습니다.'],
   ['正在请求手机方向权限…','正在請求手機方向權限…','Requesting motion permission…','端末の動きへのアクセスを確認しています…','움직임 센서 권한을 요청하는 중…'],
   ['正在等待手机方向数据…','正在等待手機方向資料…','Waiting for phone orientation…','端末の向きのデータを待っています…','휴대폰 방향 데이터를 기다리는 중…'],
   ['浏览器无法读取手机方向，仍可拖动全景。','瀏覽器無法讀取手機方向，仍可拖動全景。','Motion tracking is unavailable. You can drag the panorama.','このブラウザーでは端末の向きを取得できません。ドラッグで操作できます。','이 브라우저에서는 휴대폰 방향을 읽을 수 없습니다. 파노라마를 드래그할 수 있습니다.'],

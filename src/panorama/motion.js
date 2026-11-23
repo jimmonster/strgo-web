@@ -18,15 +18,13 @@ export function deviceLook({ alpha, beta, gamma }) {
   };
 }
 
-export function setupMotion({ button, feedback, getView, setView, isReady, isDragging }) {
-  button.hidden = !(navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches);
-  let state = 'off', message = '', revision = 0, timer;
+export function setupMotion({ feedback, getView, setView, isOpen, isFullscreen, canTrack, isDragging }) {
+  const mobile = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
+  let state = 'off', message = '', revision = 0, timer, permissionGranted = false;
   let latest, reference, initialView;
 
   function render() {
-    button.disabled = !isReady() || state === 'requesting';
-    button.setAttribute('aria-pressed', String(state === 'active' || state === 'waiting'));
-    feedback.hidden = !message;
+    feedback.hidden = !message || !isFullscreen();
     feedback.textContent = t(message);
   }
 
@@ -45,7 +43,7 @@ export function setupMotion({ button, feedback, getView, setView, isReady, isDra
   }
 
   function orient(event) {
-    if (!isReady() || document.hidden) return;
+    if (!canTrack() || document.hidden) return;
     const look = deviceLook(event);
     if (!look) return;
     latest = { ...look, yaw: look.yaw ?? latest?.yaw ?? null };
@@ -65,27 +63,30 @@ export function setupMotion({ button, feedback, getView, setView, isReady, isDra
     if (Math.min(yawChange, 360 - yawChange) >= .05 || Math.abs(next.pitch - view.pitch) >= .05) setView(next);
   }
 
-  button.addEventListener('click', async () => {
-    if (state !== 'off') { stop(); return; }
-    if (!isReady()) return;
+  async function start(fromGesture = false) {
+    if (!mobile || state !== 'off' || !isOpen() || document.hidden) return;
     const orientation = window.DeviceOrientationEvent;
     if (!window.isSecureContext || !orientation) {
-      stop('浏览器无法读取手机方向，仍可拖动全景。');
+      if (fromGesture) stop('浏览器无法读取手机方向，仍可拖动全景。');
       return;
     }
+    const needsPermission = typeof orientation.requestPermission === 'function' && !permissionGranted;
+    if (needsPermission && !fromGesture) return;
+
     const ticket = ++revision;
-    state = 'requesting'; message = '正在请求手机方向权限…'; render();
-    let granted;
-    try {
-      granted = typeof orientation.requestPermission !== 'function' || await orientation.requestPermission() === 'granted';
-    } catch { granted = false; }
-    if (ticket !== revision || !isReady() || document.hidden) return;
-    if (!granted) { stop('未获得手机方向权限，仍可拖动全景。'); return; }
+    if (needsPermission) {
+      state = 'requesting'; message = '正在请求手机方向权限…'; render();
+      let granted;
+      try { granted = await orientation.requestPermission() === 'granted'; }
+      catch { granted = false; }
+      if (ticket !== revision || !isOpen() || document.hidden) return;
+      if (!granted) { stop('未获得手机方向权限，仍可拖动全景。'); return; }
+      permissionGranted = true;
+    }
     state = 'waiting'; message = '正在等待手机方向数据…'; render();
     window.addEventListener('deviceorientation', orient);
     timer = setTimeout(() => stop('未收到手机方向数据，仍可拖动全景。'), 3000);
-  });
+  }
 
-  render();
-  return { rebase, render, stop };
+  return { rebase, render, start, stop };
 }
