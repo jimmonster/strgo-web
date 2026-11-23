@@ -63,7 +63,7 @@ try {
   const progress=await page.evaluate(()=>({kills:swarmera.survival.game.kills,level:swarmera.survival.game.level}));
   for(const locale of ['zh-TW','en','ja','ko','zh-CN']){
     await page.evaluate(locale=>window.strgoI18n.setLocale(locale),locale);
-    await page.waitForFunction(locale=>document.documentElement.lang===locale&&swarmera.survival.game.state==='paused',locale);
+    await page.waitForFunction(locale=>document.documentElement.lang===locale&&window.swarmera?.survival?.game.state==='paused',locale);
     assert.deepEqual(await page.evaluate(()=>({kills:swarmera.survival.game.kills,level:swarmera.survival.game.level})),progress);
     assert.equal(await page.locator('canvas').count(),1);
   }
@@ -82,7 +82,7 @@ try {
   const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
   await mobile.addInitScript(()=>localStorage.setItem('strgo:locale:v1','zh-CN'));
   const mp=await mobile.newPage();mp.on('pageerror',e=>report.errors.push(e.message));
-  await mp.goto(root+'survival/');await mp.waitForFunction(()=>swarmera.survival?.game);
+  await mp.goto(root+'survival/');await mp.waitForFunction(()=>window.swarmera?.survival?.game);
   assert.equal(await mp.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   await mp.screenshot({path:dir+'/mobile-ready.png',fullPage:true});report.screenshots.push('mobile-ready.png');
   await mp.locator('[data-survival=start]').tap();
