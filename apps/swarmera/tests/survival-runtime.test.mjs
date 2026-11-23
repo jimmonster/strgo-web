@@ -59,6 +59,15 @@ test('real controller starts, moves, pauses, upgrades, records defeat and releas
   controller.dispose(); assert.equal(frames.size, 0); assert.equal(game.state, 'paused');
 });
 
+test('touch-capable browsers expose the joystick even without matching pointer media queries', t => {
+  const device = navigator;
+  Object.defineProperty(device, 'maxTouchPoints', { configurable: true, value: 1 });
+  t.after(() => { delete device.maxTouchPoints; });
+  const { d, controller } = setup();
+  assert.equal(d.querySelector('main').hasAttribute('data-survival-touch'), true);
+  controller.dispose();
+});
+
 test('renderer executes ready, dense spider battle, segmented bosses and all effects without invalid geometry', async () => {
   const env = setup(), { game, step, controller, operations } = env;
   step(1); assert.ok(operations.includes('drawImage'));

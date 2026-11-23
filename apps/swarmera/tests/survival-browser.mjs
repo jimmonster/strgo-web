@@ -84,8 +84,10 @@ try {
   const mp=await mobile.newPage();mp.on('pageerror',e=>report.errors.push(e.message));
   await mp.goto(root+'survival/');await mp.waitForFunction(()=>window.swarmera?.survival?.game);
   assert.equal(await mp.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+  assert.ok(await mp.evaluate(()=>navigator.maxTouchPoints>0), 'the mobile context must expose touch input');
   await mp.screenshot({path:dir+'/mobile-ready.png',fullPage:true});report.screenshots.push('mobile-ready.png');
   await mp.locator('[data-survival=start]').tap();
+  await mp.locator('#survival-stick').waitFor({state:'visible',timeout:10000});
   await mp.locator('#survival-stick').scrollIntoViewIfNeeded();
   const rect=await mp.locator('#survival-stick').boundingBox();assert.ok(rect);
   const x=rect.x+rect.width/2,y=rect.y+rect.height/2;
@@ -103,6 +105,7 @@ try {
   report.checks.push('390px touch device supports real joystick dragging and skill taps without horizontal overflow');
   await mp.locator('[data-survival=pause]').tap();
   await mp.setViewportSize({width:844,height:390});
+  assert.ok(await mp.locator('#survival-stick').isVisible());
   assert.equal(await mp.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   await mobile.close();assert.deepEqual(report.errors,[]);report.status='passed';
 } catch(error){report.status=/EPERM|Operation not permitted|HTTP server blocked/.test(String(error))?'blocked':'failed';report.errors.push(String(error.stack||error));process.exitCode=1;}
