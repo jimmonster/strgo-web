@@ -215,7 +215,7 @@ try {
 
   await page.goto(preview.origin+'/hub/#catalog'); await page.waitForSelector('#catalogSearch');
   await page.locator('#catalogSearch').fill('/360/'); await page.waitForSelector('[data-open="S09"]');
-  await page.locator('[data-open="S09"]').click(); await page.locator('a.entry-link[href="/360/"]').click(); await galleryReady(page);
+  await page.locator('[data-open="S09"]').click(); await galleryReady(page);
   await page.locator('strgo-navigation').locator('.trigger').click();
   await page.locator('strgo-navigation').locator('.search input').fill('/360/');
   await page.locator('strgo-navigation').locator('a[data-entry="S09"]').waitFor();

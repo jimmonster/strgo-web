@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>STRGO · AI 视频</title>
+  <link rel="stylesheet" href="/hub/tokens.css">
+  <link rel="stylesheet" href="/video/styles.css">
+  <script type="module" src="/video/app.js"></script>
+</head>
+<body>
+  <header><a href="/">STRGO</a><strgo-navigation></strgo-navigation></header>
+  <main>
+    <h1>AI 视频</h1>
+    <p id="notice" role="status">正在检查账号与权限…</p>
+    <section id="create" hidden>
+      <h2>文生视频</h2>
+      <form id="generate">
+        <label>工作流<select id="workflow" required></select></label>
+        <a id="source" target="_blank" rel="noopener noreferrer">查看 AutoDL 接口和价格 ↗</a>
+        <div id="fields"></div>
+        <button type="submit">确认参数</button>
+      </form>
+    </section>
+    <section id="archive" hidden>
+      <div class="row"><h2>我的视频</h2><button id="refresh" type="button">刷新</button></div>
+      <p id="archive-status" role="status"></p>
+      <div id="jobs"></div>
+      <button id="more" type="button" hidden>查看更多</button>
+    </section>
+    <details id="admin" hidden>
+      <summary>管理工作流和成员权限</summary>
+      <section>
+        <h2>AutoDL 工作流</h2>
+        <a href="https://www.autodl.art/large-model/comfyui" target="_blank" rel="noopener noreferrer">打开 AutoDL 官方目录 ↗</a>
+        <button type="button" id="sync">加载官方目录</button>
+        <form id="enable">
+          <label>工作流 URL 或 ID<input name="workflow" list="catalog" required placeholder="minimax_h3_adl_int8" autocomplete="off"></label>
+          <datalist id="catalog"></datalist>
+          <label>替换已启用的工作流<select name="replace" id="replace"><option value="">添加到现有列表</option></select></label>
+          <button type="submit">核对并启用</button>
+        </form>
+        <div id="enabled"></div>
+      </section>
+      <section>
+        <h2>成员生成权限</h2>
+        <form id="grant">
+          <label>STRGO 用户名<input name="username" required pattern="[A-Za-z0-9_-]{3,32}" autocomplete="off"></label>
+          <button type="submit">授权文生视频</button>
+        </form>
+        <div id="members"></div>
+      </section>
+      <p id="admin-status" role="status"></p>
+    </details>
+    <dialog id="confirm">
+      <form method="dialog">
+        <h2>提交付费任务</h2>
+        <p id="confirm-workflow"></p>
+        <p>AutoDL 将按工作流规则收费。提交后可关闭网页，视频完成时会自动保存到服务器。</p>
+        <div class="row"><button value="cancel">取消</button><button value="submit">确认生成</button></div>
+      </form>
+    </dialog>
+  </main>
+</body>
+</html>

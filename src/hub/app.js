@@ -51,7 +51,7 @@ function homeShortcuts(ids) {
 }
 function recentHtml(){const arr=homeShortcuts(state.recent).slice(0,3);return arr.length?arr.map(e=>`<div class="recent-item"><div class="mini-icon">${icon(e.type)}</div><div><strong>${e.name}</strong><small>本机访问记录 · ${e.group}</small></div><button data-open="${e.id}">继续 ↗</button></div>`).join(''):'<div class="empty"><h3>从一个小小的灵感开始。</h3><small>打开任意功能后，这里会记住你的最近访问。</small></div>'}
 function hub() {
-  const mainTools = ['C01', 'C02', 'C03', 'C04', 'S09', 'N01'].map(get);
+  const mainTools = ['C01', 'C02', 'C03', 'C07', 'C04', 'S09', 'N01'].map(get);
   const shortcuts = homeShortcuts(state.favs);
   const content = ['N02', 'N03', 'N04', 'N05', 'N06'].map(get);
   const workspace = E.filter(entry => ['U03', 'U04'].includes(entry.id) || (entry.group === '管理' && available(entry)));

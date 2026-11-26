@@ -76,6 +76,8 @@ class Service:
         self.backup_due = threading.Event()
         from .ai_service import AIService
         self.ai = AIService(self, start_worker=start_worker)
+        from .video import VideoService
+        self.video = VideoService(store, start_worker=start_worker)
         from .panorama_tours import PanoramaTours
         self.panorama_tours = PanoramaTours(self)
         self.recover()
@@ -93,6 +95,7 @@ class Service:
         self.backup_due.set()
 
     def close(self):
+        self.video.close()
         self.ai.close()
         self.stopping.set()
         self.wake.set()
@@ -499,6 +502,8 @@ class Service:
             raise Problem(401, '请先登录。')
         if method != 'GET' and not secrets.compare_digest(headers.get('x-csrf-token', ''), user['csrf']):
             raise Problem(403, '登录校验失效，请刷新页面后重试。')
+        if path.startswith(('/api/image/video/', '/api/image/admin/video/')):
+            return self.video.dispatch(user, method, path, query, payload, headers)
         if path.startswith(admin.PREFIX + '/'):
             return admin.dispatch(self, method, path, query, payload, user)
         if path == '/api/image/panorama-tours' or path.startswith('/api/image/panorama-tours/'):
@@ -836,6 +841,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
 
     def handle_request(self, method):
         from .ai_service import EventStream
+        from .video import VideoStream
         ai_request = self.path.startswith('/api/ai/v1/')
         try:
             payload = None
@@ -870,10 +876,11 @@ class HTTPHandler(BaseHTTPRequestHandler):
         if ai_request and status >= 400 and isinstance(result.get('error') if isinstance(result, dict) else None, str):
             # Existing application error shape remains compatible with its clients.
             result = {'error': {'code': locals().get('error_code', 'REQUEST_FAILED'), 'message': result['error']}, 'request_id': uuid.uuid4().hex}
-        body = result if isinstance(result, bytes) else json.dumps(result, ensure_ascii=False).encode()
+        stream = isinstance(result, VideoStream)
+        body = b'' if stream else result if isinstance(result, bytes) else json.dumps(result, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header('Content-Type', extra.pop('Content-Type', 'application/json; charset=utf-8'))
-        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Content-Length', str(result.length if stream else len(body)))
         self.send_header('Cache-Control', 'private, no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Cross-Origin-Resource-Policy', 'same-origin')
@@ -888,7 +895,10 @@ class HTTPHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.close_connection = True
         try:
-            self.wfile.write(body)
+            if stream:
+                result.write(self.wfile)
+            else:
+                self.wfile.write(body)
         except OSError:
             pass
 

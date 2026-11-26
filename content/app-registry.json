@@ -78,6 +78,17 @@
       "symbol": "↗"
     },
     {
+      "id": "C07",
+      "name": "AI 视频",
+      "en": "VIDEO STUDIO",
+      "group": "创作工具",
+      "route": "/video/",
+      "description": "文生视频、硬盘归档与在线播放。",
+      "type": "video",
+      "access": "管理员或明确授权",
+      "symbol": "▷"
+    },
+    {
       "id": "S01",
       "name": "阳光卧室",
       "en": "SUNLIT ROOM",

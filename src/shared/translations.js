@@ -4,6 +4,10 @@ import { aiCopy } from './ai-copy.js';
 
 // Interface copy only. User-authored text, model output and terminal data are never translated.
 export const english = {
+  "管理视频工作流与成员授权 →": "Manage video workflows and member access →",
+  "AI 视频": "AI video",
+  "文生视频、硬盘归档与在线播放。": "Text-to-video, disk storage and online playback.",
+  "管理员或明确授权": "Administrator or explicit access",
   "网页实验": "Web experiments",
   "常用功能": "Common tools",
   "AI 创作、360° 全景和创作交流。": "AI tools, 360° panoramas, and a creator community.",
