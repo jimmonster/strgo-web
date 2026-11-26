@@ -298,6 +298,7 @@ try {
   itemState.user='different-owner'; await itemsPage.evaluate(()=>window.dispatchEvent(new Event('focus')));
   await waitCount(1);
   assert.equal(await itemsPage.locator('#item-dialog').evaluate(dialog=>dialog.open),false);
+  await itemsPage.waitForFunction(()=>document.querySelector('#item-title').value==='');
   assert.equal(await itemsPage.locator('#item-title').inputValue(),'');
   assert.equal(await itemsPage.locator('body').textContent().then(text=>text.includes('PRIVATE ARTWORK')),false);
   itemState.user='items-owner'; await itemsPage.locator('#refresh-items').click(); await waitCount(2);
