@@ -5,6 +5,7 @@ const api = '/api/image/video';
 const adminApi = '/api/image/admin/video';
 const statuses = { queued: '排队中', submitting: '提交中', running: '生成中', saving: '正在保存',
   complete: '已保存', failed: '失败', unknown: '待核实，请检查 AutoDL 任务' };
+const fieldLabels = { prompt: '视频提示词', duration: '时长（秒）', resolution: '分辨率 / 画幅', seed: '随机种子' };
 let session, workflows = [], pending, sending = false, offset = 0, latest = '', serial = 0, timer;
 
 function node(tag, text, attributes = {}) {
@@ -26,7 +27,7 @@ function activeWorkflow() {
   return workflows.find(workflow => workflow.id === $('workflow').value);
 }
 function control(field) {
-  const label = node('label', field.name === 'prompt' ? '视频提示词' : field.name);
+  const label = node('label', fieldLabels[field.name] || field.name);
   let input;
   if (field.options || field.kind === 'boolean') {
     input = node('select');
@@ -240,3 +241,25 @@ async function start() {
   } catch (error) { $('notice').textContent = error.message; $('notice').hidden = false; }
 }
 start();
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    ++serial;
+    $('jobs').replaceChildren();
+    latest = '';
+    return;
+  }
+  // A second tab may have changed accounts or revoked this session.
+  request('/api/image/session').then(fresh => {
+    if (fresh.user?.id !== session?.user?.id) {
+      location.reload();
+      return;
+    }
+    session = fresh;
+    loadJobs();
+    loadWorkflows().catch(error => { $('notice').textContent = error.message; $('notice').hidden = false; });
+  }).catch(() => {
+    $('create').hidden = $('archive').hidden = $('admin').hidden = true;
+    signIn();
+  });
+});

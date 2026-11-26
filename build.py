@@ -284,6 +284,8 @@ def build(config_path=ROOT / 'site.json', output=ROOT / 'dist', scheme=None, req
     panorama_page = panorama_output / 'index.html'
     panorama_page.write_text(re.sub(r'\{\{([a-z_]+)\}\}', replace, panorama_page.read_text(encoding='utf-8')), encoding='utf-8')
     shutil.copytree(ROOT / 'src/video', output / 'video', dirs_exist_ok=True)
+    video_page = output / 'video/index.html'
+    video_page.write_text(re.sub(r'\{\{([a-z_]+)\}\}', replace, video_page.read_text(encoding='utf-8')), encoding='utf-8')
     # The registry supplies both the portal and the shared application switcher.
     from hub_build import build_hub
     build_hub(ROOT, output, config, context, replace)

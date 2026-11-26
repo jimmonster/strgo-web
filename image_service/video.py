@@ -11,6 +11,7 @@ import time
 import uuid
 
 from .autodl_video import AutoDL, MAX_VIDEO_BYTES, is_mp4, links, validate_fields, workflow_id
+from .durability import sync_directory
 from .security import Problem
 
 PREFIX = '/api/image/video'
@@ -300,9 +301,11 @@ class VideoService:
         try:
             folder = self.directory / job['id']
             folder.mkdir(mode=0o700, exist_ok=True)
+            sync_directory(self.directory)
             for index, url in enumerate(videos):
                 target = folder / f'{index}.mp4'
                 if target.is_file():
+                    sync_directory(folder)
                     continue
                 if not self.disk_ready():
                     raise OSError('disk full')
@@ -310,6 +313,7 @@ class VideoService:
                 try:
                     self.provider.download(url, partial)
                     partial.replace(target)
+                    sync_directory(folder)
                 finally:
                     partial.unlink(missing_ok=True)
         except (Problem, OSError):
