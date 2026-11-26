@@ -30,3 +30,21 @@ body{font-family:var(--strgo-font);font-size:15px;line-height:1.65}h1,h2,h3{lett
 @media(max-width:760px){body{font-size:16px}.hero{display:flex;flex-direction:column;align-items:stretch;min-height:0}.hero-copy{order:1;padding:36px 0 0;max-width:none}.hero-meta{margin-top:24px;margin-bottom:0}.orbit{position:relative;order:2;inset:auto;width:100%;height:220px;opacity:.9;mask-image:none}.orbit-label{display:none}.hero-mode{position:static;order:3;justify-content:flex-start;flex-wrap:wrap;margin:0 0 24px}.immersive .hero{min-height:0}.immersive .orbit{height:260px;top:auto}}
 
 @media(max-width:760px){header{gap:10px;padding-left:16px;padding-right:16px}header strgo-navigation{flex-shrink:0}}
+
+/* Keep common destinations close to the top of the default home view. */
+body:not(.immersive) .hero { min-height: 310px; }
+.hero-copy { padding-bottom: 64px; }
+.hero-actions a { border: 1px solid var(--border); border-radius: 10px; padding: 11px 17px; }
+.hero-actions .primary { border-color: var(--accent); }
+.hero-actions .ghost:hover { border-color: var(--accent); }
+.tool-card { min-height: 112px; padding: 18px 20px; }
+.tool-card .symbol { margin-bottom: 8px; }
+.tool-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+@media (max-width: 760px) {
+  body:not(.immersive) .hero { min-height: 265px; }
+  body:not(.immersive) .hero .orbit { top: 65px; height: 200px; right: -30%; opacity: .45; }
+  .hero-actions { flex-wrap: wrap; }
+  .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tool-card { min-height: 100px; }
+}

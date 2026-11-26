@@ -1,4 +1,4 @@
-import { escapeHTML as esc, filterEntries, requestJSON, readPreferences, writePreferences } from './catalog.js';
+import { EXPERIMENT_GROUP, escapeHTML as esc, filterEntries, requestJSON, readPreferences, writePreferences } from './catalog.js';
 import { icon } from './icons.js';
 import { getLocale, setLocale, setupI18n, translate as t } from './i18n.js';
 
@@ -89,8 +89,14 @@ class SiteNavigation extends HTMLElement {
   }
   renderResults() {
     if (!this.preferences) return;
-    const matches = filterEntries(this.entries, { role: this.role, query: this.input.value });
+    const query = this.input.value;
+    const entries = query.trim() ? this.entries : this.entries.filter(entry => entry.group !== EXPERIMENT_GROUP);
+    const matches = filterEntries(entries, { role: this.role, query });
     this.results.innerHTML = matches.map(entry => `<div class="result"><a href="${esc(entry.route)}" data-entry="${entry.id}" ${entry.id === 'C05' ? 'target="_blank" rel="noopener noreferrer"' : ''}>${icon(entry.type)}<span>${esc(t(entry.name))}<small>${esc(t(entry.group))}</small></span>${icon('arrow')}</a><button class="fav ${this.preferences.favs.includes(entry.id) ? 'on' : ''}" data-fav="${entry.id}" aria-pressed="${this.preferences.favs.includes(entry.id)}" aria-label="${esc(t(this.preferences.favs.includes(entry.id) ? '取消收藏' : '收藏'))}${esc(t(entry.name))}">${icon('star')}</button></div>`).join('') || `<p class="hint">${t('没有匹配结果，试试其他关键词。')}</p>`;
+    if (!query.trim() && this.entries.some(entry => entry.group === EXPERIMENT_GROUP)) {
+      const href = this.shadowRoot.querySelector('.footer a').href + '#spaces';
+      this.results.insertAdjacentHTML('beforeend', `<div class="result"><a href="${esc(href)}">${icon('spaces')}<span>${esc(t(EXPERIMENT_GROUP))}</span>${icon('arrow')}</a></div>`);
+    }
   }
 }
 if (!customElements.get('strgo-navigation')) customElements.define('strgo-navigation', SiteNavigation);

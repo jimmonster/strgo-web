@@ -1,5 +1,5 @@
 import { icon } from '../shared/icons.js';
-import { escapeHTML as esc, readPreferences, writePreferences, filterEntries, requestJSON, allowedAction } from './core.js';
+import { EXPERIMENT_GROUP, escapeHTML as esc, readPreferences, writePreferences, filterEntries, requestJSON, allowedAction } from './core.js';
 import { art, startOrbit } from './visuals.js';
 
 const D = window.STRGO, E = D.entries;
@@ -8,6 +8,7 @@ try { storage = window.localStorage; } catch { /* Private browsing can disable s
 const $ = selector => document.querySelector(selector), $$ = selector => [...document.querySelectorAll(selector)];
 const main = $('#main'), modal = $('#modal');
 const get = id => E.find(e => e.id === id || e.type === id);
+const isExperiment = entry => entry.group === EXPERIMENT_GROUP;
 const pageDefault = location.pathname.startsWith('/ai/tasks') ? 'tasks' : location.pathname.startsWith('/ai/assets') ? 'assets' : 'hub';
 const view = () => location.hash.slice(1).split('?')[0] || pageDefault;
 let state = { ...readPreferences(storage, null, E), user: null, csrf: '', role: 'guest' };
@@ -32,20 +33,76 @@ function openEntry(id) {
   const e = get(id);
   if (!e || !available(e)) return;
   remember(e);
-  if (e.group === '沉浸空间') return go('space-' + e.type);
+  if (isExperiment(e)) return go('space-' + e.type);
   if (e.id === 'C05') window.open(e.route, '_blank', 'noopener,noreferrer');
   else location.assign(e.route);
 }
 function restartOrbit() { stopOrbit(); stopOrbit = view() === 'hub' && !document.hidden ? startOrbit($('#orbital'), state.motion) : () => {}; }
 
-function toolCard(e){return `<button class="tool-card" data-open="${e.id}"><span class="symbol">${icon(e.type)}</span><span class="arrow">↗</span><h3>${e.name}</h3><small>${e.access}</small><span class="en">${e.en}</span></button>`}
-function spaceCard(e){return `<button class="space-card" data-open="${e.id}"><div class="space-art">${art(e.type)}<span class="space-index">${e.id}</span><span class="space-arrow">↗</span></div><div class="space-title"><small>${e.en}</small><h3>${e.name}</h3><p>${e.description}</p></div></button>`}
-function recentHtml(){const arr=state.recent.map(get).filter(Boolean).filter(available).slice(0,3);return arr.length?arr.map(e=>`<div class="recent-item"><div class="mini-icon">${icon(e.type)}</div><div><strong>${e.name}</strong><small>本机访问记录 · ${e.group}</small></div><button data-open="${e.id}">继续 ↗</button></div>`).join(''):'<div class="empty"><h3>从一个小小的灵感开始。</h3><small>打开任意功能后，这里会记住你的最近访问。</small></div>'}
-function hub(){main.innerHTML=`<section class="hero"><div class="orbit" aria-hidden="true"><canvas id="orbital"></canvas><span class="orbit-label top">IDEAS IN MOTION</span></div><div class="hero-copy"><h1>把灵感，<br>送入<span class="accent">下一条轨道。</span></h1><p>创作、探索、连接。<br>你的工具与小宇宙，现在从这里出发。</p><div class="hero-actions"><button class="primary" data-go="studio">开始创作 <span class="action-arrow">↗</span></button><button class="ghost" data-go="catalog">浏览全部功能</button></div><div class="hero-meta">${E.filter(available).length} 个主入口 / ${E.filter(e=>e.group==='沉浸空间').length} 个沉浸空间 / 一个起点</div></div><div class="hero-mode"><button data-mode="console" class="${state.mode==='console'?'active':''}">控制台</button><button data-mode="immersive" class="${state.mode==='immersive'?'active':''}">沉浸模式</button><button id="motionQuick">${state.motion==='off'?'动效已关闭':'暂停动效'}</button></div></section><section class="section"><div class="section-head"><h2>让想法，即刻开始</h2><a href="#catalog">全部工具 ↗</a></div><div class="tool-grid">${E.slice(0,4).map(toolCard).join('')}</div></section><section class="section two-col"><div class="panel"><div class="section-head"><h3>继续上次的轨道</h3><span class="mini-label">RECENT</span></div>${recentHtml()}</div><div class="panel"><div class="section-head"><h3>我的快捷入口</h3><button class="link-button" data-go="catalog">管理收藏 ↗</button></div>${state.favs.length?'<div class="route-strip">'+state.favs.map(get).filter(Boolean).filter(available).map(e=>`<button data-open="${e.id}">${icon(e.type)} ${e.name}</button>`).join('')+'</div>':'<div class="empty"><h3>把常用的，放在手边。</h3><small>在全部功能中点击星标，即可添加快捷入口。</small></div>'}<div class="route-strip"><button data-go="tasks">${icon('tasks')} 任务中心</button><button data-go="assets">${icon('assets')} 我的作品</button></div></div></section><section class="section"><div class="section-head"><h2>换一个世界，继续好奇</h2><a href="#spaces">进入空间导航 ↗</a></div><div class="space-grid">${E.filter(e=>e.group==='沉浸空间').map(spaceCard).join('')}</div></section><section class="section"><div class="section-head"><h2>想法之外，也有连接</h2><a href="#catalog">查看所有入口 ↗</a></div><div class="content-links">${E.filter(e=>['N01','N02','N03','N04','N05','N06'].includes(e.id)).map(e=>`<button data-open="${e.id}"><span>${icon(e.type)}</span><div><h3>${e.name}</h3><small>${e.en}</small></div></button>`).join('')}</div></section><section class="section"><div class="section-head"><h2>管理你的工作区</h2></div><div class="route-strip">${E.filter(e=>e.group==='我的工作区'||e.group==='管理'&&available(e)||e.id==='C06'||e.id==='N07').map(e=>`<button data-open="${e.id}">${icon(e.type)} ${e.name}</button>`).join('')}</div></section>`;document.body.classList.toggle('immersive',state.mode==='immersive');restartOrbit()}
+function toolCard(entry) {
+  return `<a class="tool-card" data-entry="${entry.id}" href="${esc(entry.route)}">
+    <span class="symbol">${icon(entry.type)}</span><span class="arrow" aria-hidden="true">↗</span>
+    <h3>${entry.name}</h3>
+  </a>`;
+}
+function spaceCard(e){return `<button class="space-card" data-open="${e.id}"><div class="space-art">${art(e.type)}<span class="space-arrow">↗</span></div><div class="space-title"><small>${e.en}</small><h3>${e.name}</h3><p>${e.description}</p></div></button>`}
+function homeShortcuts(ids) {
+  return ids.map(get).filter(entry => entry && available(entry) && !isExperiment(entry));
+}
+function recentHtml(){const arr=homeShortcuts(state.recent).slice(0,3);return arr.length?arr.map(e=>`<div class="recent-item"><div class="mini-icon">${icon(e.type)}</div><div><strong>${e.name}</strong><small>本机访问记录 · ${e.group}</small></div><button data-open="${e.id}">继续 ↗</button></div>`).join(''):'<div class="empty"><h3>从一个小小的灵感开始。</h3><small>打开任意功能后，这里会记住你的最近访问。</small></div>'}
+function hub() {
+  const mainTools = ['C01', 'C02', 'C03', 'C04', 'S09', 'N01'].map(get);
+  const shortcuts = homeShortcuts(state.favs);
+  const content = ['N02', 'N03', 'N04', 'N05', 'N06'].map(get);
+  const workspace = E.filter(entry => ['U03', 'U04'].includes(entry.id) || (entry.group === '管理' && available(entry)));
+  main.innerHTML = `
+    <section class="hero">
+      <div class="orbit" aria-hidden="true"><canvas id="orbital"></canvas></div>
+      <div class="hero-copy">
+        <h1>STRGO</h1>
+        <p>AI 创作、360° 全景和创作交流。</p>
+        <div class="hero-actions"><a class="primary" href="/ai/">开始创作 ↗</a><a class="ghost" href="#catalog">浏览全部功能</a></div>
+      </div>
+      <div class="hero-mode">
+        <button data-mode="console" class="${state.mode === 'console' ? 'active' : ''}">控制台</button>
+        <button data-mode="immersive" class="${state.mode === 'immersive' ? 'active' : ''}">沉浸模式</button>
+        <button id="motionQuick">${state.motion === 'off' ? '动效已关闭' : '暂停动效'}</button>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-head"><h2>常用功能</h2></div>
+      <div class="tool-grid">${mainTools.map(toolCard).join('')}</div>
+    </section>
+    <section class="section two-col">
+      <div class="panel">
+        <div class="section-head"><h3>继续上次的轨道</h3></div>
+        ${recentHtml()}
+      </div>
+      <div class="panel">
+        <div class="section-head"><h3>我的快捷入口</h3><button class="link-button" data-go="catalog" data-catalog-favorites>管理收藏 ↗</button></div>
+        ${shortcuts.length ? '<div class="route-strip">' + shortcuts.map(entry => `<button data-open="${entry.id}">${icon(entry.type)} ${entry.name}</button>`).join('') + '</div>' : ''}
+        <div class="route-strip"><button data-go="tasks">${icon('tasks')} 任务中心</button><button data-go="assets">${icon('assets')} 我的作品</button></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-head"><h2>社区内容</h2></div>
+      <div class="content-links">${content.map(entry => `<button data-open="${entry.id}"><span>${icon(entry.type)}</span><h3>${entry.name}</h3></button>`).join('')}</div>
+    </section>
+    <section class="section">
+      <div class="section-head"><h2>管理你的工作区</h2></div>
+      <div class="route-strip">${workspace.map(entry => `<button data-open="${entry.id}">${icon(entry.type)} ${entry.name}</button>`).join('')}</div>
+    </section>`;
+  document.body.classList.toggle('immersive', state.mode === 'immersive');
+  restartOrbit();
+}
 function catalog(){main.innerHTML=heading('P02','所有功能，一个入口。','搜索名称、用途或路径。收藏常用功能，保留原有直接访问地址。')+`<input id="catalogSearch" class="wide-search" placeholder="搜索：生图、SSH、梦境、/home…" value="${esc(query)}" aria-label="搜索全部功能"><div class="chips">${D.groups.filter(g=>g!=='管理'||state.role==='admin').concat(['我的收藏']).map(g=>`<button data-filter="${g}" class="${filter===g?'active':''}">${g}</button>`).join('')}</div><p id="resultCount" class="fine"></p><div class="catalog-list" id="catalogResults"></div>`;catalogResults()}
-function catalogResults(){const arr=filterEntries(E,{role:state.role,query,group:filter,favorites:state.favs});$('#resultCount').textContent=`${arr.length} 个匹配入口`;$('#catalogResults').innerHTML=arr.map(e=>`<article class="catalog-card"><button class="fav ${state.favs.includes(e.id)?'on':''}" aria-label="${state.favs.includes(e.id)?'取消收藏':'收藏'}${e.name}" data-fav="${e.id}">${icon('star')}</button><span class="symbol">${icon(e.type)}</span><h3>${e.name}</h3><p>${e.description}</p><div class="catalog-bottom"><span class="badge">${e.access}</span><button data-open="${e.id}">打开 ↗</button></div><p class="mono fine">${esc(e.route)}</p></article>`).join('')||'<div class="empty"><h3>没有找到匹配功能</h3><p>试试“生图”“音乐”或清除筛选。</p><button data-reset-search>清除筛选</button></div>'}
-function spaces(){main.innerHTML=heading('P08','让好奇心，带路。','独立世界，随心探索。保持各自风格，统一返回与切换。')+`<div class="space-grid">${E.filter(e=>e.group==='沉浸空间').map(spaceCard).join('')}</div><section class="section panel"><h3>推荐漫游</h3><div class="route-strip"><button data-open="S01">阳光卧室</button><span>→</span><button data-open="S06">猫咪天堂</button><span>→</span><button data-open="S04">梦境花园</button></div><p class="fine">打开空间卡片，选择独立入口，继续探索。</p></section>`}
-function space(t){const e=get(t);if(!e){go('spaces');return}main.innerHTML=heading('P08',e.name,e.description)+`<div class="space-card large-space"><div class="space-art">${art(t)}</div></div><div class="section two-col"><div class="panel"><h2>把这扇门，留在手边。</h2><p class="prompt-note">这张封面是视觉示意。打开现有页面后体验真实三维场景。</p><div class="row-actions">${ext(e,'进入现有空间 ↗')}<button data-fav="${e.id}">${state.favs.includes(e.id)?'已收藏':'收藏空间'}</button><button data-go="spaces">切换空间</button></div></div><div class="panel"><h3>继续探索</h3><p class="prompt-note">从此处切换世界。各场景保留原有视角、动效与性能控制。</p>${t==='dreams'?'<div class="subroutes">'+Array.from({length:8},(_,i)=>`<a href="/dreams/0${i+1}/" >梦境 0${i+1} ↗</a>`).join('')+'</div>':''}<p class="fine">${['meow','swarmera'].includes(t)?'商品、购物清单、社区草稿与意向预约为本地体验，不代表真实交易或在线社区。':'支持原有独立路由；新导航不覆盖当前空间页面。'}</p></div></div>`}
+function catalogResults(){const entries = filter === '全部' && !query.trim() ? E.filter(entry => !isExperiment(entry)) : E;
+  const arr = filterEntries(entries, { role: state.role, query, group: filter, favorites: state.favs });$('#resultCount').textContent=`${arr.length} 个匹配入口`;$('#catalogResults').innerHTML=arr.map(e=>`<article class="catalog-card"><button class="fav ${state.favs.includes(e.id)?'on':''}" aria-label="${state.favs.includes(e.id)?'取消收藏':'收藏'}${e.name}" data-fav="${e.id}">${icon('star')}</button><span class="symbol">${icon(e.type)}</span><h3>${e.name}</h3><p>${e.description}</p><div class="catalog-bottom"><span class="badge">${e.access}</span><button data-open="${e.id}">打开 ↗</button></div><p class="mono fine">${esc(e.route)}</p></article>`).join('')||'<div class="empty"><h3>没有找到匹配功能</h3><p>试试“生图”“音乐”或清除筛选。</p><button data-reset-search>清除筛选</button></div>'}
+function spaces() {
+  main.innerHTML = heading('P08', '网页实验', '交互场景、小游戏与网页原型。')
+    + `<div class="space-grid">${E.filter(isExperiment).map(spaceCard).join('')}</div>`;
+}
+function space(t){const e=get(t);if(!e){go('spaces');return}main.innerHTML=heading('P08',e.name,e.description)+`<div class="space-card large-space"><div class="space-art">${art(t)}</div></div><div class="section two-col"><div class="panel"><h2>把这扇门，留在手边。</h2><p class="prompt-note">这张封面是视觉示意。打开现有页面后体验真实三维场景。</p><div class="row-actions">${ext(e,'进入现有空间 ↗')}<button data-fav="${e.id}">${state.favs.includes(e.id)?'已收藏':'收藏空间'}</button><a href="${isExperiment(e) ? '#spaces' : '#hub'}">${isExperiment(e) ? '返回网页实验' : '返回主页'}</a></div></div><div class="panel"><h3>继续探索</h3><p class="prompt-note">从此处切换世界。各场景保留原有视角、动效与性能控制。</p>${t==='dreams'?'<div class="subroutes">'+Array.from({length:8},(_,i)=>`<a href="/dreams/0${i+1}/" >梦境 0${i+1} ↗</a>`).join('')+'</div>':''}<p class="fine">${['meow','swarmera'].includes(t)?'商品、购物清单、社区草稿与意向预约为本地体验，不代表真实交易或在线社区。':'支持原有独立路由；新导航不覆盖当前空间页面。'}</p></div></div>`}
 function search(){dialog('<h2>下一站，去哪里？</h2><input id="globalSearch" class="wide-search" placeholder="搜索功能、空间或路径" aria-label="快捷搜索"><div id="searchResults" class="modal-results"></div><p class="fine">↑ ↓ 选择 · Enter 打开 · Esc 关闭</p>');searchResults('')}
 function searchResults(q){$('#searchResults').innerHTML=filterEntries(E,{role:state.role,query:q}).slice(0,12).map(e=>`<button data-open="${e.id}" data-search-result><span class="accent">${icon(e.type)}</span>${e.name}<small>${e.group}</small></button>`).join('')||'<p class="empty">没有结果，试试其他关键词。</p>'}
 
@@ -136,15 +193,18 @@ async function confirmAction(key, type) {
 function render() {
   stopOrbit(); collectionRequest?.abort(); document.body.classList.remove('immersive'); document.body.classList.toggle('reduced', state.motion === 'off');
   const v = view();
-  $('#railNav').innerHTML = [['hub','⌂','主页'],['catalog','⊞','功能'],['studio','✳','创作'],['spaces','◉','空间'],['tasks','◷','任务'],['assets','▧','作品'],['settings','⚙','我的'],...(state.role === 'admin' ? [['admin','⊡','管理']] : [])].map(([r,i,n]) => `<a href="${r === 'studio' ? '/ai/' : r === 'admin' ? '/admin/' : '#' + r}" class="${v === r ? 'active' : ''}" ${v === r ? 'aria-current="page"' : ''} aria-label="${n}">${icon(r)}<span>${n}</span></a>`).join('');
-  $$('.mobile-nav a').forEach(a => { a.classList.toggle('active', a.hash === '#' + v); if (a.hash === '#' + v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const preview = v.startsWith('space-') ? get(v.slice(6)) : null;
+  const spaceEntry = preview && (isExperiment(preview) || preview.id === 'S09') ? preview : null;
+  const navView = preview && isExperiment(preview) ? 'spaces' : v;
+  $('#railNav').innerHTML = [['hub','⌂','主页'],['catalog','⊞','功能'],['studio','✳','创作'],['spaces','◉','网页实验'],['tasks','◷','任务'],['assets','▧','作品'],['settings','⚙','我的'],...(state.role === 'admin' ? [['admin','⊡','管理']] : [])].map(([r,i,n]) => `<a href="${r === 'studio' ? '/ai/' : r === 'admin' ? '/admin/' : '#' + r}" class="${navView === r ? 'active' : ''}" ${navView === r ? 'aria-current="page"' : ''} aria-label="${n}">${icon(r)}<span>${n}</span></a>`).join('');
+  $$('.mobile-nav a').forEach(a => { a.classList.toggle('active', a.hash === '#' + navView); if (a.hash === '#' + navView) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   $('#accountStatus').innerHTML = !checked ? '正在确认账号…' : sessionError ? '账号连接暂不可用' : state.user ? `<span data-strgo-user-content>${esc(state.user.username)}</span> · <span>${state.role === 'admin' ? '管理员' : '创作成员'}</span>` : '访客 · 登录后继续创作';
   $('#profile').textContent = state.user?.username?.[0]?.toUpperCase() || 'S';
-  if (v.startsWith('space-') && get(v.slice(6))?.group === '沉浸空间') space(v.slice(6));
+  if (spaceEntry) space(spaceEntry.type);
   else if (v === 'tasks' || v === 'assets') collectionPage(v);
   else if (v === 'studio' || v === 'admin') location.assign(v === 'studio' ? '/ai/' : '/admin/');
   else ({hub, catalog, spaces, settings}[v] || hub)();
-  document.title = `STRGO · ${D.screens.find(s => s[2] === v)?.[1] || '探索空间'}`;
+  document.title = `STRGO · ${D.screens.find(s => s[2] === v)?.[1] || spaceEntry?.name || '统一主页'}`;
 }
 
 async function refreshSession() {
@@ -172,9 +232,10 @@ async function refreshSession() {
 document.addEventListener('click', event => {
   const b = event.target.closest('button,[data-entry]'); if (!b) return;
   if (b.dataset.entry) { const e = get(b.dataset.entry); if (e) remember(e); }
+  if (b.hasAttribute('data-catalog-favorites')) { filter = '我的收藏'; query = ''; }
   if (b.dataset.go) go(b.dataset.go);
   if (b.dataset.open) { modal.close(); openEntry(b.dataset.open); }
-  if (b.dataset.fav) { const e = get(b.dataset.fav); if (!e || !available(e)) return; state.favs = state.favs.includes(e.id) ? state.favs.filter(id => id !== e.id) : [...state.favs,e.id]; persist(); toast(state.favs.includes(e.id) ? '已收藏到主页快捷入口' : '已取消收藏'); view() === 'catalog' ? catalogResults() : render(); }
+  if (b.dataset.fav) { const e = get(b.dataset.fav); if (!e || !available(e)) return; state.favs = state.favs.includes(e.id) ? state.favs.filter(id => id !== e.id) : [...state.favs,e.id]; persist(); toast(state.favs.includes(e.id) ? (isExperiment(e) ? '已收藏' : '已收藏到主页快捷入口') : '已取消收藏'); view() === 'catalog' ? catalogResults() : render(); }
   if (b.dataset.filter) { filter = b.dataset.filter; catalog(); }
   if (b.hasAttribute('data-reset-search')) { filter = '全部'; query = ''; catalog(); }
   if (b.dataset.mode) { state.mode = b.dataset.mode; persist(); render(); }

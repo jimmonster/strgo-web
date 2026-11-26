@@ -1,5 +1,7 @@
 import { translate, SUPPORTED_LOCALES } from './i18n.js';
 
+export const EXPERIMENT_GROUP = '网页实验';
+
 export const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function sanitizePreferences(value, entries) {

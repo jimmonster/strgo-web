@@ -1,5 +1,10 @@
 // Traditional Chinese translations of fixed interface copy.
 export const traditional = {
+  "网页实验": "網頁實驗",
+  "常用功能": "常用功能",
+  "AI 创作、360° 全景和创作交流。": "AI 創作、360° 全景和創作交流。",
+  "交互场景、小游戏与网页原型。": "互動場景、小遊戲與網頁原型。",
+  "返回网页实验": "返回網頁實驗",
   "全部": "全部",
   "主页": "主頁",
   "首页": "首頁",

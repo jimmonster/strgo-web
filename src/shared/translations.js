@@ -4,6 +4,12 @@ import { aiCopy } from './ai-copy.js';
 
 // Interface copy only. User-authored text, model output and terminal data are never translated.
 export const english = {
+  "网页实验": "Web experiments",
+  "常用功能": "Common tools",
+  "AI 创作、360° 全景和创作交流。": "AI tools, 360° panoramas, and a creator community.",
+  "交互场景、小游戏与网页原型。": "Interactive scenes, mini-games, and web prototypes.",
+  "返回网页实验": "Back to web experiments",
+  "开始创作 ↗": "Start creating ↗",
   '全部':'All','主页':'Home','首页':'Home','功能':'Features','全部功能':'All features','创作':'Create','空间':'Spaces','任务':'Tasks','作品':'Assets','我的':'Account','管理':'Admin',
   '创作工具':'Creative tools','沉浸空间':'Immersive spaces','社区内容':'Community','我的工作区':'My workspace','我的收藏':'Favorites',
   'AI 生图':'AI image studio','AI 对话':'AI chat','AI 音乐':'AI music','终端':'Terminal','创作概览':'Creative overview','阳光卧室':'Sunlit room','个人卧室':'Sunlit room','舞蹈舞台':'Dance stage','星际穿越':'Interstellar','梦境花园':'Dream garden','多维几何宇宙':'Polyverse','粉色猫咪天堂':'Meow','猫咪天堂':'Meow','虫族狂潮':'Swarmera','银河归档':'Galactic archive','交流社区':'Community','精选作品':'Selected work','创作记录':'Updates','关于 STRGO':'About STRGO','交互实验':'Interactive lab','联系作者':'Contact','我的作品':'My assets','任务中心':'Task center','账号与权限':'Account and permissions','账号登录':'Sign in','全站管理':'Site administration','经典主页':'Classic home','统一主页':'Hub','AI 模型与权限':'AI models and access',
