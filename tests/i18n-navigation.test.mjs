@@ -28,7 +28,9 @@ test('shared language picker updates live navigation and persists the selected l
     assert.equal(document.querySelector('h1').textContent,'すべての機能');
     assert.equal(document.documentElement.lang,'ja');
     await navigation.open();
-    assert.match(root.querySelector('.results').textContent, /日差しの寝室/);
+    assert.match(root.querySelector('.results').textContent, /ウェブ実験/);
+    assert.equal(root.querySelector('.results a[href$="#spaces"]').getAttribute('href'), '/hub/#spaces');
+    assert.doesNotMatch(root.querySelector('.results').textContent, /日差しの寝室/);
     const search = root.querySelector('input');
     search.value = 'スウォーム・サバイバル';
     search.dispatchEvent(new window.Event('input'));
@@ -39,7 +41,8 @@ test('shared language picker updates live navigation and persists the selected l
     search.dispatchEvent(new window.Event('input'));
     picker.value='ko'; picker.dispatchEvent(new window.Event('change'));
     assert.equal(root.querySelector('.label').textContent,'모든 기능');
-    assert.match(root.querySelector('.results').textContent, /햇살 가득한 침실/);
+    assert.match(root.querySelector('.results').textContent, /웹 실험/);
+    assert.doesNotMatch(root.querySelector('.results').textContent, /햇살 가득한 침실/);
     assert.equal(document.querySelector('h1').textContent,'모든 기능');
     window.dispatchEvent(new window.CustomEvent('strgo:localerequest',{detail:{locale:'ja'}}));
     assert.equal(values.get('strgo:locale:v1'),'ja');

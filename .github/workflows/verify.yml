@@ -47,7 +47,7 @@ jobs:
           CHROME_PATH: /usr/bin/google-chrome
         run: |
           status=0
-          for test in admin-browser ai-browser forum-browser panorama-browser; do
+          for test in admin-browser ai-browser forum-browser panorama-browser video-browser; do
             node "tests/$test.mjs" || status=1
           done
           exit "$status"

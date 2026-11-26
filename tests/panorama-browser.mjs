@@ -198,25 +198,24 @@ try {
   await page.screenshot({path:directory+'desktop.png',fullPage:true});
   check('WebGL context loss recovers and all five site languages switch live');
 
-  await page.goto(preview.origin+'/'); await page.waitForSelector('.space-card[data-open="S09"]');
+  await page.goto(preview.origin+'/'); await page.waitForSelector('.tool-card[data-entry="S09"]');
   assert.equal(new URL(page.url()).pathname,'/');
-  await page.locator('.space-card[data-open="S09"]').click();
-  assert.equal(new URL(page.url()).hash,'#space-panorama');
-  await page.locator('a.entry-link[href="/360/"]').click(); await galleryReady(page);
+  await page.locator('.tool-card[data-entry="S09"]').click();
+  await galleryReady(page);
   check('root homepage renders the hub and its panorama card reaches /360/');
 
   for (const hash of ['home','projects','stack','lab','contact']) {
     await page.goto(preview.origin+'/#'+hash,{waitUntil:'commit'});
     await page.waitForURL(preview.origin+'/classic/#'+hash);
   }
-  await page.goto(preview.origin+'/'); await page.waitForSelector('.space-card[data-open="S09"]');
+  await page.goto(preview.origin+'/'); await page.waitForSelector('.tool-card[data-entry="S09"]');
   await page.evaluate(()=>{location.hash='projects';});
   await page.waitForURL(preview.origin+'/classic/#projects');
   check('classic root anchors continue to work on direct loads and hash changes');
 
   await page.goto(preview.origin+'/hub/#catalog'); await page.waitForSelector('#catalogSearch');
   await page.locator('#catalogSearch').fill('/360/'); await page.waitForSelector('[data-open="S09"]');
-  await page.locator('[data-open="S09"]').click(); await page.locator('a.entry-link[href="/360/"]').click(); await galleryReady(page);
+  await page.locator('[data-open="S09"]').click(); await galleryReady(page);
   await page.locator('strgo-navigation').locator('.trigger').click();
   await page.locator('strgo-navigation').locator('.search input').fill('/360/');
   await page.locator('strgo-navigation').locator('a[data-entry="S09"]').waitFor();
@@ -299,6 +298,7 @@ try {
   itemState.user='different-owner'; await itemsPage.evaluate(()=>window.dispatchEvent(new Event('focus')));
   await waitCount(1);
   assert.equal(await itemsPage.locator('#item-dialog').evaluate(dialog=>dialog.open),false);
+  await itemsPage.waitForFunction(()=>document.querySelector('#item-title').value==='');
   assert.equal(await itemsPage.locator('#item-title').inputValue(),'');
   assert.equal(await itemsPage.locator('body').textContent().then(text=>text.includes('PRIVATE ARTWORK')),false);
   itemState.user='items-owner'; await itemsPage.locator('#refresh-items').click(); await waitCount(2);
