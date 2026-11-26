@@ -198,18 +198,17 @@ try {
   await page.screenshot({path:directory+'desktop.png',fullPage:true});
   check('WebGL context loss recovers and all five site languages switch live');
 
-  await page.goto(preview.origin+'/'); await page.waitForSelector('.space-card[data-open="S09"]');
+  await page.goto(preview.origin+'/'); await page.waitForSelector('.tool-card[data-entry="S09"]');
   assert.equal(new URL(page.url()).pathname,'/');
-  await page.locator('.space-card[data-open="S09"]').click();
-  assert.equal(new URL(page.url()).hash,'#space-panorama');
-  await page.locator('a.entry-link[href="/360/"]').click(); await galleryReady(page);
+  await page.locator('.tool-card[data-entry="S09"]').click();
+  await galleryReady(page);
   check('root homepage renders the hub and its panorama card reaches /360/');
 
   for (const hash of ['home','projects','stack','lab','contact']) {
     await page.goto(preview.origin+'/#'+hash,{waitUntil:'commit'});
     await page.waitForURL(preview.origin+'/classic/#'+hash);
   }
-  await page.goto(preview.origin+'/'); await page.waitForSelector('.space-card[data-open="S09"]');
+  await page.goto(preview.origin+'/'); await page.waitForSelector('.tool-card[data-entry="S09"]');
   await page.evaluate(()=>{location.hash='projects';});
   await page.waitForURL(preview.origin+'/classic/#projects');
   check('classic root anchors continue to work on direct loads and hash changes');
