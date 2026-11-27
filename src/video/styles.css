@@ -371,7 +371,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 }
 
 dialog {
-  width: min(100% - 24px,600px);
+  width: min(100% - 24px,700px);
   max-height: 90dvh;
   overflow: auto;
   padding: 20px;
@@ -388,6 +388,45 @@ dialog::backdrop {
 
 dialog h2 {
   font-size: 19px;
+}
+
+.settings-topbar {
+  position: sticky;
+  z-index: 2;
+  top: -20px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin: -20px -20px 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #28374f;
+  background: #0d1624f5;
+}
+
+.settings-topbar h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.settings-topbar button:last-child {
+  justify-self: end;
+}
+
+.settings-params {
+  padding: 14px 0 4px;
+}
+
+.settings-workflow-row {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.settings-workflow-row button {
+  min-height: 44px;
+  white-space: nowrap;
 }
 
 .dialog-heading {
@@ -428,6 +467,15 @@ dialog form {
   padding-top: 18px;
 }
 
+#settings .settings-params {
+  border-bottom: 1px solid #28374f;
+}
+
+#settings .settings-params label,
+#admin>section>label {
+  margin: 12px 0;
+}
+
 #settings h3 {
   margin-bottom: 12px;
 }
@@ -462,6 +510,48 @@ dialog form {
   align-items: center;
   gap: 10px;
   margin-top: 8px;
+}
+
+#members {
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.grant-member {
+  padding: 8px 0;
+  border-bottom: 1px solid #202d40;
+}
+
+.grant-member>label {
+  display: flex;
+  align-items: center;
+  grid-auto-flow: column;
+  justify-content: start;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.grant-member input[type=checkbox] {
+  width: 20px;
+  height: 20px;
+  accent-color: #568bff;
+}
+
+.grant-member [data-strgo-user-content] {
+  overflow-wrap: anywhere;
+}
+
+.grant-member small {
+  flex: 0 0 auto;
+  color: #98a9c0;
+}
+
+.grant-member button {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 #preview-content img,#preview-content video {
@@ -532,6 +622,17 @@ dialog form {
   }
   .parameter-grid {
     grid-template-columns: 1fr;
+  }
+  .settings-workflow-row {
+    grid-template-columns: 1fr;
+  }
+  .settings-workflow-row button {
+    width: 100%;
+  }
+  .settings-topbar {
+    margin: -16px -16px 8px;
+    padding: 12px 16px;
+    top: -16px;
   }
   .slot-button {
     border-radius: 7px;

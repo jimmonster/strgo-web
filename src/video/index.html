@@ -42,39 +42,30 @@
     </section>
   </main>
   <dialog id="settings" aria-labelledby="settings-title">
-    <div class="dialog-heading"><h2 id="settings-title">视频设置</h2><button type="button" data-close="settings" aria-label="关闭设置">×</button></div>
-    <label>工作流<select id="workflow"></select></label>
-    <a id="source" target="_blank" rel="noopener noreferrer">查看接口和价格 ↗</a>
-    <div id="fields" class="parameter-grid"></div>
-    <button id="save-settings" type="button">保存生成设置</button>
-    <p id="settings-status" role="status"></p>
+    <div class="settings-topbar"><button id="save-settings" type="button" class="generate-button">保存</button><h2 id="settings-title">视频设置</h2><button type="button" data-close="settings">返回</button></div>
+    <section class="settings-params" aria-label="生成参数">
+      <label>工作流<select id="workflow"></select></label>
+      <a id="source" target="_blank" rel="noopener noreferrer">查看接口和价格 ↗</a>
+      <div id="fields" class="parameter-grid"></div>
+      <p id="settings-status" role="status"></p>
+    </section>
     <div id="admin" hidden>
       <section>
-        <h3>接口密钥</h3>
-        <form id="key-form">
-          <label>AutoDL ComfyUI 密钥<input id="api-key" type="password" autocomplete="new-password" maxlength="2048" placeholder="输入新密钥"></label>
-          <p id="key-status" class="hint"></p>
-          <button type="submit">保存密钥</button>
-        </form>
-      </section>
-      <section>
-        <h3>接口 URL</h3>
-        <div class="list-toolbar"><a href="https://www.autodl.art/large-model/comfyui" target="_blank" rel="noopener noreferrer">AutoDL 工作流目录 ↗</a><button type="button" id="sync">加载目录</button></div>
-        <form id="enable">
-          <label>工作流 URL 或 ID<input name="workflow" list="catalog" required placeholder="minimax_h3_image_audio_to_video_v2_15s" autocomplete="off"></label>
+        <h3>AutoDL 接口</h3>
+        <div class="settings-workflow-row">
+          <label>AutoDL URL 列表<input id="workflow-url" list="catalog" placeholder="选择目录项，或粘贴 AutoDL 工作流 URL" autocomplete="off"></label>
           <datalist id="catalog"></datalist>
-          <label>替换工作流<select name="replace" id="replace"><option value="">添加到现有列表</option></select></label>
-          <button type="submit">核对并启用</button>
-        </form>
+          <button type="button" id="sync">拉取最新的 AutoDL</button>
+        </div>
+        <label>替换已有工作流<select id="replace"><option value="">添加到现有列表</option></select></label>
+        <label>密钥<input id="api-key" type="password" autocomplete="new-password" maxlength="2048" placeholder="输入 AutoDL ComfyUI 密钥"></label>
+        <p id="key-status" class="hint"></p>
         <div id="enabled"></div>
       </section>
       <section>
         <h3>成员生成权限</h3>
-        <form id="grant">
-          <label>STRGO 用户名<input name="username" required autocomplete="off"></label>
-          <button type="submit">授权生成视频</button>
-        </form>
-        <div id="members"></div>
+        <p class="hint">勾选用户后点击上方“保存”即可授权；未勾选的用户不会新增权限。</p>
+        <div id="members" role="group" aria-label="授权用户列表"></div>
       </section>
       <p id="admin-status" role="status"></p>
     </div>

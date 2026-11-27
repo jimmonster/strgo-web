@@ -277,6 +277,12 @@ function action(label, callback) {
 }
 async function loadAdmin() {
   const [current, grants, config] = await Promise.all([request(adminApi + '/workflows'), request(adminApi + '/grants'), request(adminApi + '/config')]);
+  const users = [];
+  for (let offset = 0; ; offset += 100) {
+    const page = await request('/api/image/admin/users?offset=' + offset + '&limit=100');
+    users.push(...page.items.filter(user => user.role !== 'admin' && user.status === 'active'));
+    if (!page.hasMore) break;
+  }
   keyRevision = config.revision; $('api-key').value = ''; $('key-status').textContent = config.configured ? '已配置密钥，留空保留现有密钥。' : '尚未配置密钥。';
   const active = current.workflows.filter(item => item.enabled);
   $('replace').replaceChildren(option('', '添加到现有列表'), ...active.map(item => option(item.id, item.title)));
@@ -293,11 +299,18 @@ async function loadAdmin() {
     );
     return article;
   }));
-  $('members').replaceChildren(...grants.members.map(member => {
-    const row = node('div');
-    row.append(userText('span', member.username), action('撤销授权', async () => {
+  const granted = new Map(grants.members.map(member => [member.id, member]));
+  $('members').replaceChildren(...users.map(member => {
+    const currentGrant = granted.get(member.id);
+    const row = node('div', null, { class: 'grant-member' });
+    const label = node('label');
+    const checkbox = node('input', null, { type: 'checkbox', value: member.username, 'data-user-id': member.id });
+    checkbox.checked = !!currentGrant;
+    label.append(checkbox, userText('span', member.username));
+    row.append(label, node('small', currentGrant ? '已授权' : '未授权'));
+    if (currentGrant) row.append(action('撤销', async () => {
       if (!confirm('撤销该成员的生成权限？')) return;
-      await request(adminApi + '/grants/' + member.id, 'DELETE', {});
+      await request(adminApi + '/grants/' + currentGrant.id, 'DELETE', {});
       await loadAdmin();
     }));
     return row;
@@ -332,49 +345,48 @@ $('generate').onsubmit = event => { event.preventDefault(); if (!sending) prepar
 $('confirm').addEventListener('close', () => { if ($('confirm').returnValue === 'submit') sendJob(); });
 $('refresh').onclick = () => loadJobs(); $('more').onclick = () => loadJobs(true);
 $('save-settings').onclick = () => {
-  const values = Object.fromEntries([...$('fields').querySelectorAll('input,select')].map(input => [input.name, input.value]));
-  try { localStorage.setItem(preferenceKey(), JSON.stringify({ workflowId: activeWorkflow()?.id, values })); $('settings-status').textContent = '生成设置已保存。'; }
-  catch { $('settings-status').textContent = '设置本次有效，浏览器无法持久保存。'; }
-  updateSummary(); $('settings').close();
-};
-$('key-form').onsubmit = event => {
-  event.preventDefault();
-  adminAction(event.target.querySelector('button'), async () => {
-    if (!$('api-key').value.trim()) {
-      $('key-status').textContent = '现有密钥已保留。';
-      return;
-    }
-    const result = await request(adminApi + '/config', 'PUT', { apiKey: $('api-key').value, revision: keyRevision });
-    keyRevision = result.revision;
-    $('api-key').value = '';
-    await Promise.all([loadAdmin(), loadWorkflows()]);
-  });
+  const button = $('save-settings'); button.disabled = true;
+  (async () => {
+    const values = Object.fromEntries([...$('fields').querySelectorAll('input,select')].map(input => [input.name, input.value]));
+    try {
+      let selectedWorkflowId = activeWorkflow()?.id;
+      if (session.user.role === 'admin') {
+        const apiKey = $('api-key').value;
+        if (apiKey.trim()) {
+          const result = await request(adminApi + '/config', 'PUT', { apiKey, revision: keyRevision });
+          keyRevision = result.revision; $('api-key').value = '';
+        }
+        const workflow = $('workflow-url').value.trim();
+        if (workflow) {
+          const installed = await request(adminApi + '/workflows', 'POST', { workflow, replace: $('replace').value });
+          selectedWorkflowId = installed.id;
+          $('workflow-url').value = ''; $('replace').value = '';
+        }
+        const selected = [...$('members').querySelectorAll('input[type=checkbox]:checked:not(:disabled)')];
+        const newGrants = selected.filter(input => input.closest('.grant-member').querySelector('small').textContent !== '已授权');
+        if (newGrants.length && !confirm('为选中的 ' + newGrants.length + ' 位用户开通付费视频生成权限？')) return;
+        for (const input of newGrants) {
+          await request(adminApi + '/grants', 'POST', { username: input.value });
+        }
+        await Promise.all([loadAdmin(), loadWorkflows()]);
+      }
+      localStorage.setItem(preferenceKey(), JSON.stringify({ workflowId: selectedWorkflowId, values }));
+      if (workflows.some(item => item.id === selectedWorkflowId)) $('workflow').value = selectedWorkflowId;
+      renderFields();
+      $('settings-status').textContent = '设置已保存。';
+      updateSummary(); $('settings').close();
+    } catch (error) {
+      $('settings-status').textContent = error.message;
+      if (session.user.role === 'admin') $('admin-status').textContent = error.message;
+    } finally { button.disabled = false; }
+  })();
 };
 $('sync').onclick = () => adminAction($('sync'), async () => {
   const data = await request(adminApi + '/catalog');
   $('catalog').replaceChildren(...data.workflows.map(entry => option(entry.url, entry.title)));
-  $('enable').elements.workflow.focus();
+  $('workflow-url').focus();
+  $('admin-status').textContent = '已拉取 ' + data.workflows.length + ' 个 AutoDL 工作流。选择目录项后点击保存。';
 });
-$('enable').onsubmit = event => {
-  event.preventDefault(); const form = event.target;
-  adminAction(form.querySelector('button'), async () => {
-    await request(adminApi + '/workflows', 'POST', {
-      workflow: form.elements.workflow.value.trim(), replace: form.elements.replace.value,
-    });
-    form.reset();
-    await Promise.all([loadAdmin(), loadWorkflows()]);
-  });
-};
-$('grant').onsubmit = event => {
-  event.preventDefault(); const form = event.target;
-  adminAction(form.querySelector('button'), async () => {
-    const username = form.elements.username.value.trim();
-    if (!confirm('允许 ' + username + ' 提交付费视频生成任务？')) return;
-    await request(adminApi + '/grants', 'POST', { username });
-    form.reset();
-    await loadAdmin();
-  });
-};
 async function start() {
   try {
     session = await request('/api/image/session'); if (!session.user) { signIn(); return; }
