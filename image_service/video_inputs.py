@@ -19,10 +19,14 @@ from .security import Problem, digest
 MAX_BYTES = 4 * 1024 * 1024
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS video_inputs (
- id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), kind TEXT NOT NULL,
+ id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), kind TEXT NOT NULL, slot INTEGER,
  name TEXT NOT NULL, mime TEXT NOT NULL, bytes INTEGER NOT NULL, sha256 TEXT NOT NULL,
  content BLOB NOT NULL, created INTEGER NOT NULL, request_id TEXT NOT NULL,
  UNIQUE(user_id,request_id));
+CREATE TABLE IF NOT EXISTS video_input_slots (
+ user_id TEXT NOT NULL REFERENCES users(id), kind TEXT NOT NULL, slot INTEGER NOT NULL,
+ input_id TEXT NOT NULL REFERENCES video_inputs(id) ON DELETE CASCADE,
+ PRIMARY KEY(user_id,kind,slot));
 CREATE TABLE IF NOT EXISTS video_job_inputs (
  job_id TEXT NOT NULL REFERENCES video_jobs(id),
  input_id TEXT NOT NULL REFERENCES video_inputs(id) ON DELETE CASCADE,
@@ -50,10 +54,12 @@ def reference_audio(data):
 
 
 def upload(store, user, payload):
-    kind, name, request_id = payload.get('kind'), payload.get('name'), payload.get('requestId')
+    kind, name, request_id, slot = payload.get('kind'), payload.get('name'), payload.get('requestId'), payload.get('slot')
     encoded = payload.get('data')
     if kind not in ('image', 'audio') or not isinstance(name, str) or not 1 <= len(name) <= 160:
         raise Problem(400, '素材类型或文件名无效。')
+    if type(slot) is not int or not 0 <= slot < (9 if kind == 'image' else 3):
+        raise Problem(400, '素材位置无效。')
     if not isinstance(request_id, str) or not re.fullmatch(r'[a-f0-9-]{16,80}', request_id):
         raise Problem(400, '上传缺少请求编号。')
     if not isinstance(encoded, str) or not 0 < len(encoded) <= 4 * ((MAX_BYTES + 2) // 3):
@@ -83,23 +89,44 @@ def upload(store, user, payload):
         db.execute('BEGIN IMMEDIATE')
         previous = db.execute('SELECT * FROM video_inputs WHERE user_id=? AND request_id=?', (user['id'], request_id)).fetchone()
         if previous:
-            if (previous['kind'], previous['name'], previous['sha256']) != (kind, name, fingerprint):
+            if (previous['kind'], previous['slot'], previous['name'], previous['sha256']) != (kind, slot, name, fingerprint):
                 raise Problem(409, '上传编号已被使用，请重新选择素材。')
-            return public(previous)
+            return public(previous, slot)
         db.execute('''DELETE FROM video_inputs WHERE created<? AND NOT EXISTS(
             SELECT 1 FROM video_job_inputs i JOIN video_jobs j ON j.id=i.job_id
-            WHERE i.input_id=video_inputs.id AND j.created>=?)''', (now - 86400, now - 86400))
-        used = db.execute('SELECT COALESCE(SUM(bytes),0) FROM video_inputs WHERE user_id=?', (user['id'],)).fetchone()[0]
+            WHERE i.input_id=video_inputs.id AND j.created>=?) AND NOT EXISTS(
+            SELECT 1 FROM video_input_slots s WHERE s.input_id=video_inputs.id)''', (now - 86400, now - 86400))
+        old_slot = db.execute('SELECT input_id FROM video_input_slots WHERE user_id=? AND kind=? AND slot=?',
+                              (user['id'], kind, slot)).fetchone()
+        excluded = old_slot['input_id'] if old_slot and not db.execute(
+            'SELECT 1 FROM video_job_inputs WHERE input_id=?', (old_slot['input_id'],)).fetchone() else None
+        used = db.execute('SELECT COALESCE(SUM(bytes),0) FROM video_inputs WHERE user_id=? AND id<>COALESCE(?,\'\')',
+                          (user['id'], excluded)).fetchone()[0]
         if used + len(data) > 100 * 1024 * 1024:
             raise Problem(413, '暂存参考素材已达到 100 MiB，请移除未使用素材或稍后重试。')
         identifier = uuid.uuid4().hex
-        db.execute('INSERT INTO video_inputs VALUES(?,?,?,?,?,?,?,?,?,?)',
-                   (identifier, user['id'], kind, name, mime, len(data), fingerprint, store.cipher.encrypt(data), now, request_id))
-        return public(db.execute('SELECT * FROM video_inputs WHERE id=?', (identifier,)).fetchone())
+        db.execute('''INSERT INTO video_inputs(id,user_id,kind,slot,name,mime,bytes,sha256,content,created,request_id)
+                      VALUES(?,?,?,?,?,?,?,?,?,?,?)''',
+                   (identifier, user['id'], kind, slot, name, mime, len(data), fingerprint,
+                    store.cipher.encrypt(data), now, request_id))
+        db.execute('''INSERT INTO video_input_slots VALUES(?,?,?,?)
+                      ON CONFLICT(user_id,kind,slot) DO UPDATE SET input_id=excluded.input_id''',
+                   (user['id'], kind, slot, identifier))
+        if old_slot and excluded:
+            db.execute('DELETE FROM video_inputs WHERE id=?', (old_slot['input_id'],))
+        return public(db.execute('SELECT * FROM video_inputs WHERE id=?', (identifier,)).fetchone(), slot)
 
 
-def public(row):
-    return {key: row[key] for key in ('id', 'kind', 'name', 'mime', 'bytes')} | {'url': '/api/image/video/inputs/' + row['id']}
+def public(row, slot=None):
+    return {key: row[key] for key in ('id', 'kind', 'name', 'mime', 'bytes')} | {
+        'slot': slot, 'sha256': row['sha256'], 'url': '/api/image/video/inputs/' + row['id']}
+
+
+def slots(store, user_id):
+    with store.connect() as db:
+        rows = db.execute('''SELECT a.*,s.slot FROM video_input_slots s JOIN video_inputs a ON a.id=s.input_id
+                             WHERE s.user_id=? ORDER BY s.kind,s.slot''', (user_id,)).fetchall()
+        return [public(row, row['slot']) for row in rows]
 
 
 def bind(db, job_id, user_id, schema, fields):

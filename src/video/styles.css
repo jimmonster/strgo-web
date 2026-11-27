@@ -127,6 +127,12 @@ fieldset {
   border-style: solid;
 }
 
+.media-slot.uploading .slot-button {
+  border-color: #76a3ff;
+  opacity: .72;
+  cursor: progress;
+}
+
 .slot-button img {
   position: absolute;
   inset: 0;
@@ -197,6 +203,10 @@ fieldset {
 .prompt-label {
   display: block;
   margin: 18px 0 8px;
+}
+
+.workflow-label {
+  margin-top: 14px;
 }
 
 input,textarea,select,button {
@@ -413,10 +423,6 @@ dialog h2 {
   justify-self: end;
 }
 
-.settings-params {
-  padding: 14px 0 4px;
-}
-
 .settings-workflow-row {
   display: grid;
   grid-template-columns: minmax(0,1fr) auto;
@@ -467,11 +473,6 @@ dialog form {
   padding-top: 18px;
 }
 
-#settings .settings-params {
-  border-bottom: 1px solid #28374f;
-}
-
-#settings .settings-params label,
 #admin>section>label {
   margin: 12px 0;
 }

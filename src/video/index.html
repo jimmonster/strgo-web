@@ -29,6 +29,9 @@
           </div>
           <label class="prompt-label" for="prompt">视频提示词</label>
           <textarea id="prompt" name="prompt" rows="4" required maxlength="12000" placeholder="描述画面、动作、镜头，以及参考素材的使用方式…"></textarea>
+          <label class="workflow-label" for="workflow">生成工作流</label>
+          <select id="workflow" aria-label="生成工作流"></select>
+          <div id="fields" class="parameter-grid" aria-label="生成参数"></div>
           <p id="workflow-summary" class="hint"></p>
           <button id="generate-button" class="generate-button" type="submit">生成视频</button>
         </fieldset>
@@ -43,12 +46,6 @@
   </main>
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="settings-topbar"><button id="save-settings" type="button" class="generate-button">保存</button><h2 id="settings-title">视频设置</h2><button type="button" data-close="settings">返回</button></div>
-    <section class="settings-params" aria-label="生成参数">
-      <label>工作流<select id="workflow"></select></label>
-      <a id="source" target="_blank" rel="noopener noreferrer">查看接口和价格 ↗</a>
-      <div id="fields" class="parameter-grid"></div>
-      <p id="settings-status" role="status"></p>
-    </section>
     <div id="admin" hidden>
       <section>
         <h3>AutoDL 接口</h3>
@@ -64,11 +61,12 @@
       </section>
       <section>
         <h3>成员生成权限</h3>
-        <p class="hint">勾选用户后点击上方“保存”即可授权；未勾选的用户不会新增权限。</p>
+        <p class="hint">勾选未授权用户后点击上方“保存”即可授权。已授权用户会保持勾选，点“撤销”可移除权限。</p>
         <div id="members" role="group" aria-label="授权用户列表"></div>
       </section>
       <p id="admin-status" role="status"></p>
     </div>
+    <p id="settings-status" role="status"></p>
   </dialog>
   <dialog id="preview" aria-labelledby="preview-title">
     <div class="dialog-heading"><h2 id="preview-title">素材预览</h2><button type="button" data-close="preview" aria-label="关闭预览">×</button></div>

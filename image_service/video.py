@@ -64,6 +64,9 @@ class VideoService:
         self.wake = threading.Event()
         with store.connect() as db:
             db.executescript(SCHEMA + video_inputs.SCHEMA)
+            input_columns = {row['name'] for row in db.execute('PRAGMA table_info(video_inputs)')}
+            if 'slot' not in input_columns:
+                db.execute('ALTER TABLE video_inputs ADD COLUMN slot INTEGER')
             columns = {row['name'] for row in db.execute('PRAGMA table_info(video_jobs)')}
             for name, kind in (('provider_config', 'BLOB'), ('source_hash', 'TEXT')):
                 if name not in columns:
@@ -146,6 +149,10 @@ class VideoService:
     def dispatch(self, user, method, path, query, payload, headers):
         if path.startswith(ADMIN + '/'):
             return self.admin(user, method, path[len(ADMIN):], payload)
+        if path == PREFIX + '/inputs' and method == 'GET':
+            with self.store.connect() as db:
+                actor = self.account(db, user)
+            return 200, {'inputs': video_inputs.slots(self.store, actor['id'])}, {}
         if path == PREFIX + '/inputs' and method == 'POST':
             with self.store.connect() as db:
                 actor = self.account(db, user)
@@ -181,6 +188,7 @@ class VideoService:
                 if method == 'GET':
                     return video_inputs.content(self.store, row)
                 if method == 'DELETE':
+                    db.execute('DELETE FROM video_input_slots WHERE user_id=? AND input_id=?', (actor['id'], row['id']))
                     # Clearing a slot must not remove inputs from a paid task.
                     used = db.execute('SELECT 1 FROM video_job_inputs WHERE input_id=?', (row['id'],)).fetchone()
                     if not used:

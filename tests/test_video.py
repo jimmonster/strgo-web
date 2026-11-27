@@ -23,6 +23,7 @@ MP4 = base64.b64decode(
 DETAIL = {'name': 'H3 文生视频', 'input_rules': {
     'prompt': {'type': 'string', 'required': True},
     'duration': {'type': 'integer', 'default': 5, 'min': 1, 'max': 15},
+    'seed': {'type': 'integer', 'min': 0, 'max': 4294967295},
     'resolution': {'type': 'string', 'options': ['480p竖', '768p横'], 'default': '480p竖'},
 }, 'output_example': {'data': {'results': [{'type': 'video', 'file_type': 'mp4'}]}}}
 
@@ -201,7 +202,7 @@ class VideoTests(unittest.TestCase):
             self.deny(502, lambda: AutoDL('').download('http://127.0.0.1/video.mp4', self.app.video.directory / 'test'))
             addresses.assert_not_called()
 
-    def reference(self, kind='image', session=None):
+    def reference(self, kind='image', session=None, slot=0):
         data = BytesIO()
         if kind == 'image':
             Image.new('RGB', (16, 16), (100, 150, 200)).save(data, 'PNG')
@@ -214,14 +215,14 @@ class VideoTests(unittest.TestCase):
                 audio.writeframes(b'\0\0' * 8000)
             name = 'reference.wav'
         return self.call('POST', '/video/inputs', {
-            'kind': kind, 'name': name, 'requestId': str(uuid.uuid4()),
+            'kind': kind, 'slot': slot, 'name': name, 'requestId': str(uuid.uuid4()),
             'data': base64.b64encode(data.getvalue()).decode(),
         }, session)[1]
 
     def test_nine_images_three_audio_bind_to_matching_fields_and_scoped_urls(self):
         self.call('POST', '/admin/video/workflows', {'workflow': 'multi'})
-        images = [self.reference() for _ in range(9)]
-        audio = [self.reference('audio') for _ in range(3)]
+        images = [self.reference(slot=index) for index in range(9)]
+        audio = [self.reference('audio', slot=index) for index in range(3)]
         fields = {'prompt': 'Use all references'}
         fields.update({f'ref_image_{index}': item['id'] for index, item in enumerate(images)})
         fields.update({f'ref_audio_{index}': item['id'] for index, item in enumerate(audio)})
@@ -261,9 +262,20 @@ class VideoTests(unittest.TestCase):
         self.deny(404, lambda: self.call('GET', '/video/inputs/' + reference['id']))
         for kind in ('image', 'audio'):
             self.deny(400, lambda: self.call('POST', '/video/inputs', {
-                'kind': kind, 'name': 'bad.file', 'requestId': str(uuid.uuid4()),
+                'kind': kind, 'slot': 0, 'name': 'bad.file', 'requestId': str(uuid.uuid4()),
                 'data': base64.b64encode(b'<script>bad</script>').decode(),
             }))
+
+    def test_reference_slots_persist_per_account_and_replacement_updates_one_slot(self):
+        first = self.reference(slot=4)
+        saved = self.call('GET', '/video/inputs')[1]['inputs']
+        self.assertEqual([(item['kind'], item['slot'], item['id']) for item in saved], [('image', 4, first['id'])])
+        replacement = self.reference(slot=4)
+        saved = self.call('GET', '/video/inputs')[1]['inputs']
+        self.assertEqual([(item['kind'], item['slot'], item['id']) for item in saved], [('image', 4, replacement['id'])])
+        self.deny(404, lambda: self.call('GET', '/video/inputs/' + first['id']))
+        self.assertEqual(self.call('GET', '/video/inputs', session=self.other)[1]['inputs'], [])
+        self.assertEqual(self.call('GET', '/video/inputs/' + replacement['id'])[2]['Content-Type'], 'image/png')
 
     def test_media_schema_limits_and_required_uploads(self):
         for name in ('ref_image_9', 'ref_audio_3'):
