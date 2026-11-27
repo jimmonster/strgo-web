@@ -125,7 +125,7 @@ try {
     await page.screenshot({ path: root + 'artifacts/video/list-' + width + '.png', fullPage: true });
   }
   await page.reload(); await page.locator('#create:not([hidden])').waitFor();
-  await page.waitForFunction(() => document.querySelectorAll('#image-slots .has-file').length === 8 && document.querySelectorAll('#audio-slots .has-file').length === 3);
+  await page.waitForFunction(() => document.querySelectorAll('#image-slots .has-file').length === 9 && document.querySelectorAll('#audio-slots .has-file').length === 3);
   await page.locator('#image-slots .slot-button img').first().evaluate(image => image.decode());
   assert.equal(await page.locator('#fields [name=duration]').inputValue(), '6');
   assert.equal(await page.locator('#fields [name=resolution]').inputValue(), '1');
