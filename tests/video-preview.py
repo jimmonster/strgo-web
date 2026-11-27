@@ -17,6 +17,7 @@ fixture = VideoTests()
 fixture.setUp()
 service = fixture.app
 service.origin = args.origin
+service.video.origin = args.origin
 service.secure = False
 service.video.thread = threading.Thread(target=service.video.work, daemon=True)
 service.video.thread.start()
