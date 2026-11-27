@@ -386,9 +386,7 @@ $('refresh').onclick = () => loadJobs(); $('more').onclick = () => loadJobs(true
 $('save-settings').onclick = () => {
   const button = $('save-settings'); button.disabled = true;
   (async () => {
-    const values = Object.fromEntries([...$('fields').querySelectorAll('input,select')].map(input => [input.name, input.value]));
     try {
-      let selectedWorkflowId = activeWorkflow()?.id;
       if (session.user.role === 'admin') {
         const apiKey = $('api-key').value;
         if (apiKey.trim()) {
@@ -396,9 +394,10 @@ $('save-settings').onclick = () => {
           keyRevision = result.revision; $('api-key').value = '';
         }
         const workflow = $('workflow-url').value.trim();
+        let preferredWorkflowId;
         if (workflow) {
           const installed = await request(adminApi + '/workflows', 'POST', { workflow, replace: $('replace').value });
-          selectedWorkflowId = installed.id;
+          preferredWorkflowId = installed.id;
           $('workflow-url').value = ''; $('replace').value = '';
         }
         const selected = [...$('members').querySelectorAll('input[type=checkbox]:checked:not(:disabled)')];
@@ -407,11 +406,8 @@ $('save-settings').onclick = () => {
         for (const input of newGrants) {
           await request(adminApi + '/grants', 'POST', { username: input.value });
         }
-        await Promise.all([loadAdmin(), loadWorkflows()]);
+        await Promise.all([loadAdmin(), loadWorkflows(preferredWorkflowId)]);
       }
-      localStorage.setItem(preferenceKey(), JSON.stringify({ workflowId: selectedWorkflowId, values }));
-      if (workflows.some(item => item.id === selectedWorkflowId)) $('workflow').value = selectedWorkflowId;
-      renderFields();
       $('settings-status').textContent = '设置已保存。';
       updateSummary(); $('settings').close();
     } catch (error) {
