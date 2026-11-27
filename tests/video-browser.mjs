@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
@@ -32,6 +32,12 @@ try {
   browser = await chromium.launch({ executablePath, headless: true });
   const context = await browser.newContext({ locale: 'zh-CN', viewport: { width: 390, height: 844 } });
   const page = await context.newPage(), errors = [], submissions = [];
+  const deployment = await readFile(root + 'deploy.sh', 'utf8');
+  const policy = deployment.match(/add_header Content-Security-Policy "([^"]+)"/)[1];
+  await page.route('**/video/', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), 'content-security-policy': policy } });
+  });
   page.on('pageerror', error => errors.push(error.message));
   page.on('dialog', dialog => dialog.accept());
   page.on('request', req => { if (req.method() === 'POST' && req.url().endsWith('/api/image/video/jobs')) submissions.push(req.postDataJSON()); });
@@ -94,6 +100,7 @@ try {
   await page.locator('#preview video').evaluate(video => { video.currentTime = 0; return video.play(); });
   await page.waitForFunction(() => document.querySelector('#preview video').currentTime > .1);
   await page.locator('[data-close=preview]').click();
+  await page.locator('#preview video').waitFor({ state: 'detached' });
   assert.equal(await page.locator('#preview video').count(), 0);
   const response = await context.request.get(preview.origin + url, { headers: { Range: 'bytes=4-7' } });
   assert.equal(response.status(), 206); assert.equal((await response.body()).toString(), 'ftyp');

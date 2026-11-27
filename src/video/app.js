@@ -322,7 +322,9 @@ function clearPrivate() {
 }
 function signIn() { notice(''); $('notice').replaceChildren(node('a', '登录 STRGO', { href: '/ai/login/?next=%2Fvideo%2F' })); $('notice').hidden = false; }
 for (const button of document.querySelectorAll('[data-close]')) button.onclick = () => $(button.dataset.close).close();
-$('preview').addEventListener('close', closePreview);
+$('preview').addEventListener('close', () => {
+  if (!$('preview').open) closePreview();
+});
 $('open-settings').onclick = openSettings;
 $('workflow').onchange = () => { pending = null; renderFields(); };
 $('fields').oninput = updateSummary;
@@ -338,6 +340,10 @@ $('save-settings').onclick = () => {
 $('key-form').onsubmit = event => {
   event.preventDefault();
   adminAction(event.target.querySelector('button'), async () => {
+    if (!$('api-key').value.trim()) {
+      $('key-status').textContent = '现有密钥已保留。';
+      return;
+    }
     const result = await request(adminApi + '/config', 'PUT', { apiKey: $('api-key').value, revision: keyRevision });
     keyRevision = result.revision;
     $('api-key').value = '';

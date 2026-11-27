@@ -41,7 +41,7 @@ def reference_audio(data):
                                          '-of', 'json', handle.name], capture_output=True, timeout=15, check=True)
                 info = json.loads(result.stdout)
                 duration = float(info['format']['duration'])
-                if not any(stream['codec_type'] == 'audio' for stream in info.get('streams', [])) or not 0 < duration <= 60:
+                if not any(stream['codec_type'] == 'audio' for stream in info.get('streams', [])) or not 0 < duration <= 605:
                     raise ValueError()
                 return 'audio/mp4', duration
             except (OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
@@ -75,11 +75,9 @@ def upload(store, user, payload):
             raise Problem(400, '请选择有效的 JPG、PNG 或 WebP 图片，最多 1600 万像素。') from error
     else:
         try:
-            mime, duration = reference_audio(data)
-            if duration > 60:
-                raise ValueError()
+            mime, _ = reference_audio(data)
         except (Problem, ValueError) as error:
-            raise Problem(400, '请选择有效的 MP3、WAV、FLAC 或 M4A 音频，最长 60 秒。') from error
+            raise Problem(400, '请选择有效的 MP3、WAV、FLAC 或 M4A 音频。') from error
     fingerprint, now = hashlib.sha256(data).hexdigest(), int(time.time())
     with store.connect() as db:
         db.execute('BEGIN IMMEDIATE')
