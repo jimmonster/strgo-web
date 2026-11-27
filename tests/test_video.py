@@ -1,4 +1,5 @@
 """Paid video submission, permissions, replacement and disk recovery."""
+import base64
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import json
@@ -6,13 +7,19 @@ import time
 import unittest
 from unittest.mock import patch
 import uuid
+import wave
+from urllib.parse import urlsplit
+
+from PIL import Image
 
 from image_service.autodl_video import AutoDL, links, normalize, validate_fields, workflow_id
 from image_service.security import Problem
 from image_service.video import VideoService
 from tests import test_image_service as fixtures
 
-MP4 = b'\x00\x00\x00\x18ftypisom' + b'\x00' * 20
+MP4 = base64.b64decode(
+    'AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAARSbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAA310cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAKAAAABaAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAIAAABAAAAAAL1bWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAAAwAAAAYABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAACoG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAmBzdGJsAAAAwHN0c2QAAAAAAAAAAQAAALBhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAKAAWgBIAAAASAAAAAAAAAABFUxhdmM2MS4xOS4xMDEgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAANmF2Y0MBZAAK/+EAGWdkAAqs2UKN+TARAAADAAEAAAMAGA8SJZYBAAZo6+PLIsD9+PgAAAAAEHBhc3AAAAABAAAAAQAAABRidHJ0AAAAAAAAETwAAAAAAAAAGHN0dHMAAAAAAAAAAQAAABgAAAQAAAAAFHN0c3MAAAAAAAAAAQAAAAEAAADIY3R0cwAAAAAAAAAXAAAAAQAACAAAAAABAAAUAAAAAAEAAAgAAAAAAQAAAAAAAAABAAAEAAAAAAEAABQAAAAAAQAACAAAAAABAAAAAAAAAAEAAAQAAAAAAQAAFAAAAAABAAAIAAAAAAEAAAAAAAAAAQAABAAAAAABAAAUAAAAAAEAAAgAAAAAAQAAAAAAAAABAAAEAAAAAAEAABQAAAAAAQAACAAAAAABAAAAAAAAAAEAAAQAAAAAAQAAEAAAAAACAAAEAAAAABxzdHNjAAAAAAAAAAEAAAABAAAAGAAAAAEAAAB0c3RzegAAAAAAAAAAAAAAGAAAAusAAAAQAAAADQAAAA0AAAANAAAAFgAAAA8AAAANAAAADQAAABYAAAAPAAAADQAAAA0AAAAWAAAADwAAAA0AAAANAAAAFgAAAA8AAAANAAAADQAAABUAAAAPAAAADQAAABRzdGNvAAAAAAAAAAEAAASCAAAAYXVkdGEAAABZbWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcmFwcGwAAAAAAAAAAAAAAAAsaWxzdAAAACSpdG9vAAAAHGRhdGEAAAABAAAAAExhdmY2MS43LjEwMwAAAAhmcmVlAAAEV21kYXQAAAKuBgX//6rcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MSByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgzOjB4MTEzIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0xIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MyBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTMgYl9weXJhbWlkPTIgYl9hZGFwdD0xIGJfYmlhcz0wIGRpcmVjdD0xIHdlaWdodGI9MSBvcGVuX2dvcD0wIHdlaWdodHA9MiBrZXlpbnQ9MjUwIGtleWludF9taW49MTIgc2NlbmVjdXQ9NDAgaW50cmFfcmVmcmVzaD0wIHJjX2xvb2thaGVhZD00MCByYz1jcmYgbWJ0cmVlPTEgY3JmPTIzLjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3RlcD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjAwAIAAAAA1ZYiEABH//ufj/AprfpHEyvWPwY9bXcqLo14dXGIU8gurtjqjfh3cMtTgUH12BEgAF7Br68EAAAAMQZokbEEP/qpVADxgAAAACUGeQniG/wCUgQAAAAkBnmF0Qz8AtoAAAAAJAZ5jakM/ALaBAAAAEkGaaEmoQWiZTAgh//6qVQA8YQAAAAtBnoZFESw3/wCUgQAAAAkBnqV0Qz8AtoEAAAAJAZ6nakM/ALaAAAAAEkGarEmoQWyZTAgh//6qVQA8YAAAAAtBnspFFSw3/wCUgQAAAAkBnul0Qz8AtoAAAAAJAZ7rakM/ALaAAAAAEkGa8EmoQWyZTAgh//6qVQA8YQAAAAtBnw5FFSw3/wCUgQAAAAkBny10Qz8AtoEAAAAJAZ8vakM/ALaAAAAAEkGbNEmoQWyZTAh///6plgDmgAAAAAtBn1JFFSw3/wCUgQAAAAkBn3F0Qz8AtoAAAAAJAZ9zakM/ALaAAAAAEUGbd0moQWyZTAhn//6eEAbNAAAAC0GflUUVLDf/AJSAAAAACQGftmpDPwC2gQ=='
+)
 DETAIL = {'name': 'H3 文生视频', 'input_rules': {
     'prompt': {'type': 'string', 'required': True},
     'duration': {'type': 'integer', 'default': 5, 'min': 1, 'max': 15},
@@ -26,7 +33,11 @@ class FakeAutoDL:
         self.fail_submit = self.fail_download = False
 
     def workflow(self, identifier):
-        return normalize(identifier, {**DETAIL, 'name': '官方标题 ' + identifier})
+        rules = dict(DETAIL['input_rules'])
+        if identifier == 'multi':
+            rules.update({f'ref_image_{index}': {'type': 'image'} for index in range(9)})
+            rules.update({f'ref_audio_{index}': {'type': 'audio'} for index in range(3)})
+        return normalize(identifier, {**DETAIL, 'name': '官方标题 ' + identifier, 'input_rules': rules})
 
     def catalog(self):
         return [{'id': 'one', 'title': '官方标题 one', **links('one')}]
@@ -114,7 +125,7 @@ class VideoTests(unittest.TestCase):
         self.assertEqual((status, output.getvalue()), (206, b'ftyp'))
         self.assertEqual(headers['Content-Type'], 'video/mp4')
         self.assertEqual(self.call('GET', path, extra={'Range': 'bytes=-0'})[0], 416)
-        self.assertEqual(self.call('GET', path, extra={'Range': 'bytes=999-1000'})[0], 416)
+        self.assertEqual(self.call('GET', path, extra={'Range': 'bytes=999999-1000000'})[0], 416)
         self.assertEqual(self.call('GET', path + '?download=1')[2]['Content-Disposition'].split(';')[0], 'attachment')
         self.deny(404, lambda: self.call('GET', path, session=self.other))
 
@@ -181,7 +192,7 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(workflow_id('https://www.autodl.art/large-model/comfyui/one'), 'one')
         for value in ('https://evil.example/one', 'https://www.autodl.art@evil.example/one', '../one'):
             self.deny(400, lambda: workflow_id(value))
-        self.deny(422, lambda: normalize('one', {**DETAIL, 'input_rules': {'prompt': {'type': 'string'}, 'image': {'type': 'image', 'required': True}}}))
+        self.deny(422, lambda: normalize('one', {**DETAIL, 'input_rules': {'prompt': {'type': 'string'}, 'video': {'type': 'video', 'required': True}}}))
         with patch('image_service.autodl_video.https_request', return_value=b'{"code":"Success","data":{"list":[{"uuid":"one","name":"Official title"}]}}') as call:
             self.assertEqual(AutoDL('server-secret').catalog()[0]['title'], 'Official title')
             self.assertEqual(call.call_args.args[1], 'POST')
@@ -189,3 +200,98 @@ class VideoTests(unittest.TestCase):
         with patch('image_service.autodl_video.public_addresses') as addresses:
             self.deny(502, lambda: AutoDL('').download('http://127.0.0.1/video.mp4', self.app.video.directory / 'test'))
             addresses.assert_not_called()
+
+    def reference(self, kind='image', session=None):
+        data = BytesIO()
+        if kind == 'image':
+            Image.new('RGB', (16, 16), (100, 150, 200)).save(data, 'PNG')
+            name = 'reference.png'
+        else:
+            with wave.open(data, 'wb') as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(8000)
+                audio.writeframes(b'\0\0' * 8000)
+            name = 'reference.wav'
+        return self.call('POST', '/video/inputs', {
+            'kind': kind, 'name': name, 'requestId': str(uuid.uuid4()),
+            'data': base64.b64encode(data.getvalue()).decode(),
+        }, session)[1]
+
+    def test_nine_images_three_audio_bind_to_matching_fields_and_scoped_urls(self):
+        self.call('POST', '/admin/video/workflows', {'workflow': 'multi'})
+        images = [self.reference() for _ in range(9)]
+        audio = [self.reference('audio') for _ in range(3)]
+        fields = {'prompt': 'Use all references'}
+        fields.update({f'ref_image_{index}': item['id'] for index, item in enumerate(images)})
+        fields.update({f'ref_audio_{index}': item['id'] for index, item in enumerate(audio)})
+        job = self.call('POST', '/video/jobs', {'workflowId': 'multi', 'fields': fields,
+            'requestId': str(uuid.uuid4()), 'acknowledged': True})[1]
+        self.due()
+        submitted = self.provider.calls[0][1]
+        for field, reference in fields.items():
+            if not field.startswith('ref_'):
+                continue
+            url = urlsplit(submitted[field])
+            self.assertIn(reference, url.path)
+            target = url.path + '?' + url.query
+            status, data, headers = self.app.dispatch('GET', target, headers={})
+            self.assertEqual(status, 200)
+            self.assertTrue(headers['Content-Type'].startswith('image/' if field.startswith('ref_image') else 'audio/'))
+            self.deny(404, lambda: self.app.dispatch('GET', url.path + '?token=wrong', headers={}))
+        source = urlsplit(submitted['ref_image_0'])
+        self.call('DELETE', '/video/inputs/' + images[0]['id'])
+        self.assertEqual(self.app.dispatch('GET', source.path + '?' + source.query, headers={})[0], 200)
+        self.due()
+        self.assertEqual(self.call('GET', '/video/jobs/' + job['id'])[1]['status'], 'complete')
+        self.deny(404, lambda: self.app.dispatch('GET', source.path + '?' + source.query, headers={}))
+
+    def test_reference_permissions_validation_and_unbound_deletion(self):
+        self.deny(403, lambda: self.reference(session=self.member))
+        reference = self.reference()
+        self.deny(404, lambda: self.call('GET', '/video/inputs/' + reference['id'], session=self.other))
+        self.deny(404, lambda: self.call('DELETE', '/video/inputs/' + reference['id'], session=self.other))
+        self.call('POST', '/admin/video/grants', {'username': 'video_member'})
+        self.call('POST', '/admin/video/workflows', {'workflow': 'multi'})
+        self.deny(400, lambda: self.call('POST', '/video/jobs', {
+            'workflowId': 'multi', 'fields': {'prompt': 'x', 'ref_image_0': reference['id']},
+            'requestId': str(uuid.uuid4()), 'acknowledged': True,
+        }, self.member))
+        self.call('DELETE', '/video/inputs/' + reference['id'])
+        self.deny(404, lambda: self.call('GET', '/video/inputs/' + reference['id']))
+        for kind in ('image', 'audio'):
+            self.deny(400, lambda: self.call('POST', '/video/inputs', {
+                'kind': kind, 'name': 'bad.file', 'requestId': str(uuid.uuid4()),
+                'data': base64.b64encode(b'<script>bad</script>').decode(),
+            }))
+
+    def test_media_schema_limits_and_required_uploads(self):
+        for name in ('ref_image_9', 'ref_audio_3'):
+            self.deny(422, lambda: normalize('multi', {**DETAIL, 'input_rules': {
+                **DETAIL['input_rules'], name: {'type': 'string'},
+            }}))
+        schema = normalize('multi', {**DETAIL, 'input_rules': {
+            **DETAIL['input_rules'], 'ref_image_0': {'type': 'string', 'required': True},
+        }})['fields']
+        self.assertEqual(schema[-1]['kind'], 'image')
+        self.deny(400, lambda: validate_fields(schema, {'prompt': 'x'}))
+        self.deny(400, lambda: validate_fields(schema, {'prompt': 'x', 'ref_image_0': 'https://evil.example/input.png'}))
+
+    def test_admin_key_is_encrypted_masked_and_snapshotted_per_job(self):
+        config = self.call('GET', '/admin/video/config')[1]
+        self.deny(403, lambda: self.call('PUT', '/admin/video/config', {
+            'apiKey': 'private-key-AAA', 'revision': config['revision'],
+        }, self.member))
+        result = self.call('PUT', '/admin/video/config', {
+            'apiKey': 'private-key-AAA', 'revision': config['revision'],
+        })[1]
+        self.assertNotIn('apiKey', result)
+        self.assertNotIn('private-key-AAA', self.store.metadata('video_api_key'))
+        job = self.submit()
+        self.call('PUT', '/admin/video/config', {'apiKey': 'private-key-BBB', 'revision': result['revision']})
+        with self.store.connect() as db:
+            row = db.execute('SELECT * FROM video_jobs WHERE id=?', (job['id'],)).fetchone()
+            self.assertEqual(self.app.video.snapshot(row)['apiKey'], 'private-key-AAA')
+        self.assertEqual(self.app.video.current_token(), 'private-key-BBB')
+        self.assertNotIn('private-key', json.dumps(self.call('GET', '/video/jobs')[1]))
+        self.deny(409, lambda: self.call('PUT', '/admin/video/config', {'apiKey': 'private-key-CCC', 'revision': 0}))

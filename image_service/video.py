@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 import os
 import re
+import secrets
 import shutil
 import threading
 import time
@@ -12,7 +13,8 @@ import uuid
 
 from .autodl_video import AutoDL, MAX_VIDEO_BYTES, is_mp4, links, validate_fields, workflow_id
 from .durability import sync_directory
-from .security import Problem
+from .security import Problem, digest
+from . import video_inputs
 
 PREFIX = '/api/image/video'
 ADMIN = '/api/image/admin/video'
@@ -52,24 +54,50 @@ class VideoStream:
 
 
 class VideoService:
-    def __init__(self, store, start_worker=False, provider=None):
+    def __init__(self, store, start_worker=False, provider=None, origin=None):
         self.store = store
         token = os.environ.get('AUTODL_COMFYUI_TOKEN', '').strip()
         self.provider = provider or AutoDL(token)
-        self.ready = bool(token or provider)
+        self.origin = origin or os.environ.get('IMAGE_PUBLIC_ORIGIN', 'https://strgo.com')
         self.directory = store.directory / 'videos'
         self.stop = threading.Event()
         self.wake = threading.Event()
         with store.connect() as db:
-            db.executescript(SCHEMA)
+            db.executescript(SCHEMA + video_inputs.SCHEMA)
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(video_jobs)')}
+            for name, kind in (('provider_config', 'BLOB'), ('source_hash', 'TEXT')):
+                if name not in columns:
+                    db.execute(f'ALTER TABLE video_jobs ADD COLUMN {name} {kind}')
             if start_worker:
                 db.execute("""UPDATE video_jobs SET status='unknown',error=?
                     WHERE status='submitting' AND remote_id IS NULL""",
                     ('上次提交结果待核实，请先检查 AutoDL 任务或账单。',))
         self.thread = None
-        if start_worker and self.ready:
+        if start_worker:
             self.thread = threading.Thread(target=self.work, name='strgo-video', daemon=True)
             self.thread.start()
+
+    @property
+    def ready(self):
+        return not isinstance(self.provider, AutoDL) or bool(self.current_token())
+
+    def current_token(self):
+        value = self.store.metadata('video_api_key')
+        if value:
+            return self.store.cipher.decrypt(value.encode()).decode()
+        return os.environ.get('AUTODL_COMFYUI_TOKEN', '').strip()
+
+    def provider_for(self, job=None):
+        if not isinstance(self.provider, AutoDL):
+            return self.provider
+        token = self.snapshot(job)['apiKey'] if job is not None else self.current_token()
+        return AutoDL(token)
+
+    def snapshot(self, job):
+        if job['provider_config']:
+            return json.loads(self.store.cipher.decrypt(job['provider_config']))
+        # Jobs created by the first text-only release used the environment key.
+        return {'apiKey': os.environ.get('AUTODL_COMFYUI_TOKEN', '').strip(), 'origin': self.origin}
 
     def close(self):
         self.stop.set()
@@ -118,6 +146,15 @@ class VideoService:
     def dispatch(self, user, method, path, query, payload, headers):
         if path.startswith(ADMIN + '/'):
             return self.admin(user, method, path[len(ADMIN):], payload)
+        if path == PREFIX + '/inputs' and method == 'POST':
+            with self.store.connect() as db:
+                actor = self.account(db, user)
+                if not self.permitted(db, actor):
+                    raise Problem(403, '请先取得视频生成权限。')
+            self.store.rate_limit('video-upload:' + user['id'], 60, 300)
+            if not self.disk_ready():
+                raise Problem(503, '服务器硬盘暂未就绪。')
+            return 201, video_inputs.upload(self.store, user, payload), {}
         with self.store.connect() as db:
             if method == 'POST':
                 db.execute('BEGIN IMMEDIATE')
@@ -136,6 +173,19 @@ class VideoService:
                 rows = db.execute('SELECT * FROM video_jobs WHERE user_id=? ORDER BY created DESC,id DESC LIMIT 21 OFFSET ?',
                                   (actor['id'], int(offset))).fetchall()
                 return 200, {'jobs': [self.job_public(row) for row in rows[:20]], 'hasMore': len(rows) > 20}, {}
+            reference = re.fullmatch(PREFIX + r'/inputs/([a-f0-9]{32})', path)
+            if reference:
+                row = db.execute('SELECT * FROM video_inputs WHERE id=? AND user_id=?', (reference[1], actor['id'])).fetchone()
+                if not row:
+                    raise Problem(404, '参考素材不存在。')
+                if method == 'GET':
+                    return video_inputs.content(self.store, row)
+                if method == 'DELETE':
+                    # Clearing a slot must not remove inputs from a paid task.
+                    used = db.execute('SELECT 1 FROM video_job_inputs WHERE input_id=?', (row['id'],)).fetchone()
+                    if not used:
+                        db.execute('DELETE FROM video_inputs WHERE id=?', (row['id'],))
+                    return 200, {'ok': True}, {}
             match = re.fullmatch(PREFIX + r'/jobs/([a-f0-9]{32})(?:/([0-7])\.mp4)?', path)
             if match and method == 'GET':
                 job = db.execute('SELECT * FROM video_jobs WHERE user_id=? AND id=?', (actor['id'], match[1])).fetchone()
@@ -170,9 +220,15 @@ class VideoService:
                 AND status IN ('queued','submitting','running','saving')""", (user['id'],)).fetchone():
             raise Problem(429, '请等待当前视频任务完成后再生成。')
         job_id, now = uuid.uuid4().hex, int(time.time())
-        db.execute("""INSERT INTO video_jobs(id,user_id,request_id,workflow_id,title,parameters,status,created,next_poll)
-                   VALUES(?,?,?,?,?,?,'queued',?,?)""",
-                   (job_id, user['id'], request_id, identifier, workflow['title'], json.dumps(fields, ensure_ascii=False), now, now))
+        source_token = secrets.token_urlsafe(32)
+        config = self.store.cipher.encrypt(json.dumps({
+            'apiKey': self.current_token(), 'origin': self.origin, 'sourceToken': source_token,
+        }).encode())
+        db.execute("""INSERT INTO video_jobs(id,user_id,request_id,workflow_id,title,parameters,status,created,next_poll,provider_config,source_hash)
+                   VALUES(?,?,?,?,?,?,'queued',?,?,?,?)""",
+                   (job_id, user['id'], request_id, identifier, workflow['title'], json.dumps(fields, ensure_ascii=False),
+                    now, now, config, digest(source_token)))
+        video_inputs.bind(db, job_id, user['id'], json.loads(workflow['fields']), fields)
         self.wake.set()
         return 202, self.job_public(db.execute('SELECT * FROM video_jobs WHERE id=?', (job_id,)).fetchone()), {}
 
@@ -180,14 +236,29 @@ class VideoService:
         with self.store.connect() as db:
             self.require_admin(db, user)
         if route == '/catalog' and method == 'GET':
-            return 200, {'workflows': self.provider.catalog()}, {}
+            return 200, {'workflows': self.provider_for().catalog()}, {}
         candidate = None
         if route == '/workflows' and method == 'POST':
-            candidate = self.provider.workflow(workflow_id(payload.get('workflow')))
+            candidate = self.provider_for().workflow(workflow_id(payload.get('workflow')))
         from .admin import audit
         with self.store.connect() as db:
             db.execute('BEGIN' if method == 'GET' else 'BEGIN IMMEDIATE')
             actor = self.require_admin(db, user)
+            if route == '/config':
+                revision = int(self.store.metadata('video_key_revision', '0'))
+                if method == 'GET':
+                    return 200, {'configured': self.ready, 'revision': revision}, {}
+                if method == 'PUT':
+                    token = payload.get('apiKey')
+                    if not isinstance(token, str) or not 8 <= len(token.strip()) <= 2048 or any(c.isspace() for c in token.strip()):
+                        raise Problem(400, '请输入有效的 AutoDL ComfyUI 密钥。')
+                    if payload.get('revision') != revision:
+                        raise Problem(409, '密钥配置已变化，请刷新设置后重试。')
+                    encrypted = self.store.cipher.encrypt(token.strip().encode()).decode()
+                    db.execute("INSERT INTO meta VALUES('video_api_key',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (encrypted,))
+                    db.execute("INSERT INTO meta VALUES('video_key_revision',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(revision + 1),))
+                    audit(db, actor['id'], 'video.config.update')
+                    return 200, {'configured': True, 'revision': revision + 1}, {}
             if route == '/workflows':
                 if method == 'GET':
                     return 200, {'ready': self.ready, 'workflows': [self.workflow_public(row) for row in
@@ -262,7 +333,10 @@ class VideoService:
                 db.execute('UPDATE video_jobs SET next_poll=? WHERE id=?', (now + 10, job['id']))
         if job['status'] == 'queued':
             try:
-                remote_id = self.provider.submit(job['workflow_id'], json.loads(job['parameters']))
+                snapshot = self.snapshot(job)
+                with self.store.connect() as db:
+                    fields = video_inputs.provider_fields(db, snapshot['origin'], job, snapshot.get('sourceToken', ''))
+                remote_id = self.provider_for(job).submit(job['workflow_id'], fields)
             except Exception:
                 self.update(job['id'], 'unknown', '提交结果待核实，请先检查 AutoDL 任务或账单。')
                 return True
@@ -283,7 +357,7 @@ class VideoService:
             self.update(job['id'], 'unknown', '任务已超过自动核对时间，请先到 AutoDL 查询。')
             return
         try:
-            result = self.provider.result(job['remote_id'])
+            result = self.provider_for(job).result(job['remote_id'])
         except Exception:
             self.update(job['id'], job['status'], '状态暂时无法读取，稍后会继续查询。', delay=30)
             return

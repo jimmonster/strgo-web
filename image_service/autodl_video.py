@@ -43,7 +43,7 @@ def is_mp4(item):
 
 
 def normalize(identifier, detail):
-    """Keep official names and derive only supported text-to-video fields."""
+    """Keep official names and map reference fields to fixed image/audio slots."""
     try:
         title = detail.get('name') or detail.get('title')
         rules = decode(detail.get('input_rules'))
@@ -56,20 +56,36 @@ def normalize(identifier, detail):
         if not isinstance(rules, dict) or not 1 <= len(rules) <= 40 or not any(map(is_mp4, outputs)):
             raise ValueError()
         fields = []
+        occupied = {'image': set(), 'audio': set()}
         for name, rule in rules.items():
             if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,63}', name):
                 raise ValueError()
             rule = {'type': rule} if isinstance(rule, str) else rule
             kind = TYPES.get(str(rule.get('type', '')).lower())
+            reference = re.fullmatch(r'ref_(image|audio)_(\d+)', name)
+            slot = None
+            if reference:
+                kind, slot = reference[1], int(reference[2])
+            elif name in ('first_frame', 'last_frame'):
+                kind, slot = 'image', int(name == 'last_frame')
+            elif rule.get('type') in ('image', 'audio'):
+                kind = rule['type']
+                slot = next((index for index in range(9 if kind == 'image' else 3) if index not in occupied[kind]), None)
+            if kind in occupied:
+                if slot is None or slot >= (9 if kind == 'image' else 3) or slot in occupied[kind]:
+                    raise ValueError()
+                occupied[kind].add(slot)
             if not kind:
                 if rule.get('required'):
                     raise ValueError()
                 continue
             field = {'name': name, 'kind': kind, 'required': bool(rule.get('required'))}
+            if slot is not None:
+                field['slot'] = slot
             for key in ('min', 'max', 'min_length', 'max_length'):
                 if type(rule.get(key)) in (int, float):
                     field[key] = rule[key]
-            if type(rule.get('default')) in (str, int, float, bool):
+            if kind not in occupied and type(rule.get('default')) in (str, int, float, bool):
                 field['default'] = rule['default']
             for key in ('options', 'choices', 'enum'):
                 options = rule.get(key)
@@ -86,7 +102,7 @@ def normalize(identifier, detail):
         prompt['required'] = True
         return {'id': identifier, 'title': title.strip(), 'fields': fields, **links(identifier)}
     except (AttributeError, KeyError, TypeError, ValueError) as error:
-        raise Problem(422, '该工作流没有可核对的文生视频参数和 MP4 输出，或需要其他素材。') from error
+        raise Problem(422, '该工作流没有可核对的视频参数和 MP4 输出，或超出 9 图 / 3 音频范围。') from error
 
 
 def validate_fields(schema, values):
@@ -104,6 +120,7 @@ def validate_fields(schema, values):
         else:
             value = values[name]
         valid = (kind == 'text' and isinstance(value, str)
+                 or kind in ('image', 'audio') and isinstance(value, str) and re.fullmatch(r'[a-f0-9]{32}', value)
                  or kind == 'integer' and type(value) is int
                  or kind == 'number' and type(value) in (int, float)
                  or kind == 'boolean' and type(value) is bool)

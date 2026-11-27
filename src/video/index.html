@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <title>STRGO · AI 视频</title>
   <link rel="stylesheet" href="/hub/tokens.css">
@@ -14,53 +14,82 @@
   <main>
     <h1>AI 视频</h1>
     <p id="notice" role="status">正在检查账号与权限…</p>
-    <section id="create" hidden>
-      <h2>文生视频</h2>
-      <form id="generate">
-        <label>工作流<select id="workflow" required></select></label>
-        <a id="source" target="_blank" rel="noopener noreferrer">查看 AutoDL 接口和价格 ↗</a>
-        <div id="fields"></div>
-        <button type="submit">确认参数</button>
+    <section id="create" hidden aria-label="视频操作台">
+      <form id="generate" novalidate>
+        <fieldset id="composer">
+          <div class="reference-board">
+            <div class="image-group">
+              <div class="section-label"><h2>参考图</h2><span>最多 9 张</span></div>
+              <div id="image-slots" class="image-grid" aria-label="参考图片"></div>
+            </div>
+            <div class="audio-group">
+              <div class="section-label"><h2>音频</h2></div>
+              <div id="audio-slots" class="audio-grid" aria-label="参考音频"></div>
+            </div>
+          </div>
+          <label class="prompt-label" for="prompt">视频提示词</label>
+          <textarea id="prompt" name="prompt" rows="4" required maxlength="12000" placeholder="描述画面、动作、镜头，以及参考素材的使用方式…"></textarea>
+          <p id="workflow-summary" class="hint"></p>
+          <button id="generate-button" class="generate-button" type="submit">生成视频</button>
+        </fieldset>
       </form>
     </section>
-    <section id="archive" hidden>
-      <div class="row"><h2>我的视频</h2><button id="refresh" type="button">刷新</button></div>
+    <section id="archive" hidden aria-label="生成视频列表">
+      <div class="list-toolbar"><h2>生成的视频</h2><div><button id="refresh" type="button" class="quiet">刷新</button><button id="open-settings" type="button" class="settings-button">设置</button></div></div>
       <p id="archive-status" role="status"></p>
-      <div id="jobs"></div>
+      <div id="jobs" class="video-grid"></div>
       <button id="more" type="button" hidden>查看更多</button>
     </section>
-    <details id="admin" hidden>
-      <summary>管理工作流和成员权限</summary>
+  </main>
+  <dialog id="settings" aria-labelledby="settings-title">
+    <div class="dialog-heading"><h2 id="settings-title">视频设置</h2><button type="button" data-close="settings" aria-label="关闭设置">×</button></div>
+    <label>工作流<select id="workflow"></select></label>
+    <a id="source" target="_blank" rel="noopener noreferrer">查看接口和价格 ↗</a>
+    <div id="fields" class="parameter-grid"></div>
+    <button id="save-settings" type="button">保存生成设置</button>
+    <p id="settings-status" role="status"></p>
+    <div id="admin" hidden>
       <section>
-        <h2>AutoDL 工作流</h2>
-        <a href="https://www.autodl.art/large-model/comfyui" target="_blank" rel="noopener noreferrer">打开 AutoDL 官方目录 ↗</a>
-        <button type="button" id="sync">加载官方目录</button>
+        <h3>接口密钥</h3>
+        <form id="key-form">
+          <label>AutoDL ComfyUI 密钥<input id="api-key" type="password" autocomplete="new-password" maxlength="2048" placeholder="输入新密钥"></label>
+          <p id="key-status" class="hint"></p>
+          <button type="submit">保存密钥</button>
+        </form>
+      </section>
+      <section>
+        <h3>接口 URL</h3>
+        <div class="list-toolbar"><a href="https://www.autodl.art/large-model/comfyui" target="_blank" rel="noopener noreferrer">AutoDL 工作流目录 ↗</a><button type="button" id="sync">加载目录</button></div>
         <form id="enable">
-          <label>工作流 URL 或 ID<input name="workflow" list="catalog" required placeholder="minimax_h3_adl_int8" autocomplete="off"></label>
+          <label>工作流 URL 或 ID<input name="workflow" list="catalog" required placeholder="minimax_h3_image_audio_to_video_v2_15s" autocomplete="off"></label>
           <datalist id="catalog"></datalist>
-          <label>替换已启用的工作流<select name="replace" id="replace"><option value="">添加到现有列表</option></select></label>
+          <label>替换工作流<select name="replace" id="replace"><option value="">添加到现有列表</option></select></label>
           <button type="submit">核对并启用</button>
         </form>
         <div id="enabled"></div>
       </section>
       <section>
-        <h2>成员生成权限</h2>
+        <h3>成员生成权限</h3>
         <form id="grant">
-          <label>STRGO 用户名<input name="username" required pattern="[A-Za-z0-9_-]{3,32}" autocomplete="off"></label>
-          <button type="submit">授权文生视频</button>
+          <label>STRGO 用户名<input name="username" required autocomplete="off"></label>
+          <button type="submit">授权生成视频</button>
         </form>
         <div id="members"></div>
       </section>
       <p id="admin-status" role="status"></p>
-    </details>
-    <dialog id="confirm">
-      <form method="dialog">
-        <h2>提交付费任务</h2>
-        <p id="confirm-workflow"></p>
-        <p>AutoDL 将按工作流规则收费。提交后可关闭网页，视频完成时会自动保存到服务器。</p>
-        <div class="row"><button value="cancel">取消</button><button value="submit">确认生成</button></div>
-      </form>
-    </dialog>
-  </main>
+    </div>
+  </dialog>
+  <dialog id="preview" aria-labelledby="preview-title">
+    <div class="dialog-heading"><h2 id="preview-title">素材预览</h2><button type="button" data-close="preview" aria-label="关闭预览">×</button></div>
+    <div id="preview-content"></div>
+    <div id="preview-actions" class="preview-actions"></div>
+  </dialog>
+  <dialog id="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">提交付费任务</h2><p id="confirm-workflow"></p>
+      <p>AutoDL 将按所选接口收费，提交后会传入选中的参考素材。视频完成后自动保存到服务器。</p>
+      <div class="preview-actions"><button value="cancel">取消</button><button value="submit" class="generate-button">确认生成</button></div>
+    </form>
+  </dialog>
 </body>
 </html>

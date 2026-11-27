@@ -77,7 +77,7 @@ class Service:
         from .ai_service import AIService
         self.ai = AIService(self, start_worker=start_worker)
         from .video import VideoService
-        self.video = VideoService(store, start_worker=start_worker)
+        self.video = VideoService(store, start_worker=start_worker, origin=self.origin)
         from .panorama_tours import PanoramaTours
         self.panorama_tours = PanoramaTours(self)
         self.recover()
@@ -453,6 +453,10 @@ class Service:
             return local_studio.dispatch(self, method, path, query, payload, headers, ip)
         if method != 'GET' and headers.get('origin') != self.origin:
             raise Problem(403, '请求来源无效，请从本站打开工作台。')
+        source = re.fullmatch(API + r'/video-source/([a-f0-9]{32})/([a-f0-9]{32})', path)
+        if source and method == 'GET':
+            from .video_inputs import serve
+            return serve(self.store, source[1], source[2], query.get('token', [''])[0])
         user = self.session(headers)
         if path == API + '/terminal-session' and method == 'GET':
             if not user:
@@ -856,7 +860,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
                     length = -1
                 if not 0 <= length <= (1024 * 1024 if ai_request else 7 * 1024 * 1024):
                     raise Problem(413, '请求体无效或超过 7 MiB。')
-                self.connection.settimeout(20)
+                self.connection.settimeout(60 if self.path == API + '/video/inputs' else 20)
                 payload = json.loads(self.rfile.read(length) or b'{}')
             peer = self.client_address[0]
             ip = self.headers.get('X-Real-IP', peer) if peer in ('127.0.0.1', '::1') else peer
