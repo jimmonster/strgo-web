@@ -19,20 +19,24 @@
         <fieldset id="composer">
           <div class="reference-board">
             <div class="image-group">
-              <div class="section-label"><h2>参考图</h2><span>最多 9 张</span></div>
+              <div class="section-label"><h2>参考图<span>（最多9张）</span></h2></div>
               <div id="image-slots" class="image-grid" aria-label="参考图片"></div>
             </div>
             <div class="audio-group">
-              <div class="section-label"><h2>音频</h2></div>
+              <div class="section-label"><h2>音频<span>（最多3段）</span></h2></div>
               <div id="audio-slots" class="audio-grid" aria-label="参考音频"></div>
             </div>
           </div>
           <label class="prompt-label" for="prompt">视频提示词</label>
           <textarea id="prompt" name="prompt" rows="4" required maxlength="12000" placeholder="描述画面、动作、镜头，以及参考素材的使用方式…"></textarea>
-          <label class="workflow-label" for="workflow">生成工作流</label>
-          <select id="workflow" aria-label="生成工作流"></select>
-          <div id="fields" class="parameter-grid" aria-label="生成参数"></div>
-          <p id="workflow-summary" class="hint"></p>
+          <div id="fields">
+            <div class="generation-choices">
+              <label for="workflow">生成工作流<select id="workflow" disabled></select></label>
+              <div id="duration-choice"></div>
+              <div id="resolution-choice"></div>
+            </div>
+            <div id="extra-fields" class="parameter-grid" hidden></div>
+          </div>
           <button id="generate-button" class="generate-button" type="submit">生成视频</button>
         </fieldset>
       </form>
@@ -49,12 +53,6 @@
     <div id="admin" hidden>
       <section>
         <h3>AutoDL 接口</h3>
-        <div class="settings-workflow-row">
-          <label>AutoDL URL 列表<input id="workflow-url" list="catalog" placeholder="选择目录项，或粘贴 AutoDL 工作流 URL" autocomplete="off"></label>
-          <datalist id="catalog"></datalist>
-          <button type="button" id="sync">拉取最新的 AutoDL</button>
-        </div>
-        <label>替换已有工作流<select id="replace"><option value="">添加到现有列表</option></select></label>
         <label>密钥<input id="api-key" type="password" autocomplete="new-password" maxlength="2048" placeholder="输入 AutoDL ComfyUI 密钥"></label>
         <p id="key-status" class="hint"></p>
         <div id="enabled"></div>
@@ -62,7 +60,13 @@
       <section>
         <h3>成员生成权限</h3>
         <p class="hint">勾选未授权用户后点击上方“保存”即可授权。已授权用户会保持勾选，点“撤销”可移除权限。</p>
-        <div id="members" role="group" aria-label="授权用户列表"></div>
+        <form id="member-search">
+          <label for="member-query">用户名<input id="member-query" type="search" maxlength="80" placeholder="输入用户名" autocomplete="off"></label>
+          <button type="submit">搜索</button>
+        </form>
+        <p id="member-status" class="hint" role="status"></p>
+        <p id="member-selection" class="hint" role="status"></p>
+        <div id="members" role="group" aria-label="成员搜索结果" hidden></div>
       </section>
       <p id="admin-status" role="status"></p>
     </div>

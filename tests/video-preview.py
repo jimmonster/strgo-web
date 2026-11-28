@@ -15,6 +15,7 @@ args = parser.parse_args()
 os.environ['IMAGE_ENV'] = 'development'
 fixture = VideoTests()
 fixture.setUp()
+fixture.call('POST', '/admin/video/workflows', {'workflow': 'multi'})
 service = fixture.app
 service.origin = args.origin
 service.video.origin = args.origin

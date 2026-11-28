@@ -41,6 +41,11 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   page.on('dialog', dialog => dialog.accept());
   page.on('request', req => { if (req.method() === 'POST' && req.url().endsWith('/api/image/video/jobs')) submissions.push(req.postDataJSON()); });
+  const memberQueries = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname === '/api/image/admin/users') memberQueries.push(url.searchParams.get('q'));
+  });
   await page.goto(preview.origin + '/video/'); await page.locator('#notice a').waitFor();
   const login = async username => {
     const response = await context.request.post(preview.origin + '/api/image/login', {
@@ -51,26 +56,50 @@ try {
   await login('owner'); await page.reload(); await page.locator('#create:not([hidden])').waitFor();
   assert.equal(await page.locator('#image-slots .media-slot').count(), 9);
   assert.equal(await page.locator('#audio-slots .media-slot').count(), 3);
-  await page.click('#open-settings'); await page.locator('#enabled strong').waitFor();
+  const workflow = page.locator('#workflow');
+  const duration = page.locator('#duration-choice select');
+  const resolution = page.locator('#resolution-choice select');
+  await workflow.selectOption('one');
+  assert.equal(await duration.locator('option[value="15"]').count(), 1);
+  assert.equal(await resolution.locator('option').count(), 3);
+  await workflow.selectOption('multi');
+  assert.equal(await duration.locator('option[value="15"]').count(), 0);
+  assert.equal(await duration.locator('option[value="3"]').count(), 1);
+  assert.equal(await resolution.locator('option[value="2"]').textContent(), '720p方');
+  await page.click('#open-settings'); await page.locator('#enabled strong').first().waitFor();
+  assert.equal(await page.locator('#workflow-url, #sync, #replace').count(), 0);
+  assert.equal(await page.locator('#members').isVisible(), false);
+  assert.deepEqual(memberQueries, []);
   await page.fill('#api-key', 'private-browser-fixture-key');
   assert.equal(await page.locator('#api-key').inputValue(), 'private-browser-fixture-key');
-  await page.click('#sync'); await page.waitForFunction(() => document.querySelector('#catalog').options.length === 1);
-  assert.equal(await page.locator('#catalog option').getAttribute('value'), 'https://www.autodl.art/large-model/comfyui/one');
-  await page.fill('#workflow-url', 'https://www.autodl.art/large-model/comfyui/multi');
-  await page.selectOption('#replace', 'one');
-  assert.equal(await page.locator('#members input[value="video_member"]').isChecked(), false);
-  await page.locator('#members input[value="video_member"]').check();
+  const searchMembers = async query => {
+    await page.fill('#member-query', query);
+    await page.click('#member-search button[type=submit]');
+  };
+  await searchMembers('missing_member');
+  await page.locator('#member-status').filter({ hasText: '找不到匹配的成员。' }).waitFor();
+  assert.equal(await page.locator('#members').isVisible(), false);
+  await searchMembers('VIDEO_');
+  const videoMember = page.locator('#members input[value="video_member"]');
+  await videoMember.waitFor();
+  assert.equal(await page.locator('#members .grant-member').count(), 1);
+  assert.equal(await videoMember.isChecked(), false);
+  await videoMember.check();
+  await page.fill('#member-query', '');
+  assert.equal(await page.locator('#members').isVisible(), false);
   await page.click('#save-settings');
   await page.locator('#settings').waitFor({ state: 'hidden' });
   assert.equal(await page.evaluate(() => Object.values(localStorage).some(value => value.includes('private-browser-fixture-key'))), false);
   await page.click('#open-settings');
-  await page.waitForFunction(() => document.querySelector('#workflow').value === 'multi');
-  assert.equal(await page.locator('#workflow option').textContent(), '官方标题 multi');
-  assert.equal(await page.locator('#enabled article a').getAttribute('href'), 'https://www.autodl.art/large-model/comfyui/multi');
-  assert.equal(await page.locator('#members input[value="video_member"]').isChecked(), true);
+  assert.equal(await page.locator('#members').isVisible(), false);
+  await searchMembers('video_member');
+  await videoMember.waitFor();
+  assert.equal(await videoMember.isChecked(), true);
+  assert.equal(await page.locator('#members .grant-member button').isVisible(), true);
+  assert.deepEqual(memberQueries, ['missing_member', 'VIDEO_', 'video_member']);
   await page.locator('[data-close=settings]').click();
-  await page.fill('#fields [name=duration]', '6');
-  await page.selectOption('#fields [name=resolution]', '1');
+  await duration.selectOption('6');
+  await resolution.selectOption('1');
   await page.fill('#fields [name=seed]', '123456');
   for (let index = 0; index < 9; index++) await page.locator('#image-slots input[type=file]').nth(index).setInputFiles(imageFile('image-' + index + '.png'));
   for (let index = 0; index < 3; index++) await page.locator('#audio-slots input[type=file]').nth(index).setInputFiles(audioFile('audio-' + index + '.wav'));
@@ -120,6 +149,12 @@ try {
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'video overflows at ' + width);
+    const choices = await Promise.all([workflow, duration, resolution].map(choice => choice.boundingBox()));
+    assert.ok(choices.every((choice, index) => choice.y === choices[0].y && (!index || choice.x >= choices[index - 1].x + choices[index - 1].width)),
+      'generation dropdowns are not aligned at ' + width);
+    const image = await page.locator('#image-slots .slot-button').first().boundingBox();
+    const audio = await page.locator('#audio-slots .slot-button').first().boundingBox();
+    assert.ok(Math.abs(image.y - audio.y) < 1, 'audio and image rows are not aligned at ' + width);
     const generate = await page.locator('#generate-button').boundingBox(), list = await page.locator('#archive').boundingBox();
     assert.ok(list.y > generate.y + generate.height);
     await page.screenshot({ path: root + 'artifacts/video/list-' + width + '.png', fullPage: true });
@@ -137,8 +172,12 @@ try {
   await login('other_member'); await page.reload();
   await page.waitForFunction(() => document.querySelector('#notice').textContent.includes('尚未获得生成权限'));
   assert.equal(await page.locator('#create').isVisible(), false);
+  await login('owner'); await page.reload(); await page.locator('#create:not([hidden])').waitFor();
+  await page.click('#open-settings'); await searchMembers('video_member');
+  await page.locator('#members .grant-member button').click();
+  await page.waitForFunction(() => document.querySelector('#members input[value="video_member"]')?.checked === false);
   assert.deepEqual(errors, []);
-  console.log('Video browser passed: 9 image / 3 audio import, replacement, deletion, preview, secure settings, generation and actual MP4 playback at three widths.');
+  console.log('Video browser passed: workflow dropdowns, member search and grants, 9 image / 3 audio import, secure settings, generation and MP4 playback at three widths.');
 } finally {
   await browser?.close(); fixture.stdin.end();
   await Promise.race([exit, new Promise(resolve => setTimeout(() => { fixture.kill(); resolve(); }, 6000))]);

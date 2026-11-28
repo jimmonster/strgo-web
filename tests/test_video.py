@@ -36,6 +36,8 @@ class FakeAutoDL:
     def workflow(self, identifier):
         rules = dict(DETAIL['input_rules'])
         if identifier == 'multi':
+            rules['duration'] = {**rules['duration'], 'min': 3, 'max': 10}
+            rules['resolution'] = {**rules['resolution'], 'options': ['480p竖', '768p横', '720p方']}
             rules.update({f'ref_image_{index}': {'type': 'image'} for index in range(9)})
             rules.update({f'ref_audio_{index}': {'type': 'audio'} for index in range(3)})
         return normalize(identifier, {**DETAIL, 'name': '官方标题 ' + identifier, 'input_rules': rules})

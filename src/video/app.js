@@ -6,10 +6,13 @@ const labels = {
   duration: '生成时长（秒）', audio_duration: '生成时长（秒）', video_duration: '生成时长（秒）',
   resolution: '分辨率 / 画幅', seed: '随机种子', random_seed: '随机种子', noise_seed: '随机种子', mode: '生成模式',
 };
+const durationNames = ['duration', 'video_duration', 'audio_duration'];
+const pendingGrants = new Map();
 const statuses = { queued: '排队中', submitting: '提交中', running: '生成中', saving: '正在保存', complete: '已保存', failed: '失败', unknown: '结果待核实，请检查 AutoDL 任务' };
 const references = { image: Array(9).fill(null), audio: Array(3).fill(null) };
 let session, workflows = [], allowed = false, ready = false, pending, sending = false;
 let offset = 0, latest = '', serial = 0, timer, keyRevision = 0;
+let memberSearchRevision = 0;
 
 function node(tag, text, attributes = {}) {
   const element = document.createElement(tag);
@@ -27,14 +30,25 @@ function preferenceKey() { return 'strgo:video:settings:' + session.user.id; }
 function preferences() {
   try { return JSON.parse(localStorage.getItem(preferenceKey()) || '{}'); } catch { return {}; }
 }
-function control(field) {
-  const label = node('label', labels[field.name] || field.name);
+function integerChoices(field) {
+  if (field.kind !== 'integer') return null;
+  const min = Math.ceil(field.min), max = Math.floor(field.max);
+  const count = max - min + 1;
+  if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || count < 1 || count > 100) return null;
+  return Array.from({ length: count }, (_, index) => min + index);
+}
+function control(field, title = labels[field.name] || field.name, range = null) {
+  const label = node('label', title);
   let input;
-  if (field.options || field.kind === 'boolean') {
-    input = node('select'); input.append(option('', '使用默认值'));
-    const values = field.options || [true, false];
-    values.forEach((value, index) => input.append(option(index, String(value))));
-    if (values.includes(field.default)) input.value = String(values.indexOf(field.default));
+  const choices = field.options || (field.kind === 'boolean' ? [true, false] : range);
+  if (choices) {
+    input = node('select');
+    input.append(option('', field.required ? '请选择' : '使用默认值'));
+    choices.forEach((value, index) => {
+      const text = typeof value === 'number' && durationNames.includes(field.name) ? value + ' 秒' : String(value);
+      input.append(option(range ? value : index, text));
+    });
+    if (choices.includes(field.default)) input.value = String(range ? field.default : choices.indexOf(field.default));
   } else if (field.kind === 'integer' || field.kind === 'number') {
     input = node('input', null, { type: 'number', step: field.kind === 'integer' ? '1' : 'any' });
     for (const name of ['min', 'max']) if (field[name] != null) input[name] = field[name];
@@ -48,38 +62,50 @@ function control(field) {
   label.append(input); return label;
 }
 function scalarFields() { return activeWorkflow()?.fields.filter(field => !['image', 'audio'].includes(field.kind) && field.name !== 'prompt') || []; }
+function parameterInputs() { return $('fields').querySelectorAll('input[name],select[name]'); }
 function renderFields() {
   const workflow = activeWorkflow(), saved = preferences();
-  $('fields').replaceChildren(...scalarFields().map(control));
+  const extra = scalarFields();
+  const duration = durationNames.map(name => extra.find(field => field.name === name)).find(Boolean);
+  const resolution = extra.find(field => field.name === 'resolution');
+  for (const [id, title, field] of [['duration-choice', '生成时长', duration], ['resolution-choice', '视频分辨率', resolution]]) {
+    const range = field && !field.options ? integerChoices(field) : null;
+    if (field && (field.options || range || field.kind === 'boolean')) {
+      $(id).replaceChildren(control(field, title, range));
+      extra.splice(extra.indexOf(field), 1);
+    } else {
+      const label = node('label', title);
+      const select = node('select', null, { disabled: '' });
+      select.append(option('', field ? '见下方参数' : '不适用'));
+      label.append(select);
+      $(id).replaceChildren(label);
+    }
+  }
+  $('extra-fields').replaceChildren(...extra.map(field => control(field)));
+  $('extra-fields').hidden = !extra.length;
   if (saved.workflowId === workflow?.id && saved.values && typeof saved.values === 'object') {
-    for (const input of $('fields').querySelectorAll('input,select')) {
-      if (typeof saved.values[input.name] === 'string') input.value = saved.values[input.name];
+    for (const input of parameterInputs()) {
+      const value = saved.values[input.name];
+      if (typeof value === 'string' && (!input.options || [...input.options].some(option => option.value === value))) input.value = value;
     }
   }
   $('prompt').maxLength = Math.min(12000, workflow?.fields.find(field => field.name === 'prompt')?.max_length || 12000);
-  updateSummary(); renderSlots();
-}
-function updateSummary() {
-  const workflow = activeWorkflow();
-  const value = (...names) => names.map(name => $('fields').querySelector('[name="' + name + '"]')?.value).find(item => item);
-  const duration = value('duration', 'video_duration', 'audio_duration');
-  const resolution = value('resolution');
-  const seed = value('seed', 'random_seed', 'noise_seed');
-  $('workflow-summary').textContent = [workflow?.title, duration ? duration + ' 秒' : '', resolution, seed ? 'Seed ' + seed : ''].filter(Boolean).join(' · ');
+  renderSlots();
 }
 function saveParameterPreferences() {
   try {
-    const values = Object.fromEntries([...$('fields').querySelectorAll('input,select')].map(input => [input.name, input.value]));
+    const values = Object.fromEntries([...parameterInputs()].map(input => [input.name, input.value]));
     localStorage.setItem(preferenceKey(), JSON.stringify({ workflowId: activeWorkflow()?.id, values }));
   } catch { /* Parameter settings remain active for this page. */ }
 }
-async function loadWorkflows(preferredId) {
+async function loadWorkflows() {
   const data = await request(api + '/workflows'), previous = activeWorkflow();
   workflows = data.workflows; allowed = data.allowed; ready = data.ready;
   $('create').hidden = !allowed;
-  notice(!allowed ? '此账号尚未获得生成权限。已保存的视频仍可播放。' : !ready ? '请在设置中配置接口密钥。' : !workflows.length ? '请在设置中启用视频工作流。' : '');
-  $('workflow').replaceChildren(...workflows.map(entry => option(entry.id, entry.title)));
-  const selected = preferredId || previous?.id || preferences().workflowId;
+  notice(!allowed ? '此账号尚未获得生成权限。已保存的视频仍可播放。' : !workflows.length ? '暂无可用视频工作流。' : !ready ? '请在设置中配置接口密钥。' : '');
+  $('workflow').disabled = !workflows.length;
+  $('workflow').replaceChildren(...(workflows.length ? workflows.map(entry => option(entry.id, entry.title)) : [option('', '暂无可用工作流')]));
+  const selected = previous?.id || preferences().workflowId;
   if (workflows.some(entry => entry.id === selected)) $('workflow').value = selected;
   if (JSON.stringify(previous) !== JSON.stringify(activeWorkflow()) || !$('image-slots').children.length) renderFields();
 }
@@ -216,9 +242,15 @@ function scalarValues() {
 }
 function prepareJob() {
   const workflow = activeWorkflow();
-  if (!workflow || !ready || !allowed) { notice('请先在设置中配置并启用视频接口。'); openSettings(); return; }
+  if (!allowed) return;
+  if (!workflow) { notice('暂无可用视频工作流。'); return; }
+  if (!ready) {
+    notice('请在设置中配置接口密钥。');
+    if (session.user.role === 'admin') openSettings();
+    return;
+  }
   if (!$('prompt').reportValidity()) return;
-  for (const input of $('fields').querySelectorAll('input,select')) {
+  for (const input of parameterInputs()) {
     if (!input.checkValidity()) { input.reportValidity(); return; }
   }
   const picks = [];
@@ -314,16 +346,9 @@ function action(label, callback) {
   return button;
 }
 async function loadAdmin() {
-  const [current, grants, config] = await Promise.all([request(adminApi + '/workflows'), request(adminApi + '/grants'), request(adminApi + '/config')]);
-  const users = [];
-  for (let offset = 0; ; offset += 100) {
-    const page = await request('/api/image/admin/users?offset=' + offset + '&limit=100');
-    users.push(...page.items.filter(user => user.role !== 'admin' && user.status === 'active'));
-    if (!page.hasMore) break;
-  }
+  const [current, config] = await Promise.all([request(adminApi + '/workflows'), request(adminApi + '/config')]);
   keyRevision = config.revision; $('api-key').value = ''; $('key-status').textContent = config.configured ? '已配置密钥，留空保留现有密钥。' : '尚未配置密钥。';
   const active = current.workflows.filter(item => item.enabled);
-  $('replace').replaceChildren(option('', '添加到现有列表'), ...active.map(item => option(item.id, item.title)));
   $('enabled').replaceChildren(...active.map(item => {
     const article = node('article');
     article.append(
@@ -337,22 +362,64 @@ async function loadAdmin() {
     );
     return article;
   }));
+}
+function updateGrantSelection() {
+  $('member-selection').textContent = pendingGrants.size ? '待授权 ' + pendingGrants.size + ' 位成员' : '';
+}
+function clearMemberResults() {
+  memberSearchRevision++;
+  $('members').hidden = true;
+  $('members').replaceChildren();
+  $('member-status').textContent = '';
+}
+async function loadMembers() {
+  clearMemberResults();
+  const query = $('member-query').value.trim();
+  if (!query) return;
+  const revision = memberSearchRevision;
+  $('member-status').textContent = '正在搜索…';
+  const users = [];
+  const getPage = offset => request('/api/image/admin/users?' + new URLSearchParams({ q: query, offset, limit: 100 }));
+  let grants;
+  try {
+    let page;
+    [page, grants] = await Promise.all([getPage(0), request(adminApi + '/grants')]);
+    for (let offset = 100; revision === memberSearchRevision; offset += 100) {
+      users.push(...page.items.filter(user => user.role !== 'admin' && user.status === 'active'));
+      if (!page.hasMore) break;
+      page = await getPage(offset);
+    }
+  } catch (error) {
+    if (revision === memberSearchRevision) $('member-status').textContent = error.message;
+    return;
+  }
+  if (revision !== memberSearchRevision) return;
   const granted = new Map(grants.members.map(member => [member.id, member]));
   $('members').replaceChildren(...users.map(member => {
     const currentGrant = granted.get(member.id);
     const row = node('div', null, { class: 'grant-member' });
     const label = node('label');
     const checkbox = node('input', null, { type: 'checkbox', value: member.username, 'data-user-id': member.id });
-    checkbox.checked = !!currentGrant;
+    if (currentGrant) pendingGrants.delete(member.id);
+    checkbox.checked = !!currentGrant || pendingGrants.has(member.id);
+    checkbox.disabled = !!currentGrant;
+    checkbox.onchange = () => {
+      if (checkbox.checked) pendingGrants.set(member.id, member.username);
+      else pendingGrants.delete(member.id);
+      updateGrantSelection();
+    };
     label.append(checkbox, userText('span', member.username));
     row.append(label, node('small', currentGrant ? '已授权' : '未授权'));
     if (currentGrant) row.append(action('撤销', async () => {
       if (!confirm('撤销该成员的生成权限？')) return;
       await request(adminApi + '/grants/' + currentGrant.id, 'DELETE', {});
-      await loadAdmin();
+      if ($('members').contains(row)) await loadMembers();
     }));
     return row;
   }));
+  $('members').hidden = !users.length;
+  $('member-status').textContent = users.length ? '' : '找不到匹配的成员。';
+  updateGrantSelection();
 }
 async function openSettings() {
   $('settings').showModal();
@@ -376,10 +443,18 @@ for (const button of document.querySelectorAll('[data-close]')) button.onclick =
 $('preview').addEventListener('close', () => {
   if (!$('preview').open) closePreview();
 });
+$('settings').addEventListener('close', () => {
+  if ($('settings').open) return;
+  $('member-search').reset();
+  clearMemberResults();
+  pendingGrants.clear();
+  updateGrantSelection();
+});
 $('open-settings').onclick = openSettings;
 $('workflow').onchange = () => { pending = null; renderFields(); saveParameterPreferences(); };
-$('fields').oninput = () => { updateSummary(); saveParameterPreferences(); };
-$('fields').onchange = saveParameterPreferences;
+$('fields').oninput = event => { if (event.target.name) saveParameterPreferences(); };
+$('member-query').oninput = clearMemberResults;
+$('member-search').onsubmit = event => { event.preventDefault(); loadMembers(); };
 $('generate').onsubmit = event => { event.preventDefault(); if (!sending) prepareJob(); };
 $('confirm').addEventListener('close', () => { if ($('confirm').returnValue === 'submit') sendJob(); });
 $('refresh').onclick = () => loadJobs(); $('more').onclick = () => loadJobs(true);
@@ -388,40 +463,28 @@ $('save-settings').onclick = () => {
   (async () => {
     try {
       if (session.user.role === 'admin') {
+        const newGrants = [...pendingGrants];
+        if (newGrants.length && !confirm('为选中的 ' + newGrants.length + ' 位用户开通付费视频生成权限？')) return;
         const apiKey = $('api-key').value;
         if (apiKey.trim()) {
           const result = await request(adminApi + '/config', 'PUT', { apiKey, revision: keyRevision });
           keyRevision = result.revision; $('api-key').value = '';
         }
-        const workflow = $('workflow-url').value.trim();
-        let preferredWorkflowId;
-        if (workflow) {
-          const installed = await request(adminApi + '/workflows', 'POST', { workflow, replace: $('replace').value });
-          preferredWorkflowId = installed.id;
-          $('workflow-url').value = ''; $('replace').value = '';
+        for (const [id, username] of newGrants) {
+          await request(adminApi + '/grants', 'POST', { username });
+          pendingGrants.delete(id);
+          updateGrantSelection();
         }
-        const selected = [...$('members').querySelectorAll('input[type=checkbox]:checked:not(:disabled)')];
-        const newGrants = selected.filter(input => input.closest('.grant-member').querySelector('small').textContent !== '已授权');
-        if (newGrants.length && !confirm('为选中的 ' + newGrants.length + ' 位用户开通付费视频生成权限？')) return;
-        for (const input of newGrants) {
-          await request(adminApi + '/grants', 'POST', { username: input.value });
-        }
-        await Promise.all([loadAdmin(), loadWorkflows(preferredWorkflowId)]);
+        await loadWorkflows();
       }
       $('settings-status').textContent = '设置已保存。';
-      updateSummary(); $('settings').close();
+      $('settings').close();
     } catch (error) {
       $('settings-status').textContent = error.message;
       if (session.user.role === 'admin') $('admin-status').textContent = error.message;
     } finally { button.disabled = false; }
   })();
 };
-$('sync').onclick = () => adminAction($('sync'), async () => {
-  const data = await request(adminApi + '/catalog');
-  $('catalog').replaceChildren(...data.workflows.map(entry => option(entry.url, entry.title)));
-  $('workflow-url').focus();
-  $('admin-status').textContent = '已拉取 ' + data.workflows.length + ' 个 AutoDL 工作流。选择目录项后点击保存。';
-});
 async function start() {
   try {
     session = await request('/api/image/session'); if (!session.user) { signIn(); return; }

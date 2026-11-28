@@ -205,8 +205,34 @@ fieldset {
   margin: 18px 0 8px;
 }
 
-.workflow-label {
+.reference-board .section-label h2 {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.reference-board .section-label {
+  min-height: 24px;
+}
+
+.reference-board .section-label span {
+  white-space: nowrap;
+}
+
+.generation-choices {
+  display: grid;
+  grid-template-columns: minmax(0,1.4fr) repeat(2,minmax(0,1fr));
+  align-items: end;
+  gap: 8px;
   margin-top: 14px;
+}
+
+.generation-choices label {
+  min-width: 0;
+}
+
+.generation-choices select {
+  text-overflow: ellipsis;
 }
 
 input,textarea,select,button {
@@ -423,16 +449,15 @@ dialog h2 {
   justify-self: end;
 }
 
-.settings-workflow-row {
-  display: grid;
+#settings #member-search {
   grid-template-columns: minmax(0,1fr) auto;
   align-items: end;
   gap: 10px;
+  margin-top: 12px;
 }
 
-.settings-workflow-row button {
-  min-height: 44px;
-  white-space: nowrap;
+#member-status:empty,#member-selection:empty {
+  display: none;
 }
 
 .dialog-heading {
@@ -624,11 +649,11 @@ dialog form {
   .parameter-grid {
     grid-template-columns: 1fr;
   }
-  .settings-workflow-row {
-    grid-template-columns: 1fr;
+  .generation-choices {
+    gap: 6px;
   }
-  .settings-workflow-row button {
-    width: 100%;
+  .generation-choices select {
+    padding-inline: 6px;
   }
   .settings-topbar {
     margin: -16px -16px 8px;
@@ -673,25 +698,23 @@ dialog form {
   min-height: 0;
 }
 
-.audio-group .section-label {
-  min-height: 24px;
-}
-
-.image-group .section-label {
-  min-height: 24px;
-}
-
 .audio-group .slot-button .slot-label {
   font-size: 10px;
   padding-left: 1px;
   padding-right: 1px;
 }
 
+@media (max-width:520px) {
+  .reference-board .section-label {
+    height: 42px;
+  }
+}
+
 @media (max-width:420px) {
   .reference-board {
     gap: 6px;
   }
-  .audio-group .section-label h2 {
+  .reference-board .section-label h2 {
     font-size: 14px;
   }
 }
